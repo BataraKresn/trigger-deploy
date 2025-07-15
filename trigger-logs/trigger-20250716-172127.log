@@ -1,6 +1,0 @@
-[2025-07-16 17:21:27.805550] 🚀 Deploy trigger received. Server: default
-[2025-07-16 17:21:27.805917] ✅ Spawning deploy-wrapper.sh process...
-[2025-07-16 17:21:27.825761] 🔄 Process started, streaming from log file: trigger-20250716-172127.log
-[Wed Jul 16 17:21:28 WIB 2025] ⚙️ No target server provided, using default: 30.30.30.202
-❌ SSH or deploy.sh exited with code 255
-✅ Deploy finished in 0h 0m 0s.

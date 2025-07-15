@@ -1,6 +1,0 @@
-[2025-07-16 14:18:58.071420] 🚀 Deploy trigger received. Server: newrnd
-[2025-07-16 14:18:58.071709] ✅ Spawning deploy-wrapper.sh process...
-[2025-07-16 14:18:58.072950] 🔄 Process started, streaming from log file: trigger-20250716-141858.log
-[Wed Jul 16 14:18:58 WIB 2025] 🔧 Starting deploy to newrnd...
-❌ SSH or deploy.sh exited with code 255
-✅ Deploy finished in 0h 0m 0s.

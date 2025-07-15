@@ -1,4 +1,0 @@
-[2025-07-16 14:03:29.738742] 🚀 Deploy trigger received. Server: Profilinginsight
-[2025-07-16 14:03:29.738982] ✅ Spawning deploy-wrapper.sh process...
-[2025-07-16 14:03:29.740647] 🔄 Process started, streaming from log file: trigger-20250716-140329.log
-❌ Invalid server: IP or alias 'Profilinginsight' not found in servers.json
