@@ -28,7 +28,7 @@ A secure and extensible platform to remotely trigger deployments across multiple
 ## ⚙️ Environment Configuration (`.env`)
 
 ```ini
-DEPLOY_TOKEN=SATindonesia2025
+DEPLOY_TOKEN=<TOKEN>
 ```
 
 ---
@@ -63,10 +63,10 @@ DEPLOY_TOKEN=SATindonesia2025
 [
   {
     "name": "Web Server",
-    "ip": "30.30.30.202",
+    "ip": "<IP_ADDRESS>",
     "alias": "default",
     "user": "ubuntu",
-    "path": "/home/ubuntu/profiling-database"
+    "path": "/path/home/project"
   }
 ]
 ```
@@ -97,7 +97,7 @@ All deploy requests (`/trigger`) must include a valid token:
 
 ```json
 {
-  "token": "SATindonesia2025",
+  "token": "<TOKEN>",
   "server": "default"
 }
 ```
@@ -109,7 +109,7 @@ All deploy requests (`/trigger`) must include a valid token:
 ```bash
 #!/bin/bash
 set -e
-APP_NAME="profiling-database"
+APP_NAME="<Project_name>"
 echo "🚀 Starting deployment for $APP_NAME"
 
 git pull origin main || true
