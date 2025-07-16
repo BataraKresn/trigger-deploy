@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 Deploy Triggered</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; background: #f4f4f4; }
+        .box {
+            background: white; padding: 2rem; border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 700px; margin: auto;
+        }
+        .status { font-size: 1.4rem; color: green; margin-bottom: 1rem; }
+        .log-link {
+            margin-top: 1rem; cursor: pointer; color: #007BFF;
+            text-decoration: underline; display: inline-block;
+        }
+        .log-content, .stream-content {
+            margin-top: 1rem;
+            background: #f0f0f0;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="status">✅ {{ message }}</div>
+        <p><strong>Log File:</strong> {{ log_file }}</p>
+
+        <div class="log-link" onclick="toggleLog()">🔗 View Log File</div>
+        <div id="logContent" class="log-content"></div>
+
+        <div class="log-link" onclick="toggleStream()">🔄 Stream Log (Real-time)</div>
+        <div id="streamContent" class="stream-content">Waiting for updates...</div>
+    </div>
+
+    <script>
+        const logFile = "{{ log_file }}";
+        let logVisible = false;
+        let streamVisible = false;
+        let streamSource = null;
+
+        function toggleLog() {
+            const el = document.getElementById("logContent");
+            if (logVisible) {
+                el.style.display = "none";
+                el.textContent = "";
+                logVisible = false;
+            } else {
+                el.textContent = "Loading...";
+                fetch(`/logs/${logFile}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Gagal memuat log.");
+                        return res.text();
+                    })
+                    .then(data => {
+                        el.textContent = data;
+                        el.style.display = "block";
+                        logVisible = true;
+                    })
+                    .catch(err => {
+                        el.textContent = "❌ " + err.message;
+                        el.style.display = "block";
+                        logVisible = true;
+                    });
+            }
+        }
+
+        function toggleStream() {
+            const el = document.getElementById("streamContent");
+
+            if (streamVisible) {
+                streamSource?.close();
+                el.style.display = "none";
+                el.textContent = "Stream closed.";
+                streamVisible = false;
+            } else {
+                el.innerHTML = '';
+                el.style.display = "block";
+
+                streamSource = new EventSource(`/stream-log?file=${logFile}`);
+                streamSource.onmessage = function(event) {
+                    el.textContent += event.data + "\n";
+                    el.scrollTop = el.scrollHeight;
+                };
+                streamSource.onerror = function() {
+                    el.textContent += "\n❌ Stream stopped.";
+                    streamSource.close();
+                    streamVisible = false;
+                };
+
+                streamVisible = true;
+            }
+        }
+    </script>
+</body>
+</html>

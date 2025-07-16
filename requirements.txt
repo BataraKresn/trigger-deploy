@@ -1,0 +1,6 @@
+flask
+gunicorn
+gevent
+psutil
+python-dotenv
+simplejson

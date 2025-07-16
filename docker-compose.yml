@@ -1,0 +1,24 @@
+services:
+  trigger-deployer:
+    build: .
+    container_name: trigger-deployer
+    ports:
+      - "5001:5001"
+    restart: always
+    environment:
+      - TZ=Asia/Jakarta
+    command: flask run --host=0.0.0.0 --port=5001 --reload
+    env_file:
+      - .env
+    volumes:
+      - ~/.ssh:/root/.ssh:ro
+      - /home/satrnd/trigger-deploy/trigger-logs:/app/trigger-logs
+      - ./templates:/app/templates
+      - ./static/:/app/static/
+    networks:
+      - trigger-deployer
+
+networks:
+  trigger-deployer:
+    name: trigger-deployer-network
+    driver: bridge

@@ -1,0 +1,4 @@
+[2025-07-16 14:04:42.863167] 🚀 Deploy trigger received. Server: newrnd
+[2025-07-16 14:04:42.863415] ✅ Spawning deploy-wrapper.sh process...
+[2025-07-16 14:04:42.864599] 🔄 Process started, streaming from log file: trigger-20250716-140442.log
+❌ Invalid server: IP or alias 'newrnd' not found in servers.json

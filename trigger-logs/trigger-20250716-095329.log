@@ -1,0 +1,53 @@
+[2025-07-16 09:53:29.926003] 🚀 Deploy triggered for default, writing to trigger-20250716-095329.log
+[Wed Jul 16 09:53:30 WIB 2025] ⚙️ No target server provided, using default: 30.30.30.202
+🚀 Starting deployment for profiling-database-mockup
+📥 Pulling latest changes from Git...
+From https://git.web8.is/febriadj/profiling-database
+ * branch            main       -> FETCH_HEAD
+   d86d367..eb5e686  main       -> origin/main
+📦 Loading environment variables from .env.production
+🔨 Building fresh image...
+#1 [internal] load local bake definitions
+#1 reading from stdin 445B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 847B 0.0s done
+#2 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/node:22-alpine
+#3 DONE 2.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 113B 0.0s done
+#4 DONE 0.1s
+
+#5 [builder 1/8] FROM docker.io/library/node:22-alpine@sha256:10962e8568729b0cfd506170c5a2d1918a2c10ac08c0e6900180b4bac061adc9
+#5 DONE 0.0s
+
+#6 [builder 2/8] WORKDIR /app
+#6 CACHED
+
+#7 [internal] load build context
+#7 transferring context: 282.23kB 0.1s done
+#7 DONE 0.2s
+
+#8 [builder 3/8] COPY package*.json ./
+#8 DONE 0.5s
+
+#9 [builder 4/8] COPY pnpm-lock.yaml ./
+#9 DONE 0.6s
+
+#10 [builder 5/8] RUN npm install --legacy-peer-deps
+#10 25.10 
+#10 25.10 added 432 packages, and audited 433 packages in 24s
+#10 25.10 
+#10 25.10 62 packages are looking for funding
+#10 25.10   run `npm fund` for details
+#10 25.11 
+#10 25.11 found 0 vulnerabilities
+#10 25.11 npm notice
+#10 25.11 npm notice New major version of npm available! 10.9.2 -> 11.4.2
+#10 25.11 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.2
+#10 25.11 npm notice To update run: npm install -g npm@11.4.2
+#10 25.11 npm notice

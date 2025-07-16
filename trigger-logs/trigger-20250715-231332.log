@@ -1,0 +1,9 @@
+[2025-07-15 23:13:32.598587] 🚀 Deploy triggered for default, writing to trigger-20250715-231332.log
+[Tue Jul 15 23:13:32 WIB 2025] ⚙️ No target server provided, using default: 30.30.30.202
+🚀 Starting deployment for profiling-database-mockup
+📥 Pulling latest changes from Git...
+From https://git.web8.is/febriadj/profiling-database
+ * branch            main       -> FETCH_HEAD
+✅ No changes detected. Deployment skipped.
+ℹ️ Use './deploy.sh --logs' to view container logs if needed.
+✅ Deploy finished in 0h 0m 2s.
