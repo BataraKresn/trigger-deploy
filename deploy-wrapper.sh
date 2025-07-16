@@ -22,8 +22,8 @@ if [ -z "$TARGET_SERVER" ]; then
   echo "[$(date)] ⚙️ No target server provided, using default: 30.30.30.202" | tee -a "$LOGFILE"
 
   ssh -tt -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@30.30.30.202 \
-    'cd /home/ubuntu/profiling-database && ./deploy.sh 2>&1' | tee -a "$LOGFILE"
-  
+    "cd /home/ubuntu/profiling-database && ./deploy.sh" 2>&1 | tee -a "$LOGFILE"
+
   RETVAL=${PIPESTATUS[0]}
 else
   # ✅ Validasi jq tersedia

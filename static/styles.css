@@ -1,3 +1,6 @@
+/* ==============================
+   🌐 Base Styles
+   ============================== */
 body {
   font-family: 'Segoe UI', sans-serif;
   background: #f9fbfc;
@@ -10,6 +13,10 @@ h1 {
   text-align: center;
   margin-bottom: 2rem;
 }
+
+/* ==============================
+   📦 Server Card
+   ============================== */
 .server-card {
   display: flex;
   justify-content: space-between;
@@ -19,7 +26,12 @@ h1 {
   margin-bottom: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: background 0.2s ease;
 }
+.server-card:hover {
+  background: #f1f7ff;
+}
+
 .left {
   display: flex;
   flex-direction: column;
@@ -28,6 +40,7 @@ h1 {
   display: flex;
   gap: 0.5rem;
 }
+
 .server-name {
   font-weight: 600;
 }
@@ -35,6 +48,10 @@ h1 {
   font-size: 0.85rem;
   color: #666;
 }
+
+/* ==============================
+   🖲️ Buttons
+   ============================== */
 button {
   background: #007bff;
   color: white;
@@ -42,6 +59,7 @@ button {
   padding: 0.6rem 1rem;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.3s ease;
 }
 button:hover {
   background: #0056b3;
@@ -51,6 +69,9 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ==============================
+   📄 Log Panel
+   ============================== */
 .log-panel {
   background: #f4f4f4;
   border-radius: 8px;
@@ -65,7 +86,9 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-/* Modal */
+/* ==============================
+   🔐 Modal
+   ============================== */
 .modal {
   position: fixed;
   top: 0; left: 0;
@@ -75,12 +98,14 @@ button:disabled {
   justify-content: center;
   align-items: center;
   display: none;
+  z-index: 1000;
 }
 .modal-content {
   background: white;
   padding: 2rem;
   border-radius: 8px;
   width: 300px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 .modal input {
   width: 100%;
@@ -96,7 +121,9 @@ button:disabled {
   gap: 10px;
 }
 
-/* Spinner */
+/* ==============================
+   ⏳ Spinner Overlay
+   ============================== */
 .spinner-overlay {
   position: fixed;
   top: 0; left: 0;
@@ -124,4 +151,28 @@ button:disabled {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ==============================
+   📱 Responsive
+   ============================== */
+@media (max-width: 600px) {
+  .server-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .right {
+    margin-top: 1rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .log-box {
+    font-size: 0.8rem;
+  }
+
+  .modal-content {
+    width: 90%;
+  }
 }

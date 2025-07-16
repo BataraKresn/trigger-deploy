@@ -1,14 +1,17 @@
-let selectedServer = null;
+let selectedServerId = null;   // Untuk ID elemen UI
+let selectedServerIP = null;   // Untuk nilai IP asli
 let serverLogs = {};
 
-function openModal(server) {
-  selectedServer = server;
+function openModal(serverId, ip) {
+  selectedServerId = serverId;
+  selectedServerIP = ip;
   document.getElementById("deployTokenInput").value = "";
   document.getElementById("authModal").style.display = "flex";
 }
 
 function closeModal() {
-  selectedServer = null;
+  selectedServerId = null;
+  selectedServerIP = null;
   document.getElementById("authModal").style.display = "none";
 }
 
@@ -19,7 +22,8 @@ function submitDeploy() {
     return;
   }
 
-  const serverId = selectedServer;
+  const serverId = selectedServerId;
+  const serverIP = selectedServerIP;
 
   const statusEl = document.getElementById(`status-${serverId}`);
   const logBox = document.getElementById(`log-${serverId}`);
@@ -34,14 +38,14 @@ function submitDeploy() {
     return;
   }
 
-  // 🟢 PING dulu
+  // 🟢 Ping server via /ping
   statusEl.textContent = "🔍 Checking connectivity...";
   if (spinner) spinner.style.display = "block";
 
   fetch("/ping", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ server: selectedServer })
+    body: JSON.stringify({ server: serverIP })
   })
     .then(res => res.json())
     .then(ping => {
@@ -53,7 +57,7 @@ function submitDeploy() {
         return;
       }
 
-      // ✅ Kalau ping berhasil, lanjut deploy
+      // ✅ Ping berhasil, lanjut trigger deploy
       statusEl.textContent = "🟡 Deploying...";
       logBox.textContent = "";
       logContainer.style.display = "block";
@@ -62,7 +66,7 @@ function submitDeploy() {
       return fetch("/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, server: serverId })
+        body: JSON.stringify({ token, server: serverIP })
       });
     })
     .then(res => res.json())
@@ -98,18 +102,18 @@ function submitDeploy() {
     });
 }
 
-function clearLog(server) {
-  const logBox = document.getElementById(`log-${server}`);
-  const statusEl = document.getElementById(`status-${server}`);
-  const logContainer = document.getElementById(`log-container-${server}`);
+function clearLog(serverId) {
+  const logBox = document.getElementById(`log-${serverId}`);
+  const statusEl = document.getElementById(`status-${serverId}`);
+  const logContainer = document.getElementById(`log-container-${serverId}`);
 
   logBox.textContent = "";
   statusEl.textContent = "Idle";
   logContainer.style.display = "none";
 
-  if (serverLogs[server]) {
-    serverLogs[server].close();
-    delete serverLogs[server];
+  if (serverLogs[serverId]) {
+    serverLogs[serverId].close();
+    delete serverLogs[serverId];
   }
 }
 
@@ -130,7 +134,7 @@ function renderServers(servers) {
         <div class="server-status" id="status-${serverId}">Idle</div>
       </div>
       <div class="right">
-        <button onclick="openModal('${serverId}')">Deploy</button>
+        <button onclick="openModal('${serverId}', '${srv.ip}')">Deploy</button>
         <button id="clear-${serverId}" onclick="clearLog('${serverId}')" disabled>🗑️ Clear</button>
       </div>
     `;
@@ -148,6 +152,7 @@ function renderServers(servers) {
     container.appendChild(logPanel);
   });
 
+  // Tambahkan spinner jika belum ada
   if (!document.getElementById("spinner")) {
     const spinnerEl = document.createElement("div");
     spinnerEl.id = "spinner";
@@ -162,6 +167,7 @@ function renderServers(servers) {
   }
 }
 
+// Load daftar server
 fetch("/servers")
   .then((res) => res.json())
   .then(renderServers)

@@ -2,13 +2,12 @@ from flask import Flask, request, Response, send_from_directory, jsonify, url_fo
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import subprocess
-import os
+import subprocess, os, json
 import time
 import psutil
 import socket
-import json
 import traceback
+import ipaddress
 
 # # # # # # # # # # # # # # # # # #
 # # 🔐 Konfigurasi & Inisialisasi #
@@ -19,7 +18,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 TOKEN = os.getenv("DEPLOY_TOKEN", "SATindonesia2025")
 LOG_DIR = "trigger-logs"
-SERVERS_FILE = "static/servers.json"
+SERVERS_FILE = os.path.join("static", "servers.json")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # # # # # # # # # # # # # # # # # #
@@ -152,14 +151,31 @@ def trigger_deploy():
             log.write(f"[{datetime.now()}] ❌ Deploy error: {str(e)}\n")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route("/ping", methods=["POST"])
 def ping_server():
+    # ✅ Tolak akses GET dari browser
+    if request.method == "GET":
+        return jsonify({
+            "status": "error",
+            "message": "This endpoint only supports POST with JSON payload"
+        }), 405
+
     data = request.get_json()
     server_id = data.get("server")
     if not server_id:
-        return jsonify({"status": "error", "message": "Missing server ID"}), 400
+        return jsonify({"status": "error", "message": "Missing server IP"}), 400
 
-    # ✅ Gunakan path absolut
+    # ✅ Validasi format IP
+    def is_valid_ip(ip):
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            return False
+
+    if not is_valid_ip(server_id):
+        return jsonify({"status": "error", "message": "Invalid IP format"}), 400
+
+    # ✅ Path absolut ke servers.json
     SERVERS_FILE = os.path.join(app.root_path, "static", "servers.json")
 
     try:
@@ -168,9 +184,9 @@ def ping_server():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Failed to load servers.json: {str(e)}"}), 500
 
-    match = next((s for s in servers if s["ip"] == server_id or s.get("alias") == server_id), None)
+    match = next((s for s in servers if s["ip"] == server_id), None)
     if not match:
-        return jsonify({"status": "error", "message": "Server not found"}), 404
+        return jsonify({"status": "error", "message": f"Server IP '{server_id}' not found"}), 404
 
     ip = match["ip"]
     user = match.get("user")
@@ -179,15 +195,15 @@ def ping_server():
 
     try:
         subprocess.run(
-            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", f"{user}@{ip}", "exit"],
+            ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5", f"{user}@{ip}", "exit"],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         return jsonify({"status": "ok"})
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        print(f"[PING ERROR] SSH to {user}@{ip} failed: {e}")
         return jsonify({"status": "unreachable"}), 503
-
 
 @app.route('/logs', methods=['GET'])
 def list_logs():

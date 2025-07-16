@@ -1,6 +1,7 @@
 services:
   trigger-deployer:
     build: .
+    image: trigger-deploy
     container_name: trigger-deployer
     ports:
       - "5001:5001"
@@ -11,7 +12,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ~/.ssh:/root/.ssh:ro
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
       - /home/satrnd/trigger-deploy/trigger-logs:/app/trigger-logs
       - ./templates:/app/templates
       - ./static/:/app/static/
