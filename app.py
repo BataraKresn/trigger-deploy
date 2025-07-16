@@ -50,14 +50,20 @@ def is_process_running(log_file_path):
 # # # # # # # # # # # # # # # # # # # 
 # # 🔎 is_valid_server(identifier) #
 # # # # # # # # # # # # # # # # # # #
-def is_valid_server(identifier):
+def is_valid_server(identifier, return_details=False):
     try:
         with open(SERVERS_FILE, "r") as f:
             servers = json.load(f)
-        return any(s["ip"] == identifier or s.get("alias") == identifier for s in servers)
-    except Exception:
-        return False
 
+        for server in servers:
+            if server.get("ip") == identifier:
+                return server if return_details else True
+
+        return None if return_details else False
+
+    except Exception as e:
+        print(f"Error loading servers.json: {e}")
+        return None if return_details else False
 
 @app.route('/')
 def home():
