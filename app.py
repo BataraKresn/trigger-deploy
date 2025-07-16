@@ -151,7 +151,11 @@ def trigger_deploy():
             log.write(f"[{datetime.now()}] ❌ Deploy error: {str(e)}\n")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route("/ping", methods=["GET", "POST"])
 def ping_server():
+    print("📥 Request Headers:", dict(request.headers))
+    print("📥 Raw Data:", request.data)
+    print("📥 JSON Payload:", request.get_json())
     # ✅ Tolak akses GET dari browser
     if request.method == "GET":
         return jsonify({
