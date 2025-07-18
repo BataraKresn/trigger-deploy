@@ -5,6 +5,10 @@ from routes.health import router as health_router
 from routes.auth import router as auth_router
 from loguru import logger
 from fastapi.openapi.utils import get_openapi
+from slowapi.middleware import SlowAPIMiddleware
+from utils.rate_limit import limiter
+from fastapi.middleware.cors import CORSMiddleware
+from decouple import config
 
 app = FastAPI()
 
@@ -36,3 +40,21 @@ app.include_router(deploy_router)
 app.include_router(logs_router)
 app.include_router(health_router)
 app.include_router(auth_router)
+
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+origins = [
+    "http://localhost:5173",
+    "https://your-production-domain.com"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+SECRET_KEY = config("SECRET_KEY")

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import os
 from utils.auth import hash_password, verify_password, generate_token
@@ -15,8 +15,8 @@ users_db = {
 }
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6, max_length=50)
 
 @router.post("/login")
 def login(request: LoginRequest):

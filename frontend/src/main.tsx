@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import './assets/optimized-images.css';
 import axios from 'axios';
 
 axios.interceptors.response.use(
