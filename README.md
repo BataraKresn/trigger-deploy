@@ -8,18 +8,19 @@ A secure and extensible platform to remotely trigger deployments across multiple
 
 ```
 .
-├── backend/                # FastAPI backend (core logic)
-│   ├── app.py             # Main application entry point
-│   ├── routes/            # Modular routes for API endpoints
-│   ├── requirements.txt   # Python dependencies
-│   ├── Dockerfile         # Dockerfile for backend
-├── frontend/               # React frontend
-│   ├── src/               # Source code for React app
-│   ├── Dockerfile         # Dockerfile for frontend
-│   ├── package.json       # Node.js dependencies
-├── docker-compose.yaml     # Docker Compose configuration
-├── docker-compose.monitoring.yaml # Monitoring setup with Prometheus and Grafana
-└── README.md               # Project documentation
+├── app.py                 # Flask backend (core logic)
+├── deploy-wrapper.sh     # Bash wrapper to trigger deployment per server
+├── static/
+│   ├── servers.json       # List of available servers (IP, alias, path, user)
+│   ├── styles.css         # Custom UI styles
+│   └── favicon.ico        # Icon
+├── templates/
+│   ├── home.html          # Landing page (optional)
+│   └── deploy_servers.html # Main deployment UI
+├── public/
+│   └── deploy.js          # JS logic for deploy interaction
+├── trigger-logs/         # Deployment log files (auto-generated)
+├── .env                  # Environment config file
 ```
 
 ---
@@ -32,55 +33,131 @@ DEPLOY_TOKEN=<TOKEN>
 
 ---
 
-## 🤖 Features
+## 🧠 Features
 
-* 🔒 **Token-based authentication**
+* 🔐 **Token-based authentication**
 * 🖥️ **Multi-server deployment** via SSH
 * ⏱️ **Real-time log streaming** using Server-Sent Events (SSE)
-* 📂 **Deployment log archival**
-* 🔍 **Ping check** before executing deploy
+* 🗃️ **Deployment log archival**
+* 🔎 **Ping check** before executing deploy
 * 💻 **Responsive frontend UI**
-* 📊 **Monitoring with Prometheus and Grafana**
 
 ---
 
-## 🛠️ How to Run
+## 🔧 How It Works
 
-### Using Docker Compose
+### Triggering a Deploy
 
-1. Build and start the services:
-   ```bash
-   docker-compose up --build
-   ```
+1. Open `/deploy-servers`
+2. Select a server → Enter token → Click `Deploy`
+3. Server executes `deploy-wrapper.sh`, which:
 
-2. Access the application:
-   - Backend API: [http://localhost:5001/docs](http://localhost:5001/docs)
-   - Frontend: [http://localhost:5173](http://localhost:5173)
+   * Maps alias/IP from `servers.json`
+   * SSH into server
+   * Executes `./deploy.sh` inside defined path
+   * Logs output to a timestamped file
 
-### Monitoring Setup
+### Sample servers.json
 
-1. Start Prometheus and Grafana:
-   ```bash
-   docker-compose -f docker-compose.monitoring.yaml up
-   ```
-
-2. Access the monitoring tools:
-   - Prometheus: [http://localhost:9090](http://localhost:9090)
-   - Grafana: [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🏗️ Production Setup
-
-- **Frontend**:
-  - Built using `npm run build` and served via `nginx`.
-- **Backend**:
-  - Runs with `gunicorn` and `uvicorn` workers.
-- **Docker Compose**:
-  - Integrated setup with shared network and environment variables.
+```json
+[
+  {
+    "name": "Web Server",
+    "ip": "<IP_ADDRESS>",
+    "alias": "default",
+    "user": "ubuntu",
+    "path": "/path/home/project"
+  }
+]
+```
 
 ---
 
-## 📜 License
+## 🚦 Available Endpoints
 
-MIT License
+### 📋 UI Pages
+
+* `/` → Landing page
+* `/deploy-servers` → Deploy dashboard UI
+
+### 📡 API
+
+* `GET /servers` → JSON list of servers
+* `POST /trigger` → Trigger deploy (with `{ token, server }`)
+* `GET /stream-log?file=...` → Live log via SSE
+* `GET /logs` → List log filenames
+* `GET /log-content?file=...` → View full log file
+* `GET /logs/<file>` → Direct access to log
+* `POST /ping` → Ping a server (SSH check)
+* `GET /health?target=...` → Ping & DNS test
+
+### 🔐 Headers / Auth
+
+All deploy requests (`/trigger`) must include a valid token:
+
+```json
+{
+  "token": "<TOKEN>",
+  "server": "default"
+}
+```
+
+---
+
+## 📜 Example: Bash Deploy Script on Server (`deploy.sh`)
+
+```bash
+#!/bin/bash
+set -e
+APP_NAME="<Project_name>"
+echo "🚀 Starting deployment for $APP_NAME"
+
+git pull origin main || true
+
+echo "♻️ Restarting container..."
+docker compose up -d --build
+
+echo "✅ Deployment done"
+```
+
+---
+
+## 🛡️ Security Notes
+
+* 🔐 All deploy actions are token-protected.
+* 🔒 SSH uses `~/.ssh` from host (mounted as `read-only`).
+* ✅ Only servers listed in `servers.json` can be deployed to.
+* 🚫 Invalid/missing tokens will be rejected with `403`.
+
+---
+
+## 🧼 Auto Clean Logs
+
+Logs older than 7 days are cleaned automatically on each deploy trigger.
+
+---
+
+## ✅ Healthcheck Endpoint
+
+You can test if the deployment server has internet:
+
+```
+curl https://yourdomain.com/health?target=example.com
+```
+
+---
+
+## 🧪 Development Setup
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+---
+
+## 👨‍💻 Credits
+
+Built by and for efficient multi-server deployment monitoring with ❤️.

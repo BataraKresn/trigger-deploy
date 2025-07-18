@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🚀 Deploy to Servers</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Deploy to Servers</h1>
+    <div id="server-list">Loading...</div>
+  </div>
+
+  <!-- Modal Token -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <h2>🔒 Enter Your Token</h2>
+      <form onsubmit="event.preventDefault(); submitDeploy();">
+        <input 
+          type="password" 
+          id="deployTokenInput" 
+          placeholder="Enter token..." 
+          autocomplete="off" 
+          required 
+        />
+        <div class="buttons">
+          <button type="button" onclick="closeModal()">Cancel</button>
+          <button type="submit">Deploy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Spinner (toggle by JS) -->
+  <div id="spinner" class="spinner-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <div class="spinner-text">⏳ Deploying...</div>
+  </div>
+
+  <script src="/static/deploy.js"></script>
+</body>
+</html>

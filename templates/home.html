@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Trigger Deploy</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      margin: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f9f9f9;
+    }
+    button:hover {
+      background: #eee;
+    }
+    .status, .health-status {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    .success { color: green; }
+    .fail { color: red; }
+    .hidden { display: none; }
+    #logOutput {
+      text-align: left;
+      background: #000;
+      color: #0f0;
+      padding: 1em;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 1em;
+      border-radius: 6px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      white-space: pre;
+      background: #eee;
+      padding: 0.5em;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🚀<strong>Trigger Deploy</strong></h2>
+    <div style="margin-bottom: 1rem;">
+      <input id="healthTarget" placeholder="Domain (default: google.co.id)" style="padding: 0.4rem; width: 60%;" />
+    </div>
+    <a href="/deploy-servers"><button>🔐 Deploy Now</button></a>
+    <button onclick="loadLogList()">📁 Browse Logs</button>
+    <button onclick="checkHealth()" id="healthBtn">💗 Check Health</button>
+    <div id="status"></div>
+    <div id="healthStatus" class="hidden"></div>
+    <pre id="logOutput" class="hidden"></pre>
+    <div id="logListBox" class="hidden">
+      <p><strong>📂 Log Files:</strong></p>
+      <div id="logList"></div>
+    </div>
+  </div>
+
+  <script>
+    let eventSource = null;
+    let currentViewedLog = null;
+
+    function checkHealth() {
+    const el = document.getElementById("healthStatus");
+    const btn = document.getElementById("healthBtn");
+    const output = document.getElementById("logOutput");
+
+    // Toggle logic
+    if (!el.classList.contains("hidden")) {
+      el.classList.add("hidden");
+      el.innerHTML = "";
+      btn.textContent = "💗 Check Health";
+      return;
+    }
+
+    output.classList.add("hidden");
+    output.textContent = "";
+    el.classList.remove("hidden");
+
+    const target = document.getElementById("healthTarget").value || "google.co.id";
+
+    fetch(`/health?target=${encodeURIComponent(target)}`)
+      .then(res => res.json())
+      .then(data => {
+        btn.textContent = "❌ Hide Health";
+        el.innerHTML = `
+          <p>🔍 Target: <strong>${data.target}</strong></p>
+          <p>🌐 ${data.resolve}</p>
+          <p>📡 <pre style="text-align:left; background:#eee; padding:0.5em;">${data.ping}</pre></p>
+        `;
+      })
+      .catch(err => {
+        btn.textContent = "❌ Hide Health";
+        el.innerHTML = "❌ <span class='fail'>Health check error: " + err.message + "</span>";
+      });
+  }
+
+    function loadLogList() {
+    const logBox = document.getElementById('logListBox');
+    if (!logBox.classList.contains('hidden')) {
+      logBox.classList.add('hidden');
+      document.getElementById('logList').innerHTML = "";
+      return;
+    }
+
+    document.getElementById('logOutput').classList.add('hidden');
+    document.getElementById('logOutput').textContent = "";
+    if (eventSource) eventSource.close();
+
+    fetch('/logs')
+      .then(res => res.json())
+      .then(logs => {
+        const listBox = document.getElementById("logList");
+        listBox.innerHTML = logs.map(log =>
+          `<p><a href="#" onclick="viewLogFile('${log}'); return false;">📄 ${log}</a></p>`
+        ).join('');
+        logBox.classList.remove("hidden");
+      })
+      .catch(err => {
+        const listBox = document.getElementById("logList");
+        listBox.innerHTML = `<p class='fail'>❌ Failed to load logs: ${err.message}</p>`;
+        logBox.classList.remove("hidden");
+      });
+  }
+
+
+    function viewLogFile(filename) {
+      const output = document.getElementById("logOutput");
+      if (currentViewedLog === filename && !output.classList.contains("hidden")) {
+        output.classList.add("hidden");
+        output.textContent = "";
+        currentViewedLog = null;
+        return;
+      }
+
+      output.textContent = "Loading...";
+      output.classList.remove("hidden");
+      currentViewedLog = filename;
+
+      fetch(`/logs/${filename}`)
+        .then(res => res.text())
+        .then(text => output.textContent = text)
+        .catch(err => output.textContent = "❌ Error: " + err.message);
+    }
+  </script>
+</body>
+</html>
