@@ -1,5 +1,0 @@
-trigger-logs/
-.env
-__pycache__/
-*.pyc
-*.log
