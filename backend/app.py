@@ -94,3 +94,15 @@ app.add_middleware(
 # 🔐 Load Env Configs (optional)
 # ---------------------------
 SECRET_KEY = config("SECRET_KEY")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}")
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+@app.post("/example-endpoint")
+async def example_endpoint(payload: dict):
+    if not payload.get("key"):
+        logger.warning("Invalid input: 'key' is missing")
+        return JSONResponse(status_code=400, content={"detail": "Invalid input"})
+    return {"message": "Success"}

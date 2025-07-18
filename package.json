@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
-    "axios": "^1.10.0"
-  },
-  "devDependencies": {
-    "@types/axios": "^0.9.36"
-  }
-}

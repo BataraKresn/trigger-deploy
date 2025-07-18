@@ -9,6 +9,7 @@ services:
       - "5002:5001"
     volumes:
       - ./backend:/app
+      - ./frontend/logs:/usr/share/nginx/logs
     environment:
       - PYTHONUNBUFFERED=1
     env_file:
@@ -20,6 +21,7 @@ services:
       retries: 5
     networks:
       - dev-trigger-network
+    restart: always
 
   frontend:
     build:
@@ -30,6 +32,7 @@ services:
       - "3111:8082"
     volumes:
       - ./frontend:/app
+      - ./frontend/logs:/usr/share/nginx/logs
     environment:
       - NODE_ENV=production
     depends_on:
@@ -41,6 +44,7 @@ services:
       retries: 5
     networks:
       - dev-trigger-network
+    restart: always
 
 networks:
   dev-trigger-network:
