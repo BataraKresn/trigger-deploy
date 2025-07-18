@@ -1,0 +1,15 @@
+# Ignore docker-compose logs
+log-docker-compose/
+
+node_modules/
+./backend/node_modules/
+./backend/venv/
+./backend/.venv/
+./backend/.env
+./backend/.env.local
+./backend/.env.development
+./backend/.env.production
+./backend/.env.test
+./backend/.env.staging
+./backend/.env.example
+./backend/.env.local.example
