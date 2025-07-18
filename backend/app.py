@@ -1,18 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
+
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+from loguru import logger
+from decouple import config
+
 from routes.deploy import router as deploy_router
 from routes.logs import router as logs_router
 from routes.health import router as health_router
 from routes.auth import router as auth_router
-from loguru import logger
-from fastapi.openapi.utils import get_openapi
-from slowapi.middleware import SlowAPIMiddleware
+
 from utils.rate_limit import limiter
-from fastapi.middleware.cors import CORSMiddleware
-from decouple import config
 
-app = FastAPI()
+# ✅ Init FastAPI
+app = FastAPI(
+    title="Trigger Deploy API",
+    version="1.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
 
-# Configure loguru
+# ---------------------------
+# 🪵 Logging Setup
+# ---------------------------
 logger.add("logs/backend_{time}.log", rotation="1 day", retention="7 days", level="INFO")
 
 @app.middleware("http")
@@ -22,6 +37,9 @@ async def log_requests(request, call_next):
     logger.info(f"Response: {response.status_code}")
     return response
 
+# ---------------------------
+# 📘 Custom OpenAPI Schema
+# ---------------------------
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -36,17 +54,32 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# ---------------------------
+# 📦 Include Routers
+# ---------------------------
 app.include_router(deploy_router)
 app.include_router(logs_router)
 app.include_router(health_router)
 app.include_router(auth_router)
 
 app.state.limiter = limiter
+
+# ✅ Rate Limit Exception Handler
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Terlalu banyak percobaan. Coba lagi nanti."}
+    )
+
 app.add_middleware(SlowAPIMiddleware)
 
+# ---------------------------
+# 🌐 CORS Setup
+# ---------------------------
 origins = [
-    "http://localhost:5173",
-    "https://your-production-domain.com"
+    "http://localhost:8082",
+    "https://dev-trigger.mugshot.dev/"
 ]
 
 app.add_middleware(
@@ -57,4 +90,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------
+# 🔐 Load Env Configs (optional)
+# ---------------------------
 SECRET_KEY = config("SECRET_KEY")

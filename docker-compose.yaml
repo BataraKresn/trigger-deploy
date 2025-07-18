@@ -1,17 +1,18 @@
-version: '3.8'
-
 services:
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: ./backend/Dockerfile
     image: dev-trigger-backend
     container_name: dev-trigger-backend
     ports:
-      - "5001:5001"
+      - "5002:5001"
     volumes:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+    env_file:
+      - ./backend/.env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 10s
@@ -26,7 +27,7 @@ services:
     image: dev-trigger-frontend
     container_name: dev-trigger-frontend
     ports:
-      - "5173:8082"
+      - "3111:8082"
     volumes:
       - ./frontend:/app
     environment:

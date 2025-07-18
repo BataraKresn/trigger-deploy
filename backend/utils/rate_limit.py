@@ -5,5 +5,5 @@ limiter = Limiter(key_func=get_remote_address)
 
 # Example usage in a route
 @limiter.limit("5/minute")
-def example_route():
+def example_route(request):
     return {"message": "Rate limited route"}

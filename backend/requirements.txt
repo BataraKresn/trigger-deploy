@@ -1,6 +1,13 @@
+fastapi
 flask
 gunicorn
 gevent
 psutil
 python-dotenv
 simplejson
+uvicorn
+loguru
+python-decouple
+slowapi
+bcrypt
+PyJWT

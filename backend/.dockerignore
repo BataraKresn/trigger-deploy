@@ -4,12 +4,19 @@ trigger-logs/
 # File & folder Python yang tidak perlu
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Environment & database
+.env
+*.db
+*.sqlite3
 
 # Git
 .git
 .gitignore
 
-# File & direktori development
+# File & direktori development/editor
 *.log
 *.md
 .DS_Store
