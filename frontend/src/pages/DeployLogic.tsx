@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 
 function DeployLogic() {
-  const [selectedServerId, setSelectedServerId] = useState(null);
-  const [selectedServerIP, setSelectedServerIP] = useState(null);
+  const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
+  const [selectedServerIP, setSelectedServerIP] = useState<string | null>(null);
   const [token, setToken] = useState('');
   const [status, setStatus] = useState('');
   const [logs, setLogs] = useState('');
   const [isDeploying, setDeploying] = useState(false);
 
-  const openModal = (serverId, ip) => {
+  const openModal = (serverId: number, ip: string) => {
     setSelectedServerId(serverId);
     setSelectedServerIP(ip);
   };

@@ -1,12 +1,17 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import useGlobalState from '../store/globalState';
+import { Navigate, useLocation } from 'react-router-dom';
+import useGlobalState from '@/store/globalState';
 
-const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+interface PrivateRouteProps {
+  children: React.ReactNode;
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { token } = useGlobalState();
+  const location = useLocation();
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

@@ -1,10 +1,10 @@
 import React from 'react';
 
-const NotFound = () => {
+const NotFound: React.FC = () => {
   return (
-    <div>
-      <h1>404 - Not Found</h1>
-      <p>The page you are looking for does not exist.</p>
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <h1>404 - Page Not Found</h1>
+      <p>The page you're looking for does not exist or has been moved.</p>
     </div>
   );
 };

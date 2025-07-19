@@ -13,7 +13,8 @@ function LoginPage() {
     setLoading(true);
     try {
       const response = await axios.post('/api/login', { username, password });
-      setToken(response.data.token);
+      const data = response.data as { token: string };
+      setToken(data.token);
       window.location.href = '/dashboard';
     } catch (err) {
       setError('Invalid username or password');
