@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+        '@components': path.resolve(__dirname, 'src/components'),
+        '@pages': path.resolve(__dirname, 'src/pages'),
       },
     },
     define: {
@@ -30,7 +32,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
         onwarn(warning, warn) {
-          // ✅ Tambahan untuk log warning saat build
           console.warn('⚠️ Rollup warning:', warning.message);
         },
         output: {

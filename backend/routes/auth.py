@@ -33,27 +33,21 @@ for env_user, env_pass in [("ADMIN_USER", "ADMIN_PASS"), ("USER_USER", "USER_PAS
 if not users_db:
     raise RuntimeError("No valid user credentials found in environment variables.")
 
-if not all([os.getenv("ADMIN_USER"), os.getenv("ADMIN_PASS"), os.getenv("USER_USER"), os.getenv("USER_PASS")]):
-    logging.error("Missing required environment variables")
-    raise RuntimeError("Missing required environment variables")
-
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6, max_length=50)
-
-class RefreshTokenRequest(BaseModel):
-    token: str = Field(...)
 
 @router.post("/api/login")
 @limiter.limit("10/minute")  # optional: rate-limit login attempts
 async def login(request: Request, payload: LoginRequest):
     logging.info(f"Login attempt for user: {payload.username} from IP: {request.client.host}")
-    if payload.username in users_db and verify_password(payload.password, users_db[payload.username]):
-        token = generate_token(payload.username)
-        logging.info(f"Login successful for user: {payload.username}")
-        return {"token": token}
-    logging.warning(f"Login failed for user: {payload.username} from IP: {request.client.host}")
-    raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    if payload.username not in users_db or not verify_password(payload.password, users_db[payload.username]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = generate_token(payload.username)
+    logging.info(f"Login successful for user: {payload.username}")
+    return {"status": "success", "message": "Login successful", "data": {"token": token}}
 
 @router.post("/api/refresh-token")
 async def refresh_token(payload: RefreshTokenRequest, request: Request):

@@ -5,15 +5,17 @@ import NotFound from '@/components/NotFound';
 
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
-const DeployLogic = React.lazy(() => import('@/pages/DeployLogic'));
-const DeployServers = React.lazy(() => import('@/pages/DeployServers'));
-const TriggerResult = React.lazy(() => import('@/pages/TriggerResult'));
-const Home = React.lazy(() => import('@/pages/Home'));
+// Ensure the correct path to the ServerList module
+const ServerList = React.lazy(() => import('@/pages/ServerList'));
+const DeployPage = React.lazy(() => import('@/pages/DeployPage'));
+const HealthCheck = React.lazy(() => import('@/pages/HealthCheck'));
+const LogsPage = React.lazy(() => import('@/pages/LogsPage'));
+// Ensure the correct path to the SettingsPage module
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
 
 const AppRoutes = () => (
   <Suspense fallback={<div>Loading...</div>}>
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/dashboard"
@@ -24,34 +26,42 @@ const AppRoutes = () => (
         }
       />
       <Route
-        path="/deploy"
-        element={
-          <PrivateRoute>
-            <DeployLogic />
-          </PrivateRoute>
-        }
-      />
-      <Route
         path="/servers"
         element={
           <PrivateRoute>
-            <DeployServers />
+            <ServerList />
           </PrivateRoute>
         }
       />
       <Route
-        path="/result"
+        path="/deploy"
         element={
           <PrivateRoute>
-            <TriggerResult />
+            <DeployPage />
           </PrivateRoute>
         }
       />
       <Route
-        path="/status"
+        path="/health"
         element={
           <PrivateRoute>
-            <Home />
+            <HealthCheck />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <PrivateRoute>
+            <LogsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <PrivateRoute>
+            <SettingsPage />
           </PrivateRoute>
         }
       />

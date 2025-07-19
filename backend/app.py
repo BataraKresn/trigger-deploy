@@ -1,10 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
-
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+from pydantic import ValidationError
 
 from loguru import logger
 from decouple import config
@@ -16,7 +14,8 @@ from routes.auth import router as auth_router
 
 from utils.rate_limit import limiter
 
-# ✅ Init FastAPI
+# 
+# Init FastAPI
 app = FastAPI(
     title="Trigger Deploy API",
     version="1.1.0",
@@ -25,21 +24,33 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
-# ---------------------------
-# 🪵 Logging Setup
-# ---------------------------
+# Logging Setup
 logger.add("logs/backend_{time}.log", rotation="1 day", retention="7 days", level="INFO")
 
 @app.middleware("http")
-async def log_requests(request, call_next):
+async def log_requests(request: Request, call_next):
     logger.info(f"Request: {request.method} {request.url}")
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
     return response
 
-# ---------------------------
-# 📘 Custom OpenAPI Schema
-# ---------------------------
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    logger.error(f"Validation error: {exc}")
+    return JSONResponse(
+        status_code=422,
+        content={"status": "error", "message": "Validation error", "data": str(exc)}
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    logger.error(f"HTTP error: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": "error", "message": exc.detail, "data": None}
+    )
+
+# Custom OpenAPI Schema
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -49,61 +60,17 @@ def custom_openapi():
         description="API for managing deployments and authentication",
         routes=app.routes,
     )
-    openapi_schema["openapi"] = "3.1.0"  # Specify OpenAPI version
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 app.openapi = custom_openapi
 
-# ---------------------------
-# 📦 Include Routers
-# ---------------------------
-app.include_router(deploy_router)
-app.include_router(logs_router)
-app.include_router(health_router)
-app.include_router(auth_router)
+# Include routers
+app.include_router(deploy_router, prefix="/api/deploy", tags=["Deploy"])
+app.include_router(logs_router, prefix="/api/logs", tags=["Logs"])
+app.include_router(health_router, prefix="/api/health", tags=["Health"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 
-app.state.limiter = limiter
-
-# ✅ Rate Limit Exception Handler
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"detail": "Terlalu banyak percobaan. Coba lagi nanti."}
-    )
-
-app.add_middleware(SlowAPIMiddleware)
-
-# ---------------------------
-# 🌐 CORS Setup
-# ---------------------------
-origins = [
-    "http://localhost:8082",
-    "https://dev-trigger.mugshot.dev/"
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ---------------------------
-# 🔐 Load Env Configs (optional)
-# ---------------------------
-SECRET_KEY = config("SECRET_KEY")
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
-
-@app.post("/api/example-endpoint")
-async def example_endpoint(payload: dict):
-    if not payload.get("key"):
-        logger.warning("Invalid input: 'key' is missing")
-        return JSONResponse(status_code=400, content={"detail": "Invalid input"})
-    return {"message": "Success"}
+@app.get("/api/status")
+async def get_status():
+    return {"status": "success", "message": "API is running", "data": None}

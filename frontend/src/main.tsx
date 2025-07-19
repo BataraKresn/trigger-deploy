@@ -5,7 +5,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './assets/optimized-images.css';
 import axios from 'axios';
+import useGlobalState from './store/globalState';
 
+axios.defaults.baseURL = 'http://dev-trigger.mugshot.dev/api/auth';
 axios.interceptors.response.use(
   (response) => {
     return response;
@@ -17,8 +19,12 @@ axios.interceptors.response.use(
   }
 );
 
+const { darkMode } = useGlobalState.getState();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <div className={darkMode ? 'dark' : ''}>
+      <App />
+    </div>
   </React.StrictMode>
 );

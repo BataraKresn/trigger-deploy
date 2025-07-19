@@ -4,3 +4,8 @@ img {
   height: auto;
   display: block;
 }
+
+/* Dark mode support */
+body.dark img {
+  filter: brightness(0.8);
+}
