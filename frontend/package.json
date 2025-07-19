@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "vite build"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 8082 --host",
+    "start": "vite preview --port 8082 --host"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
+    "@types/react-dom": "^19.1.6",
     "@types/vue": "^1.0.31",
     "vue": "^3.5.17"
   }

@@ -3,21 +3,19 @@ import react from '@vitejs/plugin-react';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import path from 'path';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env variables from `.env`, `.env.production`, etc
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    base: '/', // Change to '/subpath/' if app is deployed in a subdirectory
+    base: '/',
     plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src'), // allow @/some/path import
+        '@': path.resolve(__dirname, 'src'),
       },
     },
     define: {
-      'process.env': {}, // prevent some polyfill-related errors
+      'process.env': {},
     },
     optimizeDeps: {
       esbuildOptions: {
@@ -30,6 +28,11 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       sourcemap: false,
       rollupOptions: {
+        input: path.resolve(__dirname, 'index.html'),
+        onwarn(warning, warn) {
+          // ✅ Tambahan untuk log warning saat build
+          console.warn('⚠️ Rollup warning:', warning.message);
+        },
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom'],

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from '@/components/PrivateRoute';
 import NotFound from '@/components/NotFound';
 
@@ -13,7 +13,7 @@ const Home = React.lazy(() => import('@/pages/Home'));
 const AppRoutes = () => (
   <Suspense fallback={<div>Loading...</div>}>
     <Routes>
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/dashboard"

@@ -25,7 +25,10 @@ function App() {
   return (
     <Router>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <AppRoutes />
+        <div className="p-4">
+          <h1 className="text-xl font-semibold text-blue-600">🔥 React App Running</h1>
+          <AppRoutes />
+        </div>
       </ErrorBoundary>
     </Router>
   );
