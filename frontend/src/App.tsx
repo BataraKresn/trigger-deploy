@@ -31,7 +31,11 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token && window.location.pathname === '/login') {
-      axios.post('/api/validate-token', { token })
+      axios.get('/api/validate-token', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
         .then(() => {
           window.location.href = '/dashboard';
         })

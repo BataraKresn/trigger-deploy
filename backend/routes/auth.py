@@ -96,7 +96,7 @@ async def dashboard(request: Request):
 # 🔑 Token Validation Endpoint
 # ----------------------
 
-@router.post("/api/validate-token")
+@router.api_route("/api/validate-token", methods=["GET", "POST"])
 async def validate_token(request: Request):
     token = request.headers.get("Authorization")
     if not token or not token.startswith("Bearer ") or not verify_token(token.split("Bearer ")[1]):
