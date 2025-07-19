@@ -5,7 +5,14 @@ trap 'echo "❌ Update failed at line $LINENO"; exit 1;' ERR
 start_time=$(date +%s)
 start_fmt=$(date "+%Y-%m-%d %H:%M:%S")
 
-echo "🔄 [$start_fmt] Rebuilding Docker image with no cache..."
+echo "� [$start_fmt] Checking environment configuration..."
+if [ ! -f ".env" ]; then
+    echo "⚠️  No .env file found, using defaults"
+else
+    echo "✅ .env file found"
+fi
+
+echo "�🔄 [$start_fmt] Rebuilding Docker image with no cache..."
 # docker compose build --no-cache > /dev/null 2>&1
 docker compose build --no-cache --quiet
 

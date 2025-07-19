@@ -4,18 +4,22 @@ services:
     image: trigger-deploy
     container_name: trigger-deployer
     ports:
-      - "5001:5001"
+      - "5000:5000"  # Updated to match app.py port
     restart: always
     environment:
       - TZ=Asia/Jakarta
+      - DEPLOY_TOKEN=${DEPLOY_TOKEN:-SATindonesia2025}  # Support for environment variable
+      - LOG_DIR=${LOG_DIR:-trigger-logs}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
     env_file:
       - .env
     volumes:
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
-      - /home/satrnd/trigger-deploy/trigger-logs:/app/trigger-logs
+      - ./trigger-logs:/app/trigger-logs
+      - ./logs:/app/logs  # Add logs directory for app logging
       - ./templates:/app/templates
-      - ./static/:/app/static/
+      - ./static:/app/static
     networks:
       - trigger-deployer
 

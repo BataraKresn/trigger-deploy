@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire application
 COPY . .
 
-# Expose port (optional if needed for debugging)
-EXPOSE 5001
+# Expose port (updated to match app.py)
+EXPOSE 5000
 
-# Run app
-CMD ["gunicorn", "--timeout", "600", "--workers=4", "--worker-class=gevent", "--bind", "0.0.0.0:5001", "wsgi:app"]
+# Run app (updated command and port)
+CMD ["gunicorn", "--timeout", "600", "--workers=4", "--worker-class=gevent", "--bind", "0.0.0.0:5000", "wsgi:app"]
