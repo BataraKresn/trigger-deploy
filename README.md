@@ -48,6 +48,464 @@ A modern, scalable deployment management platform built with React, Flask, and P
         ├─ React Router v7        ├─ Flask-RESTX API      ├─ User Management
         ├─ Zustand State         ├─ JWT Authentication    ├─ Server Registry
         ├─ Axios HTTP Client     ├─ Rate Limiting         ├─ Deploy Logs
+
+## 📋 Prerequisites
+
+Before you start, make sure you have the following installed:
+
+- **Docker** (v20.10+) & **Docker Compose** (v2.0+)
+- **Git** for version control
+- **Node.js** (v18+) - for local frontend development
+- **Python** (3.9+) - for local backend development
+
+## 🚀 Quick Start
+
+### 1️⃣ **Clone Repository**
+```bash
+git clone https://github.com/BataraKresn/trigger-deploy.git
+cd trigger-deploy
+```
+
+### 2️⃣ **Environment Setup**
+```bash
+# Backend environment files are already configured:
+# - backend/.env.development (for development)
+# - backend/.env.production (for production)
+# - backend/.env.example (template)
+
+# Frontend environment files are already configured:
+# - frontend/.env.development (for development)
+# - frontend/.env.production (for production)
+
+# For production, edit the production environment files:
+nano backend/.env.production
+nano frontend/.env.production
+```
+
+### 3️⃣ **Start All Services**
+```bash
+# Development mode (uses .env.development files)
+docker-compose up -d
+
+# OR Production mode (uses .env.production files)  
+docker-compose -f docker-compose.prod.yml up -d
+
+# Initialize database (first time only)
+docker-compose exec backend ./init-migrations.sh
+
+# Check services status
+docker-compose ps
+```
+
+### 4️⃣ **Access Application**
+- **Frontend Dashboard**: http://localhost:3111
+- **Backend API**: http://localhost:5002/api
+- **API Documentation**: http://localhost:5002/docs
+- **Database**: localhost:5432 (deployuser/strongpassword)
+
+## 🛠️ Development Guide
+
+### **Backend Development (Flask)**
+
+#### **Setup Local Environment**
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Use development environment
+export FLASK_APP=app.py
+export FLASK_ENV=development
+
+# Load environment variables from .env.development
+set -a; source .env.development; set +a
+```
+
+#### **Database Migrations**
+```bash
+# Initialize migrations (first time only)
+flask db init
+
+# Create migration
+flask db migrate -m "Your migration message"
+
+# Apply migration
+flask db upgrade
+
+# Rollback migration
+flask db downgrade
+```
+
+#### **Run Development Server**
+```bash
+# Start Flask dev server
+flask run --host=0.0.0.0 --port=5001
+
+# Or with gunicorn
+gunicorn -w 4 -b 0.0.0.0:5001 app:app
+
+# With auto-reload
+gunicorn -w 1 -b 0.0.0.0:5001 --reload app:app
+```
+
+#### **API Testing**
+```bash
+# Test health endpoint
+curl http://localhost:5001/health
+
+# Test API status
+curl http://localhost:5001/api/status
+
+# Login test
+curl -X POST http://localhost:5001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+### **Frontend Development (React)**
+
+#### **Setup Local Environment**
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Development environment is already configured in:
+# - .env.development (for npm run dev)
+# - .env.production (for npm run build)
+```
+
+#### **Development Commands**
+```bash
+# Start development server
+npm run dev          # http://localhost:5173
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview      # http://localhost:8082
+
+# Type checking
+npx tsc --noEmit
+```
+
+#### **Code Quality**
+```bash
+# Lint code
+npm run lint
+
+# Format code
+npm run format
+
+# Run tests
+npm run test
+```
+
+### **Database Management**
+
+#### **Access Database**
+```bash
+# Connect to PostgreSQL container
+docker-compose exec postgres psql -U deployuser -d deploydb
+
+# Or via external client
+psql -h localhost -p 5432 -U deployuser -d deploydb
+```
+
+#### **Database Backup & Restore**
+```bash
+# Backup database
+docker-compose exec postgres pg_dump -U deployuser deploydb > backup.sql
+
+# Restore database
+docker-compose exec -T postgres psql -U deployuser deploydb < backup.sql
+
+# Reset database (⚠️ Destructive)
+docker-compose down -v
+docker-compose up -d postgres
+docker-compose exec backend ./init-migrations.sh
+```
+
+## 🚢 Production Deployment
+
+### **🔧 Production Configuration**
+
+#### **1. Environment Variables**
+```bash
+# Backend Production Environment (backend/.env.production)
+DATABASE_URL=postgresql+psycopg2://user:pass@postgres:5432/deploydb
+SECRET_KEY=your-super-secure-secret-key-256-bit
+JWT_SECRET_KEY=your-jwt-secret-key-512-bit
+FLASK_ENV=production
+FLASK_DEBUG=False
+
+# Frontend Production Environment (frontend/.env.production)
+NODE_ENV=production
+VITE_API_URL=https://your-domain.com/api
+VITE_DEBUG=false
+```
+
+#### **2. Docker Compose Production**
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+services:
+  postgres:
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      
+  backend:
+    restart: always
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    
+  frontend:
+    restart: always
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+```
+
+### **🚀 Production Deployment Steps**
+
+#### **1. Server Preparation**
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker & Docker Compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Create app directory
+sudo mkdir -p /opt/deploy-server
+sudo chown $USER:$USER /opt/deploy-server
+```
+
+#### **2. Deploy Application**
+```bash
+cd /opt/deploy-server
+
+# Clone repository
+git clone https://github.com/BataraKresn/trigger-deploy.git .
+
+# Edit production environment files with your values
+nano backend/.env.production
+nano frontend/.env.production
+
+# Start production services
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Initialize database
+docker-compose -f docker-compose.prod.yml exec backend ./init-migrations.sh
+
+# Check services
+docker-compose -f docker-compose.prod.yml ps
+docker-compose -f docker-compose.prod.yml logs
+```
+
+#### **3. Nginx Reverse Proxy (Optional)**
+```nginx
+# /etc/nginx/sites-available/deploy-server
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    # Frontend
+    location / {
+        proxy_pass http://localhost:3111;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:5002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### **📊 Monitoring & Maintenance**
+
+#### **Health Monitoring**
+```bash
+# Check service health
+curl http://localhost:5002/health
+curl http://localhost:3111
+
+# Monitor logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f postgres
+
+# System resources
+docker stats
+```
+
+#### **Backup Strategy**
+```bash
+# Create backup script /opt/deploy-server/backup.sh
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+docker-compose exec postgres pg_dump -U deployuser deploydb > backup_${DATE}.sql
+find . -name "backup_*.sql" -mtime +7 -delete
+
+# Setup cron job
+0 2 * * * /opt/deploy-server/backup.sh
+```
+
+#### **Updates & Maintenance**
+```bash
+# Update application
+git pull origin main
+docker-compose down
+docker-compose up -d --build
+
+# Update database migrations
+docker-compose exec backend flask db upgrade
+
+# Clean up old images
+docker system prune -af
+```
+
+## 🔐 Security Considerations
+
+### **🛡️ Production Security Checklist**
+
+- [ ] **Strong Secret Keys**: Generate 256-bit random keys
+- [ ] **Database Passwords**: Use complex passwords (20+ chars)
+- [ ] **JWT Expiration**: Set appropriate token expiration times
+- [ ] **HTTPS**: Enable SSL/TLS certificates
+- [ ] **Firewall**: Configure iptables/ufw rules
+- [ ] **User Permissions**: Run containers with non-root users
+- [ ] **Environment Files**: Never commit .env files to git
+- [ ] **Rate Limiting**: Configure appropriate API limits
+- [ ] **Database Access**: Restrict database network access
+- [ ] **Monitoring**: Setup log monitoring and alerts
+
+### **🔑 Generate Secure Keys**
+```bash
+# Generate SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Generate JWT_SECRET_KEY
+python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+## 📚 API Documentation
+
+The complete API documentation is available at:
+- **Development**: http://localhost:5002/docs
+- **Production**: https://your-domain.com/docs
+
+### **🔗 Key Endpoints**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/login` | User authentication |
+| GET | `/api/servers` | List all servers |
+| POST | `/api/deploy` | Trigger deployment |
+| GET | `/api/health/<ip>` | Server health check |
+| GET | `/api/logs` | Deployment logs |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Troubleshooting
+
+### **Common Issues**
+
+#### **Database Connection Failed**
+```bash
+# Check PostgreSQL service
+docker-compose logs postgres
+
+# Verify database credentials
+docker-compose exec postgres psql -U deployuser -d deploydb
+
+# Reset database
+docker-compose down -v && docker-compose up -d
+```
+
+#### **Frontend Not Loading**
+```bash
+# Check frontend logs
+docker-compose logs frontend
+
+# Verify environment variables
+docker-compose exec frontend env | grep VITE
+
+# Rebuild frontend
+docker-compose build --no-cache frontend
+```
+
+#### **Backend API Errors**
+```bash
+# Check backend logs
+docker-compose logs backend
+
+# Verify Flask app
+docker-compose exec backend python -c "from app import app; print('Flask OK')"
+
+# Check migrations
+docker-compose exec backend flask db current
+```
+
+### **Performance Optimization**
+
+#### **Database Tuning**
+```sql
+-- Add indexes for better performance
+CREATE INDEX idx_deploy_logs_created_at ON deploy_logs(created_at);
+CREATE INDEX idx_servers_status ON servers(status);
+CREATE INDEX idx_users_username ON users(username);
+```
+
+#### **Docker Optimization**
+```bash
+# Optimize Docker images
+docker-compose build --no-cache --pull
+
+# Clean up resources
+docker system prune -af --volumes
+
+# Monitor resource usage
+docker stats --no-stream
+```
+
+---
+
+## 📞 Support
+
+For support and questions:
+- **GitHub Issues**: [Create an issue](https://github.com/BataraKresn/trigger-deploy/issues)
+- **Documentation**: [Wiki](https://github.com/BataraKresn/trigger-deploy/wiki)
+- **Email**: sysadmin.app@sateknologi.id
         ├─ Framer Motion         ├─ Input Validation      ├─ Health Metrics
         └─ TypeScript            └─ Structured Logging    └─ Audit Trail
 ```

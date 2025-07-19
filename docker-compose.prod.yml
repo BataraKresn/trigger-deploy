@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # PostgreSQL Database
   postgres:
@@ -5,15 +7,15 @@ services:
       context: ./database
       dockerfile: Dockerfile
     image: deploy-postgres
-    container_name: deploy-postgres
+    container_name: deploy-postgres-prod
     restart: unless-stopped
     environment:
       POSTGRES_USER: deployuser
-      POSTGRES_PASSWORD: strongpassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strongpassword}
       POSTGRES_DB: deploydb
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_prod:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
@@ -23,24 +25,23 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - dev-trigger-network
+      - deploy-network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: dev-trigger-backend
-    container_name: dev-trigger-backend
+    image: deploy-backend-prod
+    container_name: deploy-backend-prod
     ports:
       - "5002:5001"
     volumes:
-      - ./backend:/app
       - ./backend/logs:/app/logs
     env_file:
-      - ./backend/.env.development
+      - ./backend/.env.production
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+psycopg2://deployuser:strongpassword@postgres:5432/deploydb
+      - DATABASE_URL=postgresql+psycopg2://deployuser:${POSTGRES_PASSWORD:-strongpassword}@postgres:5432/deploydb
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,21 +51,21 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - dev-trigger-network
+      - deploy-network
     restart: always
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: dev-trigger-frontend
-    container_name: dev-trigger-frontend
+    image: deploy-frontend-prod
+    container_name: deploy-frontend-prod
     ports:
       - "3111:8082"
     env_file:
-      - ./frontend/.env.development
+      - ./frontend/.env.production
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - VITE_API_BASE_URL=http://localhost:5002
     depends_on:
       backend:
@@ -75,14 +76,14 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - dev-trigger-network
+      - deploy-network
     restart: always
 
 volumes:
-  pgdata:
+  pgdata_prod:
     driver: local
 
 networks:
-  dev-trigger-network:
-    name: dev-trigger-network
+  deploy-network:
+    name: deploy-network
     driver: bridge
