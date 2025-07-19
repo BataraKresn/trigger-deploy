@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
-COPY ./backend/requirements.txt /app/
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source code
-COPY ./backend /app
+COPY . /app
 
 # Expose port (optional)
 EXPOSE 5001

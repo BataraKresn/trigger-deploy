@@ -41,7 +41,7 @@ class LoginRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6, max_length=50)
 
-@router.post("/login")
+@router.post("/api/login")
 @limiter.limit("10/minute")  # optional: rate-limit login attempts
 async def login(request: Request, payload: LoginRequest):
     logging.info(f"Login attempt for user: {payload.username}")

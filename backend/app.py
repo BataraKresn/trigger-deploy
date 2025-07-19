@@ -20,9 +20,9 @@ from utils.rate_limit import limiter
 app = FastAPI(
     title="Trigger Deploy API",
     version="1.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
 )
 
 # ---------------------------
@@ -49,6 +49,7 @@ def custom_openapi():
         description="API for managing deployments and authentication",
         routes=app.routes,
     )
+    openapi_schema["openapi"] = "3.1.0"  # Specify OpenAPI version
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -57,10 +58,10 @@ app.openapi = custom_openapi
 # ---------------------------
 # 📦 Include Routers
 # ---------------------------
-app.include_router(deploy_router)
-app.include_router(logs_router)
-app.include_router(health_router)
-app.include_router(auth_router)
+app.include_router(deploy_router, prefix="/api")
+app.include_router(logs_router, prefix="/api")
+app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 app.state.limiter = limiter
 

@@ -1,8 +1,15 @@
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import os
 
-SECRET_KEY = "your_secret_key"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is not set in the environment variables")
 
 # Hash password
 def hash_password(password):

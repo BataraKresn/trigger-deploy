@@ -14,6 +14,7 @@ function ErrorFallback({ error }: FallbackProps) {
 
 function App() {
   const { token } = useGlobalState();
+  console.log('Token:', token);
 
   return (
     <Router>

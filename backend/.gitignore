@@ -3,3 +3,4 @@ trigger-logs/
 __pycache__/
 *.pyc
 *.log
+logs
