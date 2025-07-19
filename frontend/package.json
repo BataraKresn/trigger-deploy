@@ -14,12 +14,17 @@
     "@esbuild-plugins/node-globals-polyfill": "^0.2.0",
     "@types/react": "^19.1.8",
     "@vitejs/plugin-react": "^4.7.0",
+    "axios": "^1.10.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-error-boundary": "^6.0.0",
     "react-router-dom": "^7.7.0",
-    "typescript": "^5.8.3",
     "terser": "^5.30.0",
+    "typescript": "^5.8.3",
     "vite": "^7.0.5",
     "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36"
   }
 }

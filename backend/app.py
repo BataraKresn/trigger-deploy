@@ -58,10 +58,10 @@ app.openapi = custom_openapi
 # ---------------------------
 # 📦 Include Routers
 # ---------------------------
-app.include_router(deploy_router, prefix="/api")
-app.include_router(logs_router, prefix="/api")
-app.include_router(health_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
+app.include_router(deploy_router)
+app.include_router(logs_router)
+app.include_router(health_router)
+app.include_router(auth_router)
 
 app.state.limiter = limiter
 
@@ -101,7 +101,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}")
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
-@app.post("/example-endpoint")
+@app.post("/api/example-endpoint")
 async def example_endpoint(payload: dict):
     if not payload.get("key"):
         logger.warning("Invalid input: 'key' is missing")

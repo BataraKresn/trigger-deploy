@@ -58,7 +58,7 @@ async def login(request: Request, payload: LoginRequest):
 class PasswordPayload(BaseModel):
     password: str
 
-@router.post("/validate-password")
+@router.post("/api/validate-password")
 @limiter.limit("5/minute")
 async def validate_password(payload: PasswordPayload, request: Request):
     expected_password = os.getenv("DEPLOY_PASSWORD", "SAT2025")
