@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import useGlobalState from './store/globalState';
 import type { FallbackProps } from 'react-error-boundary';
@@ -14,8 +14,12 @@ function ErrorFallback({ error }: FallbackProps) {
 
 function App() {
   const { token } = useGlobalState();
-  console.log('Token:', token);
-  console.log('Token status:', token ? 'Valid' : 'Invalid');
+
+  useEffect(() => {
+    console.log('App component mounted');
+    console.log('Token:', token);
+    console.log('Token status:', token ? 'Valid' : 'Invalid');
+  }, [token]);
 
   return (
     <Router>

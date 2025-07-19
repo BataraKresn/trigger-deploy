@@ -6,7 +6,10 @@ import './assets/optimized-images.css';
 import axios from 'axios';
 
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response);
+    return response;
+  },
   (error) => {
     console.error('API Error:', error);
     alert('An error occurred while processing your request.');
@@ -15,9 +18,12 @@ axios.interceptors.response.use(
 );
 
 console.log('Application initialized');
+console.log('Starting React rendering process');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+
+console.log('React rendering completed');
