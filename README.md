@@ -83,6 +83,41 @@ nano frontend/.env.production
 ```
 
 ### 3️⃣ **Start All Services**
+
+#### **🚀 Easy Way (Recommended) - Using Quick Scripts**
+```bash
+# Development mode (uses .env.development files)
+./quick-dev.sh start
+
+# Production mode (uses .env.production files)
+./quick-dev.sh start-prod
+
+# Initialize database (first time only)
+./quick-dev.sh migrate
+
+# Check services status
+./quick-dev.sh status
+```
+
+#### **📋 Quick Development Commands**
+The `quick-dev.sh` script provides convenient commands for managing your deployment:
+
+| Command | Description | Environment |
+|---------|-------------|-------------|
+| `./quick-dev.sh start` | Start all services | Development |
+| `./quick-dev.sh start-prod` | Start all services | Production |
+| `./quick-dev.sh stop` | Stop all services | Both |
+| `./quick-dev.sh restart` | Restart all services | Both |
+| `./quick-dev.sh logs` | Show logs for all services | Both |
+| `./quick-dev.sh backend` | Show backend logs only | Both |
+| `./quick-dev.sh frontend` | Show frontend logs only | Both |
+| `./quick-dev.sh db` | Connect to database | Both |
+| `./quick-dev.sh migrate` | Run database migrations | Both |
+| `./quick-dev.sh status` | Show services status | Both |
+| `./quick-dev.sh build` | Rebuild all images | Both |
+| `./quick-dev.sh clean` | Clean up Docker resources | Both |
+
+#### **🔧 Manual Way (Alternative)**
 ```bash
 # Development mode (uses .env.development files)
 docker-compose up -d
@@ -103,7 +138,34 @@ docker-compose ps
 - **API Documentation**: http://localhost:5002/docs
 - **Database**: localhost:5432 (deployuser/strongpassword)
 
-## 🛠️ Development Guide
+## � Environment Modes
+
+### **📊 Development vs Production Comparison**
+
+| Aspect | Development Mode | Production Mode |
+|--------|------------------|-----------------|
+| **Command** | `./quick-dev.sh start` | `./quick-dev.sh start-prod` |
+| **Docker Compose** | `docker-compose.yaml` | `docker-compose.prod.yml` |
+| **Environment Files** | `.env.development` | `.env.production` |
+| **Flask Debug** | Enabled (True) | Disabled (False) |
+| **Log Level** | DEBUG (verbose) | INFO (clean) |
+| **Secret Keys** | Development keys | Production keys |
+| **API URL** | `localhost:5002` | `your-domain.com` |
+| **Frontend Debug** | Enabled | Disabled |
+| **CORS** | Permissive | Restrictive |
+| **Performance** | Slower (dev tools) | Optimized |
+
+### **🛡️ Security Differences**
+
+| Security Feature | Development | Production |
+|------------------|-------------|------------|
+| **BCRYPT Rounds** | 4 (faster) | 12 (secure) |
+| **Token Expiry** | 30 days | 7 days |
+| **SQL Echo** | Enabled | Disabled |
+| **Error Details** | Full stack trace | Generic messages |
+| **HTTPS** | Optional | Required |
+
+## �🛠️ Development Guide
 
 ### **Backend Development (Flask)**
 
@@ -297,6 +359,35 @@ sudo chown $USER:$USER /opt/deploy-server
 ```
 
 #### **2. Deploy Application**
+
+#### **🚀 Easy Way (Recommended) - Using Deployment Script**
+```bash
+cd /opt/deploy-server
+
+# Clone repository
+git clone https://github.com/BataraKresn/trigger-deploy.git .
+
+# Edit production environment files
+nano backend/.env.production
+nano frontend/.env.production
+
+# One-command deployment
+./deploy-production.sh deploy
+
+# Check deployment
+./deploy-production.sh check
+```
+
+#### **📋 Production Deployment Commands**
+The `deploy-production.sh` script provides automated deployment:
+
+| Command | Description |
+|---------|-------------|
+| `./deploy-production.sh deploy` | Full production deployment |
+| `./deploy-production.sh update` | Update existing deployment |
+| `./deploy-production.sh check` | Check system requirements |
+
+#### **🔧 Manual Way (Alternative)**
 ```bash
 cd /opt/deploy-server
 
