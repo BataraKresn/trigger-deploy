@@ -32,7 +32,6 @@ services:
       - "3111:8082"
     volumes:
       - ./frontend:/app
-      - ./frontend/logs:/usr/share/nginx/logs
     environment:
       - NODE_ENV=production
     depends_on:

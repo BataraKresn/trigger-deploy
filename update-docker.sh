@@ -7,7 +7,7 @@ start_fmt=$(date "+%Y-%m-%d %H:%M:%S")
 
 echo "🔄 [$start_fmt] Rebuilding Docker image with no cache..."
 # docker compose build --no-cache > /dev/null 2>&1
-docker compose build --no-cache
+docker compose build
 echo "✅ Docker image rebuilt successfully!"
 
 echo "🚀 Restarting container..."
