@@ -8,7 +8,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import os
 import logging
 
-from utils.auth import hash_password, verify_password, generate_token
+from utils.auth import hash_password, verify_password, generate_token, verify_token
 
 load_dotenv()
 
@@ -21,7 +21,7 @@ limiter = Limiter(key_func=get_remote_address)
 # app.add_middleware(SlowAPIMiddleware)
 
 # ----------------------
-# 🔐 User Auth Setup
+# 🔒 User Auth Setup
 # ----------------------
 users_db = {}
 for env_user, env_pass in [("ADMIN_USER", "ADMIN_PASS"), ("USER_USER", "USER_PASS")]:
@@ -41,15 +41,29 @@ class LoginRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=6, max_length=50)
 
+class RefreshTokenRequest(BaseModel):
+    token: str = Field(...)
+
 @router.post("/api/login")
 @limiter.limit("10/minute")  # optional: rate-limit login attempts
 async def login(request: Request, payload: LoginRequest):
-    logging.info(f"Login attempt for user: {payload.username}")
+    logging.info(f"Login attempt for user: {payload.username} from IP: {request.client.host}")
     if payload.username in users_db and verify_password(payload.password, users_db[payload.username]):
+        token = generate_token(payload.username)
         logging.info(f"Login successful for user: {payload.username}")
-        return {"token": generate_token(payload.username)}
-    logging.warning(f"Login failed for user: {payload.username}")
+        return {"token": token}
+    logging.warning(f"Login failed for user: {payload.username} from IP: {request.client.host}")
     raise HTTPException(status_code=401, detail="Invalid username or password")
+
+@router.post("/api/refresh-token")
+async def refresh_token(payload: RefreshTokenRequest, request: Request):
+    username = verify_token(payload.token)
+    if not username:
+        logging.warning(f"Token refresh failed from IP: {request.client.host}")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    new_token = generate_token(username)
+    logging.info(f"Token refreshed for user: {username} from IP: {request.client.host}")
+    return {"token": new_token}
 
 # ----------------------
 # 🚀 Password Validation (for Deploy UI)
@@ -65,3 +79,26 @@ async def validate_password(payload: PasswordPayload, request: Request):
     if payload.password == expected_password:
         return {"valid": True}
     raise HTTPException(status_code=401, detail="Invalid deploy password")
+
+# ----------------------
+# 📊 Dashboard Route (Token Protected)
+# ----------------------
+
+@router.get("/api/dashboard")
+async def dashboard(request: Request):
+    token = request.headers.get("Authorization")
+    logging.debug(f"Received token: {token}")
+    if not token or not token.startswith("Bearer ") or not verify_token(token.split("Bearer ")[1]):
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+    return {"message": "Welcome to the dashboard!"}
+
+# ----------------------
+# 🔑 Token Validation Endpoint
+# ----------------------
+
+@router.post("/api/validate-token")
+async def validate_token(request: Request):
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer ") or not verify_token(token.split("Bearer ")[1]):
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+    return {"valid": True}

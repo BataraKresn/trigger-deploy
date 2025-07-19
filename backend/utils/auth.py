@@ -25,7 +25,9 @@ def generate_token(username):
         "sub": username,
         "exp": datetime.utcnow() + timedelta(hours=1)
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+    print(f"Generated token for {username}: {token}")  # Log the token
+    return token
 
 # Verify JWT token
 def verify_token(token):

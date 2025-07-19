@@ -10,7 +10,12 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { token } = useGlobalState();
   const location = useLocation();
 
-  if (!token) {
+  const verifyToken = (token: string) => {
+    // Add your token verification logic here
+    return true; // Return true if valid, false otherwise
+  };
+
+  if (!token || !verifyToken(token)) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

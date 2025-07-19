@@ -10,16 +10,31 @@ export const api = axios.create({
 });
 
 // Tambahkan token Authorization jika tersedia
-api.interceptors.request.use((config) => {
-  const { token } = useGlobalState.getState();
+api.interceptors.request.use(async (config) => {
+  const { token, setToken } = useGlobalState.getState();
   if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+    const exp = tokenPayload.exp * 1000; // Convert to milliseconds
+    const now = Date.now();
+
+    if (exp - now < 5 * 60 * 1000) {
+      // Refresh if token expires in less than 5 minutes
+      try {
+        const response = await axios.post(`${baseUrl}/api/refresh-token`, { token });
+        const newToken = response.data.token;
+        setToken(newToken);
+        config.headers.Authorization = `Bearer ${newToken}`;
+      } catch (error) {
+        console.error('Failed to refresh token:', error);
+        useGlobalState.getState().logout();
+      }
+    } else {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
+
 // Tangani error global
 api.interceptors.response.use(
   (response) => response,
@@ -43,4 +58,4 @@ api.interceptors.response.use(
     }
     return Promise.reject(error);
   }
-); 
+);

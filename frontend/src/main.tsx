@@ -8,7 +8,6 @@ import axios from 'axios';
 
 axios.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response);
     return response;
   },
   (error) => {
@@ -18,13 +17,8 @@ axios.interceptors.response.use(
   }
 );
 
-console.log('Application initialized');
-console.log('Starting React rendering process');
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
-
-console.log('React rendering completed');

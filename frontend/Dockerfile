@@ -23,8 +23,8 @@ WORKDIR /usr/share/nginx/html
 COPY --from=builder /app/dist/ /usr/share/nginx/html/
 
 # Copy custom nginx config
+# COPY .env.production .env
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY .env.production .env
 
 # Fix permission issue (especially if not running as root)
 RUN mkdir -p /var/cache/nginx/client_temp

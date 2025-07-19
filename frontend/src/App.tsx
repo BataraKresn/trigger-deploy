@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
+import axios from 'axios';
 
 import useGlobalState from '@/store/globalState';
 import AppRoutes from '@/routes';
@@ -18,20 +19,45 @@ function App() {
   const { token } = useGlobalState();
 
   useEffect(() => {
-    console.log('%c[App Mounted]', 'color: green');
-    console.log('Token:', token ?? '(no token)');
+    const token = localStorage.getItem('authToken');
+  }, []);
+
+  useEffect(() => {
+    if (!token && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }, [token]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token && window.location.pathname === '/login') {
+      axios.post('/api/validate-token', { token })
+        .then(() => {
+          window.location.href = '/dashboard';
+        })
+        .catch(() => {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+        });
+    }
+  }, []);
 
   return (
     <Router>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <div className="p-4">
-          <h1 className="text-xl font-semibold text-blue-600">🔥 React App Running</h1>
-          <AppRoutes />
-        </div>
+            <AppRoutes />
       </ErrorBoundary>
     </Router>
   );
 }
+
+// Add Axios interceptor to include token in Authorization header for all requests
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default App;

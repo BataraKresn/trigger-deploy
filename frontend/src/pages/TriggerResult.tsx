@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
 function TriggerResult() {
   const [logVisible, setLogVisible] = useState(false);
@@ -13,18 +14,38 @@ function TriggerResult() {
         <div className="status text-green-500 text-xl mb-4">✅ Deploy Triggered Successfully</div>
         <p><strong>Log File:</strong> log_file_path_here</p>
 
-        <div className="log-link cursor-pointer text-blue-500 underline" onClick={toggleLog}>🔗 View Log File</div>
+        <div
+          className="log-link cursor-pointer text-blue-500 underline"
+          onClick={toggleLog}
+        >
+          🔗 View Log File
+        </div>
         {logVisible && (
-          <div className="log-content bg-gray-100 p-4 rounded-md">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="log-content bg-gray-100 p-4 rounded-md shadow-md mt-4"
+          >
             Log data here...
-          </div>
+          </motion.div>
         )}
 
-        <div className="log-link cursor-pointer text-blue-500 underline" onClick={toggleStream}>🔄 Stream Log (Real-time)</div>
+        <div
+          className="log-link cursor-pointer text-blue-500 underline mt-4"
+          onClick={toggleStream}
+        >
+          🔄 Stream Log (Real-time)
+        </div>
         {streamVisible && (
-          <div className="stream-content bg-gray-100 p-4 rounded-md">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="stream-content bg-gray-100 p-4 rounded-md shadow-md mt-4"
+          >
             Waiting for updates...
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
