@@ -1,4 +1,30 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    image: deploy-postgres
+    container_name: deploy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deployuser
+      POSTGRES_PASSWORD: strongpassword
+      POSTGRES_DB: deploydb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deployuser -d deploydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-trigger-network
+
   backend:
     build:
       context: ./backend
@@ -9,15 +35,20 @@ services:
       - "5002:5001"
     volumes:
       - ./backend:/app
+      - ./backend/logs:/app/logs
     env_file:
       - ./backend/.env
     environment:
       - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql+psycopg2://deployuser:strongpassword@postgres:5432/deploydb
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - dev-trigger-network
     restart: always
@@ -34,16 +65,22 @@ services:
       - ./frontend/.env.production
     environment:
       - NODE_ENV=production
+      - VITE_API_BASE_URL=http://localhost:5002
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - dev-trigger-network
     restart: always
+
+volumes:
+  pgdata:
+    driver: local
 
 networks:
   dev-trigger-network:
