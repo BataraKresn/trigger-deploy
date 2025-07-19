@@ -14,6 +14,8 @@ axios.interceptors.response.use(
   }
 );
 
+console.log('Application initialized');
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

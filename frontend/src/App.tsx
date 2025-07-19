@@ -15,6 +15,7 @@ function ErrorFallback({ error }: FallbackProps) {
 function App() {
   const { token } = useGlobalState();
   console.log('Token:', token);
+  console.log('Token status:', token ? 'Valid' : 'Invalid');
 
   return (
     <Router>
