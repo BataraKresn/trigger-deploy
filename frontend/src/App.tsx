@@ -1,16 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { ErrorBoundary } from 'react-error-boundary';
 import axios from 'axios';
 
 import useGlobalState from '@/store/globalState';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
-import ServerTable from '@/components/ServerTable';
-import DeployModal from '@/components/DeployModal';
-import HealthCard from '@/components/HealthCard';
-import LogViewer from '@/components/LogViewer';
-import PingChart from '@/components/PingChart';
+import AppRoutes from '@/routes';
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -22,55 +18,48 @@ function ErrorFallback({ error }: { error: Error }) {
 }
 
 function App() {
-  const { token } = useGlobalState();
-  const [darkMode, setDarkMode] = useState(false);
+  const { token, darkMode } = useGlobalState();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-  }, []);
-
-  useEffect(() => {
-    if (!token && window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
-  }, [token]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token && window.location.pathname === '/login') {
+    const storedToken = localStorage.getItem('authToken');
+    if (storedToken && !token) {
+      // Validate token on app start
       axios.get('/api/validate-token', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${storedToken}`,
         },
       })
-        .then(() => {
-          window.location.href = '/dashboard';
-        })
         .catch(() => {
           localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         });
     }
-  }, []);
+  }, [token]);
 
   return (
     <div className={darkMode ? 'dark' : ''}>
       <Router>
-        <Sidebar />
-        <div className="flex flex-col flex-1">
-          <Header onToggleDarkMode={() => setDarkMode(!darkMode)} />
-          <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Routes>
-              <Route path="/dashboard" element={<div>Dashboard Content</div>} />
-              <Route path="/servers" element={<ServerTable servers={[]} onEdit={() => {}} onDelete={() => {}} onDeploy={() => {}} />} />
-              <Route path="/deploy" element={<DeployModal isOpen={true} onClose={() => {}} onDeploy={() => {}} />} />
-              <Route path="/health" element={<HealthCard healthData={[]} />} />
-              <Route path="/logs" element={<LogViewer logs={[]} />} />
-              <Route path="/settings" element={<PingChart data={[]} />} />
-            </Routes>
-          </ErrorBoundary>
-        </div>
+        <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <AppRoutes />
+        </ErrorBoundary>
       </Router>
+      
+      {/* Toast Notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={darkMode ? 'dark' : 'light'}
+        className="text-sm"
+      />
     </div>
   );
 }

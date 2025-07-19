@@ -14,6 +14,7 @@
   "description": "",
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.0",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/react": "^19.1.8",
     "@vitejs/plugin-react": "^4.7.0",
     "axios": "^1.10.0",
@@ -23,8 +24,8 @@
     "react-dom": "^19.1.0",
     "react-error-boundary": "^6.0.0",
     "react-router-dom": "^7.7.0",
+    "react-toastify": "^11.0.5",
     "recharts": "^3.1.0",
-    "tailwindcss": "^3.3.0",
     "terser": "^5.30.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.5",
@@ -33,6 +34,9 @@
   "devDependencies": {
     "@types/react-dom": "^19.1.6",
     "@types/vue": "^1.0.31",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11",
     "vue": "^3.5.17"
   }
 }

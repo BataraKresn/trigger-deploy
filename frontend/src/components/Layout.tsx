@@ -1,68 +1,61 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import useGlobalState from '@/store/globalState';
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
+interface LayoutProps {
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children, title, subtitle }) => {
+  const { sidebarCollapsed, darkMode } = useGlobalState();
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'}`}>
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-blue-600 to-blue-800 text-white p-6 shadow-lg">
-        <h2 className="text-2xl font-bold mb-6 text-center">🚀 Dev Trigger</h2>
-        <nav className="space-y-4">
-          <Link
-            to="/dashboard"
-            className="block py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/servers"
-            className="block py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Servers
-          </Link>
-          <Link
-            to="/deploy"
-            className="block py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Deploy
-          </Link>
-          <Link
-            to="/result"
-            className="block py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Result
-          </Link>
-          <Link
-            to="/status"
-            className="block py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Status
-          </Link>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <main className="p-6 flex-1">
-          <header className="flex justify-between items-center mb-6 bg-white shadow-md p-4 rounded-lg">
-            <h1 className="text-2xl font-bold text-gray-800">Dashboard Area</h1>
-            <button
-              className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-              onClick={() => {
-                localStorage.clear();
-                window.location.href = '/login';
-              }}
-            >
-              Logout
-            </button>
-          </header>
-
-          {children}
-        </main>
-
+      <Sidebar />
+      
+      {/* Main Content Area */}
+      <div 
+        className="transition-all duration-300 ease-in-out"
+        style={{
+          marginLeft: sidebarCollapsed ? '80px' : '280px'
+        }}
+      >
+        {/* Header */}
+        <Header title={title} subtitle={subtitle} />
+        
+        {/* Page Content */}
+        <motion.main
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="p-6"
+        >
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </motion.main>
+        
         {/* Footer */}
-        <footer className="bg-gray-200 text-center py-4">
-          <p className="text-gray-600">© 2025 Dev Trigger</p>
+        <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-4">
+                <span>© 2025 Trigger Deploy</span>
+                <span>•</span>
+                <span>Professional DevOps Platform</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span>v1.0.0</span>
+                <span>•</span>
+                <span>Status: All Systems Operational</span>
+              </div>
+            </div>
+          </div>
         </footer>
       </div>
     </div>

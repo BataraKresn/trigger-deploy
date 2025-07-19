@@ -7,15 +7,14 @@ interface PrivateRouteProps {
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const { token } = useGlobalState();
+  const { token, isAuthenticated } = useGlobalState();
   const location = useLocation();
 
-  const verifyToken = (token: string) => {
-    // Add your token verification logic here
-    return true; // Return true if valid, false otherwise
-  };
+  // Check if user is authenticated
+  const isLoggedIn = isAuthenticated && token;
 
-  if (!token || !verifyToken(token)) {
+  if (!isLoggedIn) {
+    // Redirect to login page with return url
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
