@@ -250,10 +250,15 @@ body {
   background: white;
   border-radius: 12px;
   padding: 2rem;
-  max-width: 400px;
-  width: 90%;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  min-width: 400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: modalSlideIn 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalSlideIn {
@@ -610,8 +615,14 @@ button:disabled {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  width: 300px;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  min-width: 400px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .modal input {
   width: 100%;
