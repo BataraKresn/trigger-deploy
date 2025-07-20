@@ -42,6 +42,7 @@ class Config:
     RATE_LIMIT_WINDOW: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
     
     # Email Configuration
+    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
     SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
@@ -58,6 +59,10 @@ class Config:
     MONITORING_INTERVAL: int = int(os.getenv("MONITORING_INTERVAL", "60"))
     HEALTH_CHECK_TIMEOUT: int = int(os.getenv("HEALTH_CHECK_TIMEOUT", "30"))
     ALERT_COOLDOWN: int = int(os.getenv("ALERT_COOLDOWN", "300"))
+    
+    def get(self, key: str, default=None):
+        """Get attribute like dictionary for backward compatibility"""
+        return getattr(self, key, default)
 
 load_dotenv()
 
@@ -76,7 +81,7 @@ if not os.path.exists('logs'):
 config = Config()
 
 # Log warning if using default token
-if config.TOKEN == "SATindonesia2025":
+if config.TOKEN == "SATindonesia2026":
     logger.warning("Using default token. Please set DEPLOY_TOKEN environment variable for production!")
 
 # Enhanced logging setup with multiple handlers
@@ -1003,8 +1008,8 @@ def initialize_components():
         deployment_history = DeploymentHistory()
         logger.info("✅ Deployment history initialized")
         
-        # Initialize service monitor
-        service_monitor = ServiceMonitor()
+        # Initialize service monitor with config
+        service_monitor = ServiceMonitor(config)
         logger.info("✅ Service monitor initialized")
         
         # Start monitoring in background
