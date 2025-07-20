@@ -34,10 +34,18 @@ class ServiceMonitor:
     def init_docker_client(self):
         """Initialize Docker client"""
         try:
-            self.docker_client = docker.from_env()
-            logger.info("Docker client initialized successfully")
-        except Exception as e:
-            logger.warning(f"Docker client initialization failed: {e}")
+            # Check if Docker is available in environment
+            result = subprocess.run(['docker', 'info'], 
+                                    capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                self.docker_client = docker.from_env()
+                logger.info("Docker client initialized successfully")
+            else:
+                logger.warning("Docker daemon not available, using HTTP-only monitoring")
+                self.docker_client = None
+        except (Exception, subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning(f"Docker not available in this environment: {e}")
+            logger.info("Service monitoring will use HTTP endpoints only")
             self.docker_client = None
     
     def load_services_config(self):
@@ -176,42 +184,65 @@ class ServiceMonitor:
             "checked_at": datetime.now().isoformat()
         }
         
-        if not self.docker_client:
-            result["status"] = "error"
-            result["message"] = "Docker client not available"
-            return result
-        
-        try:
-            # Get container info
-            container = self.docker_client.containers.get(container_name)
-            result["status"] = container.status
-            result["container_id"] = container.short_id
-            
-            if container.status == "running":
-                result["healthy"] = True
-                result["message"] = f"Container {container_name} is running"
+        # Try Docker check first if client is available
+        docker_check_failed = False
+        if self.docker_client:
+            try:
+                # Get container info
+                container = self.docker_client.containers.get(container_name)
+                result["status"] = container.status
+                result["container_id"] = container.short_id
                 
-                # Additional health check if endpoint provided
-                if "health_endpoint" in service_config:
-                    health_result = self._check_http_endpoint(
-                        service_config["health_endpoint"],
-                        service_config.get("timeout", 10)
-                    )
-                    if not health_result["healthy"]:
-                        result["healthy"] = False
-                        result["message"] += f" but health check failed: {health_result['message']}"
-            else:
+                if container.status == "running":
+                    result["healthy"] = True
+                    result["message"] = f"Container {container_name} is running"
+                else:
+                    result["healthy"] = False
+                    result["message"] = f"Container {container_name} is {container.status}"
+                    
+            except docker.errors.NotFound:
+                result["status"] = "not_found"
                 result["healthy"] = False
-                result["message"] = f"Container {container_name} is {container.status}"
+                result["message"] = f"Container {container_name} not found"
+                docker_check_failed = True
+            except Exception as e:
+                result["status"] = "error"
+                result["healthy"] = False
+                result["message"] = f"Error checking container: {str(e)}"
+                docker_check_failed = True
+        else:
+            docker_check_failed = True
+            result["message"] = "Docker client not available"
+        
+        # If Docker check failed or if we have a health endpoint, check HTTP endpoint
+        if "health_endpoint" in service_config:
+            try:
+                health_result = self._check_http_endpoint(
+                    service_config["health_endpoint"],
+                    service_config.get("timeout", 10)
+                )
                 
-        except docker.errors.NotFound:
-            result["status"] = "not_found"
-            result["healthy"] = False
-            result["message"] = f"Container {container_name} not found"
-        except Exception as e:
-            result["status"] = "error"
-            result["healthy"] = False
-            result["message"] = f"Error checking container: {str(e)}"
+                # If Docker check failed, use HTTP check as primary
+                if docker_check_failed:
+                    result["status"] = "http_monitored"
+                    result["healthy"] = health_result["healthy"]
+                    if health_result["healthy"]:
+                        result["message"] = f"HTTP health check: {health_result['message']} (Docker unavailable)"
+                    else:
+                        result["message"] = f"HTTP health check failed: {health_result['message']}"
+                # If Docker is running but HTTP fails, mark as unhealthy
+                elif result["healthy"] and not health_result["healthy"]:
+                    result["healthy"] = False
+                    result["message"] += f" but health check failed: {health_result['message']}"
+                    
+            except Exception as e:
+                if docker_check_failed:
+                    result["status"] = "error"
+                    result["message"] = f"Docker unavailable and health check failed: {str(e)}"
+        elif docker_check_failed:
+            # No health endpoint and Docker failed
+            result["status"] = "docker_unavailable"
+            result["message"] = f"Docker unavailable - configure health_endpoint for HTTP monitoring"
         
         return result
     

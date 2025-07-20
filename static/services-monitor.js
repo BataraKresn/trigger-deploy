@@ -10,7 +10,7 @@ class ServicesMonitor {
         this.lastUpdateTime = new Date();
         this.refreshInterval = 60; // Default interval
         this.init();
-        this.loadServices();
+        this.loadServices(true); // Show loading spinner for initial load
         
         // Auto-refresh every 60 seconds
         this.startAutoRefresh();
@@ -29,9 +29,14 @@ class ServicesMonitor {
         });
     }
     
-    async loadServices() {
+    async loadServices(showLoadingSpinner = false) {
         try {
-            this.showLoading('Checking services...');
+            if (showLoadingSpinner) {
+                this.showLoading('Checking services...');
+            } else {
+                // Show subtle background refresh indicator
+                this.showBackgroundRefresh(true);
+            }
             
             const response = await fetch('/api/services/status');
             if (!response.ok) {
@@ -43,9 +48,16 @@ class ServicesMonitor {
             
         } catch (error) {
             console.error('Error loading services:', error);
-            this.showError(`Failed to load services: ${error.message}`);
+            // Only show error alert if it's a manual refresh (with loading spinner)
+            if (showLoadingSpinner) {
+                this.showError(`Failed to load services: ${error.message}`);
+            }
         } finally {
-            this.hideLoading();
+            if (showLoadingSpinner) {
+                this.hideLoading();
+            } else {
+                this.showBackgroundRefresh(false);
+            }
         }
     }
     
@@ -352,12 +364,15 @@ class ServicesMonitor {
             overlay.className = 'token-modal-overlay';
             overlay.innerHTML = `
                 <div class="token-modal">
-                    <h3>🔐 Authentication Required</h3>
+                    <div class="token-modal-header">
+                        <h3>🔐 Authentication Required</h3>
+                        <button id="closeTokenBtn" class="close-btn">&times;</button>
+                    </div>
                     <p>Please enter your deployment token to continue:</p>
                     <input type="password" id="tokenInput" placeholder="Enter token..." />
                     <div class="token-modal-buttons">
-                        <button onclick="this.submitToken()" class="btn btn-primary">Submit</button>
-                        <button onclick="this.cancelToken()" class="btn btn-secondary">Cancel</button>
+                        <button id="submitTokenBtn" class="btn btn-primary">Submit</button>
+                        <button id="cancelTokenBtn" class="btn btn-secondary">Cancel</button>
                     </div>
                 </div>
             `;
@@ -372,40 +387,94 @@ class ServicesMonitor {
             const modal = overlay.querySelector('.token-modal');
             modal.style.cssText = `
                 background: white; padding: 2rem; border-radius: 8px;
-                min-width: 300px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                min-width: 350px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                position: relative;
+            `;
+            
+            // Add header styles
+            const header = overlay.querySelector('.token-modal-header');
+            header.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;
+            `;
+            
+            // Add close button styles
+            const closeBtn = overlay.querySelector('#closeTokenBtn');
+            closeBtn.style.cssText = `
+                background: none; border: none; font-size: 24px; cursor: pointer;
+                color: #999; padding: 0; width: 30px; height: 30px;
+                display: flex; align-items: center; justify-content: center;
             `;
             
             const input = overlay.querySelector('#tokenInput');
             input.style.cssText = `
-                width: 100%; padding: 0.5rem; margin: 1rem 0;
-                border: 1px solid #ddd; border-radius: 4px;
+                width: 100%; padding: 0.75rem; margin: 1rem 0;
+                border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
+            `;
+            
+            // Button container styles
+            const buttonContainer = overlay.querySelector('.token-modal-buttons');
+            buttonContainer.style.cssText = `
+                display: flex; gap: 10px; justify-content: center; margin-top: 1.5rem;
             `;
             
             document.body.appendChild(overlay);
             input.focus();
             
             // Handle submission
-            window.submitToken = () => {
+            const submitBtn = overlay.querySelector('#submitTokenBtn');
+            const cancelBtn = overlay.querySelector('#cancelTokenBtn');
+            
+            const submitToken = () => {
                 const token = input.value.trim();
                 if (token) {
                     sessionStorage.setItem('deployToken', token);
                     document.body.removeChild(overlay);
                     resolve(token);
                 } else {
-                    alert('Please enter a valid token');
+                    input.style.borderColor = '#dc3545';
+                    input.placeholder = 'Token is required!';
+                    input.focus();
                 }
             };
             
-            // Handle cancellation
-            window.cancelToken = () => {
+            const cancelToken = () => {
                 document.body.removeChild(overlay);
                 resolve('');
             };
             
+            // Add event listeners
+            submitBtn.addEventListener('click', submitToken);
+            cancelBtn.addEventListener('click', cancelToken);
+            closeBtn.addEventListener('click', cancelToken);
+            
             // Handle Enter key
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    window.submitToken();
+                    submitToken();
+                }
+            });
+            
+            // Handle Escape key
+            document.addEventListener('keydown', function escapeHandler(e) {
+                if (e.key === 'Escape') {
+                    document.removeEventListener('keydown', escapeHandler);
+                    cancelToken();
+                }
+            });
+            
+            // Click outside to close
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    cancelToken();
+                }
+            });
+            
+            // Reset input border on focus
+            input.addEventListener('focus', () => {
+                input.style.borderColor = '#ddd';
+                if (input.placeholder === 'Token is required!') {
+                    input.placeholder = 'Enter token...';
                 }
             });
         });
@@ -420,7 +489,8 @@ class ServicesMonitor {
         
         this.autoRefreshInterval = setInterval(() => {
             if (this.monitoringActive) {
-                this.loadServices();
+                // Background refresh without loading spinner
+                this.loadServices(false);
             }
         }, intervalMs);
     }
@@ -465,6 +535,52 @@ class ServicesMonitor {
         spinner.classList.add('hidden');
     }
     
+    showBackgroundRefresh(show = true) {
+        // Add small indicator for background refresh
+        let indicator = document.getElementById('backgroundRefreshIndicator');
+        
+        if (show && !indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'backgroundRefreshIndicator';
+            indicator.innerHTML = '🔄';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(40, 167, 69, 0.9);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                z-index: 999;
+                animation: pulse 1.5s infinite;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            `;
+            
+            // Add pulse animation
+            if (!document.getElementById('backgroundRefreshStyle')) {
+                const style = document.createElement('style');
+                style.id = 'backgroundRefreshStyle';
+                style.textContent = `
+                    @keyframes pulse {
+                        0% { opacity: 0.6; }
+                        50% { opacity: 1; }
+                        100% { opacity: 0.6; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            indicator.textContent = '🔄 Updating...';
+            document.body.appendChild(indicator);
+            
+        } else if (!show && indicator) {
+            indicator.remove();
+        }
+    }
+    
     showError(message) {
         this.showAlert(message, 'alert-error');
     }
@@ -504,7 +620,8 @@ let servicesMonitor;
 
 function refreshServices() {
     if (servicesMonitor) {
-        servicesMonitor.loadServices();
+        // Manual refresh should show loading spinner
+        servicesMonitor.loadServices(true);
     }
 }
 
