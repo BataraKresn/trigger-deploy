@@ -53,8 +53,7 @@ trigger-deploy/
 │
 ├── 📂 logs/                  # Application logs
 ├── 📂 trigger-logs/          # Deployment logs
-├── 📂 data/                  # Data storage (future use)
-└── 📂 backup/                # Backup files
+└── 📂 tests/                 # Unit tests
 ```
 
 ## 🗂️ File Organization
@@ -63,10 +62,10 @@ trigger-deploy/
 
 | File | Purpose | Status |
 |------|---------|---------|
-| `app_new.py` | Clean main application with modular architecture | ✅ Active |
-| `app.py` | Legacy monolithic application | ⚠️ To be removed |
-| `requirements_new.txt` | Updated dependencies list | ✅ Active |
-| `requirements.txt` | Legacy requirements | ⚠️ To be updated |
+| `app.py` | Main application with modular architecture | ✅ Active |
+| `wsgi.py` | WSGI application server entry point | ✅ Active |
+| `requirements.txt` | Python dependencies | ✅ Active |
+| `README.md` | Project documentation | ✅ Active |
 
 ### 📋 Configuration Files
 
