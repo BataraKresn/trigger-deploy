@@ -202,6 +202,24 @@ body {
   margin-top: 1rem;
 }
 
+.server-details {
+  margin-bottom: 1rem;
+}
+
+.server-details p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.server-card {
+  cursor: pointer;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
 /* ==============================
    📱 Modal Components
    ============================== */

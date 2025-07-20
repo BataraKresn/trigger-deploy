@@ -28,16 +28,10 @@ class Config:
     MAX_LOG_SIZE: int = int(os.getenv("MAX_LOG_SIZE", "10485760"))  # 10MB
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
     RATE_LIMIT_WINDOW: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
-    
-    def __post_init__(self):
-        # Log warning if using default token
-        if self.TOKEN == "SATindonesia2025":
-            logger.warning("Using default token. Please set DEPLOY_TOKEN environment variable for production!")
 
 load_dotenv()
-config = Config()
 
-# Setup structured logging
+# Setup structured logging first
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s %(message)s'
@@ -47,6 +41,13 @@ logger = logging.getLogger(__name__)
 # Add rotating file handler
 if not os.path.exists('logs'):
     os.makedirs('logs')
+
+# Initialize config after logger is available
+config = Config()
+
+# Log warning if using default token
+if config.TOKEN == "SATindonesia2025":
+    logger.warning("Using default token. Please set DEPLOY_TOKEN environment variable for production!")
 
 handler = RotatingFileHandler('logs/app.log', maxBytes=config.MAX_LOG_SIZE, backupCount=3)
 handler.setFormatter(logging.Formatter(
@@ -218,7 +219,9 @@ def invalid_token():
 
 @app.route("/trigger-result")
 def trigger_result():
-    return render_template("trigger_result.html")
+    log_file = request.args.get("log", "No log file specified")
+    message = request.args.get("message", "Deployment completed")
+    return render_template("trigger_result.html", log_file=log_file, message=message)
 
 
 @app.route('/servers', methods=['GET'])
