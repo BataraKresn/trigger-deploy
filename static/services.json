@@ -1,0 +1,76 @@
+{
+  "local_services": [
+    {
+      "name": "Nginx Proxy",
+      "type": "docker",
+      "container_name": "nginx",
+      "port": 80,
+      "health_endpoint": "http://localhost",
+      "critical": true,
+      "description": "Main web server proxy"
+    },
+    {
+      "name": "PostgreSQL Database",
+      "type": "docker",
+      "container_name": "postgres",
+      "port": 5432,
+      "critical": true,
+      "description": "Primary database server"
+    },
+    {
+      "name": "Redis Cache",
+      "type": "docker",
+      "container_name": "redis",
+      "port": 6379,
+      "critical": false,
+      "description": "Session and cache storage"
+    },
+    {
+      "name": "Application Server",
+      "type": "docker",
+      "container_name": "app",
+      "port": 8000,
+      "health_endpoint": "http://localhost:8000/health",
+      "critical": true,
+      "description": "Main application container"
+    }
+  ],
+  "remote_services": [
+    {
+      "name": "Production API",
+      "type": "http",
+      "url": "https://api.yourdomain.com/health",
+      "expected_status": 200,
+      "timeout": 10,
+      "critical": true,
+      "description": "External API service"
+    },
+    {
+      "name": "CDN Service",
+      "type": "http",
+      "url": "https://cdn.yourdomain.com",
+      "expected_status": 200,
+      "timeout": 5,
+      "critical": false,
+      "description": "Content delivery network"
+    },
+    {
+      "name": "Remote Database",
+      "type": "tcp",
+      "host": "db.yourdomain.com",
+      "port": 5432,
+      "timeout": 5,
+      "critical": false,
+      "description": "Backup database server"
+    },
+    {
+      "name": "SMTP Server",
+      "type": "tcp",
+      "host": "smtp.gmail.com",
+      "port": 587,
+      "timeout": 10,
+      "critical": false,
+      "description": "Email delivery service"
+    }
+  ]
+}

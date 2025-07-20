@@ -92,6 +92,11 @@ body {
   color: #333;
 }
 
+.btn-info {
+  background: #17a2b8;
+  color: white;
+}
+
 .btn-small {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;

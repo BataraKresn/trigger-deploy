@@ -17,8 +17,24 @@
     <div class="content">
       <!-- Quick Actions -->
       <div class="text-center mb-3">
-        <!-- Health Input - Hidden by default -->
-        <div id="healthInputContainer" class="form-group hidden">
+        <a href="/deploy-servers" class="btn btn-primary">
+          🔐 Deploy to Servers
+        </a>
+        <button onclick="loadLogList()" class="btn btn-secondary" id="logBtn">
+          📁 Browse Logs
+        </button>
+        <button onclick="showHealthInput()" class="btn btn-success" id="healthBtn">
+          💗 Check Health
+        </button>
+        <a href="/metrics-dashboard" class="btn btn-info">
+          📊 Metrics Dashboard
+        </a>
+        <a href="/services-monitor" class="btn btn-primary">
+          🐳 Services Monitor
+        </a>
+        
+        <!-- Health Input - Hidden by default, positioned below buttons -->
+        <div id="healthInputContainer" class="form-group hidden mt-3">
           <input 
             id="healthTarget" 
             class="form-control" 
@@ -34,16 +50,6 @@
             </button>
           </div>
         </div>
-        
-        <a href="/deploy-servers" class="btn btn-primary">
-          🔐 Deploy to Servers
-        </a>
-        <button onclick="loadLogList()" class="btn btn-secondary" id="logBtn">
-          📁 Browse Logs
-        </button>
-        <button onclick="showHealthInput()" class="btn btn-success" id="healthBtn">
-          💗 Check Health
-        </button>
       </div>
 
       <!-- Status Display Area -->
