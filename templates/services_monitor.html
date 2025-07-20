@@ -64,40 +64,6 @@
       background: #f8f9fa;
       color: #6c757d;
     }
-    
-    .summary-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    
-    .summary-card {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      text-align: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    
-    .summary-value {
-      font-size: 2rem;
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-    
-    .controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 2rem;
-      align-items: center;
-    }
-    
-    .last-update {
-      font-size: 0.9rem;
-      color: #666;
-      margin-left: auto;
-    }
   </style>
 </head>
 <body>
@@ -120,8 +86,29 @@
         <button onclick="showConfig()" class="btn btn-info">
           ⚙️ Configure Services
         </button>
-        <div class="last-update" id="lastUpdate">
-          Last updated: -
+      </div>
+
+      <!-- Status Information -->
+      <div class="status-info">
+        <div class="last-update-section">
+          <h4>📊 System Status</h4>
+          <div id="lastUpdate" class="status-text">
+            Last updated: Never
+          </div>
+          <div class="status-details">
+            <div class="status-item">
+              <span class="status-label">Monitor Status:</span>
+              <span id="monitorStatus" class="status-value">Active</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">Check Interval:</span>
+              <span class="status-value">60 seconds</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">Next Check:</span>
+              <span id="nextCheck" class="status-value">In 45 seconds</span>
+            </div>
+          </div>
         </div>
       </div>
 

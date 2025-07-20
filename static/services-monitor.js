@@ -6,11 +6,14 @@ class ServicesMonitor {
     constructor() {
         this.monitoringActive = true;
         this.autoRefreshInterval = null;
+        this.countdownInterval = null;
+        this.lastUpdateTime = new Date();
         this.init();
         this.loadServices();
         
-        // Auto-refresh every 30 seconds
+        // Auto-refresh every 60 seconds
         this.startAutoRefresh();
+        this.startCountdown();
     }
     
     init() {
@@ -55,9 +58,54 @@ class ServicesMonitor {
         // Update remote services
         this.updateServicesList('remoteServices', data.remote_services || []);
         
-        // Update last update time
+        // Update last update time with more detailed info
+        const now = new Date();
+        const updateTime = data.timestamp ? new Date(data.timestamp) : now;
         document.getElementById('lastUpdate').textContent = 
-            `Last updated: ${new Date(data.timestamp).toLocaleTimeString()}`;
+            `Last updated: ${updateTime.toLocaleString('id-ID', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            })}`;
+        
+        // Update monitor status
+        document.getElementById('monitorStatus').textContent = 
+            this.monitoringActive ? 'Active' : 'Paused';
+        document.getElementById('monitorStatus').style.color = 
+            this.monitoringActive ? '#28a745' : '#ffc107';
+        
+        // Update next check countdown
+        this.updateNextCheckCountdown();
+        
+        // Store last update time for countdown
+        this.lastUpdateTime = now;
+    }
+    
+    updateNextCheckCountdown() {
+        const nextCheckElement = document.getElementById('nextCheck');
+        if (!nextCheckElement || !this.monitoringActive) {
+            if (nextCheckElement) {
+                nextCheckElement.textContent = this.monitoringActive ? 'Unknown' : 'Monitoring paused';
+                nextCheckElement.style.color = '#6c757d';
+            }
+            return;
+        }
+        
+        const now = new Date();
+        const timeSinceUpdate = Math.floor((now - (this.lastUpdateTime || now)) / 1000);
+        const refreshInterval = 60; // 60 seconds
+        const timeUntilNext = Math.max(0, refreshInterval - timeSinceUpdate);
+        
+        if (timeUntilNext > 0) {
+            nextCheckElement.textContent = `In ${timeUntilNext} seconds`;
+            nextCheckElement.style.color = '#17a2b8';
+        } else {
+            nextCheckElement.textContent = 'Checking now...';
+            nextCheckElement.style.color = '#ffc107';
+        }
     }
     
     updateSummaryCards(summary) {
@@ -155,11 +203,13 @@ class ServicesMonitor {
             btn.textContent = this.monitoringActive ? '⏸️ Pause Monitoring' : '▶️ Start Monitoring';
             btn.className = this.monitoringActive ? 'btn btn-warning' : 'btn btn-success';
             
-            // Update auto-refresh
+            // Update auto-refresh and countdown
             if (this.monitoringActive) {
                 this.startAutoRefresh();
+                this.startCountdown();
             } else {
                 this.stopAutoRefresh();
+                this.stopCountdown();
             }
             
             this.showSuccess(result.message);
@@ -345,13 +395,30 @@ class ServicesMonitor {
             if (this.monitoringActive) {
                 this.loadServices();
             }
-        }, 30000); // 30 seconds
+        }, 60000); // 60 seconds
     }
     
     stopAutoRefresh() {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
             this.autoRefreshInterval = null;
+        }
+    }
+    
+    startCountdown() {
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+        }
+        
+        this.countdownInterval = setInterval(() => {
+            this.updateNextCheckCountdown();
+        }, 1000); // Update every second
+    }
+    
+    stopCountdown() {
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
         }
     }
     
