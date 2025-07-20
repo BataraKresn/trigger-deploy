@@ -6,23 +6,35 @@ LABEL service="trigger-deploy"
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Install SSH client, jq, ping, net-tools
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    openssh-client jq bash iputils-ping net-tools \
+    openssh-client jq bash iputils-ping net-tools curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy .env file (optional)
-# COPY .env .env
+# Copy application structure
+COPY src/ ./src/
+COPY config/ ./config/
+COPY templates/ ./templates/
+COPY static/ ./static/
+COPY scripts/ ./scripts/
+COPY app.py wsgi.py ./
 
-# Copy entire application
-COPY . .
+# Create required directories
+RUN mkdir -p logs trigger-logs
 
-# Expose port (updated to match app.py)
+# Make scripts executable
+RUN chmod +x scripts/*.sh
+
+# Expose port
 EXPOSE 5000
 
-# Run app (updated command and port)
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Run application
 CMD ["gunicorn", "--timeout", "600", "--workers=4", "--worker-class=gevent", "--bind", "0.0.0.0:5000", "wsgi:app"]

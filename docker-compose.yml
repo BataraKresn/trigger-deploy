@@ -4,12 +4,14 @@ services:
     image: trigger-deploy
     container_name: trigger-deployer
     ports:
-      - "5000:5000"  # Updated to match app.py port
+      - "5000:5000"
     restart: always
     environment:
       - TZ=Asia/Jakarta
-      - DEPLOY_TOKEN=${DEPLOY_TOKEN:-SATindonesia2025}  # Support for environment variable
+      - DEPLOY_TOKEN=${DEPLOY_TOKEN:-SATindonesia2026}
       - LOG_DIR=${LOG_DIR:-trigger-logs}
+      - SERVERS_FILE=${SERVERS_FILE:-config/servers.json}
+      - SERVICES_FILE=${SERVICES_FILE:-config/services.json}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
     env_file:
       - .env
@@ -17,13 +19,16 @@ services:
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
       - ./trigger-logs:/app/trigger-logs
-      - ./logs:/app/logs  # Add logs directory for app logging
+      - ./logs:/app/logs
+      - ./config:/app/config
       - ./templates:/app/templates
       - ./static:/app/static
+      - ./src:/app/src
+      - ./scripts:/app/scripts
     networks:
       - dev-trigger-deploy
 
 networks:
-  tdev-trigger-deploy:
+  dev-trigger-deploy:
     name: dev-trigger-deploy-network
     driver: bridge
