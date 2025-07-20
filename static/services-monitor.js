@@ -122,16 +122,29 @@ class ServicesMonitor {
             btn.disabled = true;
             btn.textContent = '⏳ Processing...';
             
+            // Get token with modal if needed
+            const token = await this.getToken();
+            
+            if (!token) {
+                this.showError('Authentication cancelled');
+                return;
+            }
+            
             const response = await fetch('/api/services/toggle-monitoring', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getToken()}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ enable: newState })
             });
             
             if (!response.ok) {
+                // If unauthorized, clear stored token and try again
+                if (response.status === 401) {
+                    sessionStorage.removeItem('deployToken');
+                    throw new Error('Invalid token. Please try again.');
+                }
                 throw new Error(`HTTP ${response.status}`);
             }
             
@@ -168,7 +181,16 @@ class ServicesMonitor {
             
             const config = await response.json();
             document.getElementById('configJson').value = JSON.stringify(config, null, 2);
-            document.getElementById('configModal').style.display = 'flex';
+            
+            // Show modal with proper class
+            const modal = document.getElementById('configModal');
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+            
+            // Focus on textarea after a brief delay
+            setTimeout(() => {
+                document.getElementById('configJson').focus();
+            }, 100);
             
         } catch (error) {
             console.error('Error loading config:', error);
@@ -177,7 +199,13 @@ class ServicesMonitor {
     }
     
     closeConfigModal() {
-        document.getElementById('configModal').style.display = 'none';
+        const modal = document.getElementById('configModal');
+        modal.classList.remove('show');
+        
+        // Hide modal after animation
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
     }
     
     async saveConfig() {
@@ -191,16 +219,29 @@ class ServicesMonitor {
                 throw new Error('Invalid JSON format');
             }
             
+            // Get token with modal if needed
+            const token = await this.getToken();
+            
+            if (!token) {
+                this.showError('Authentication cancelled');
+                return;
+            }
+            
             const response = await fetch('/api/services/config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getToken()}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(config)
             });
             
             if (!response.ok) {
+                // If unauthorized, clear stored token
+                if (response.status === 401) {
+                    sessionStorage.removeItem('deployToken');
+                    throw new Error('Invalid token. Please try again.');
+                }
                 throw new Error(`HTTP ${response.status}`);
             }
             
@@ -217,9 +258,82 @@ class ServicesMonitor {
         }
     }
     
-    getToken() {
-        // In a real implementation, you'd get this from login or prompt user
-        return prompt('Enter deployment token:') || '';
+    async getToken() {
+        // Check if token is already stored in session
+        let token = sessionStorage.getItem('deployToken');
+        
+        if (!token) {
+            // Show a modal instead of prompt for better UX
+            token = await this.showTokenModal();
+        }
+        
+        return token || '';
+    }
+    
+    showTokenModal() {
+        return new Promise((resolve) => {
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'token-modal-overlay';
+            overlay.innerHTML = `
+                <div class="token-modal">
+                    <h3>🔐 Authentication Required</h3>
+                    <p>Please enter your deployment token to continue:</p>
+                    <input type="password" id="tokenInput" placeholder="Enter token..." />
+                    <div class="token-modal-buttons">
+                        <button onclick="this.submitToken()" class="btn btn-primary">Submit</button>
+                        <button onclick="this.cancelToken()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            // Add styles
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7); z-index: 1000; display: flex;
+                justify-content: center; align-items: center;
+            `;
+            
+            const modal = overlay.querySelector('.token-modal');
+            modal.style.cssText = `
+                background: white; padding: 2rem; border-radius: 8px;
+                min-width: 300px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            `;
+            
+            const input = overlay.querySelector('#tokenInput');
+            input.style.cssText = `
+                width: 100%; padding: 0.5rem; margin: 1rem 0;
+                border: 1px solid #ddd; border-radius: 4px;
+            `;
+            
+            document.body.appendChild(overlay);
+            input.focus();
+            
+            // Handle submission
+            window.submitToken = () => {
+                const token = input.value.trim();
+                if (token) {
+                    sessionStorage.setItem('deployToken', token);
+                    document.body.removeChild(overlay);
+                    resolve(token);
+                } else {
+                    alert('Please enter a valid token');
+                }
+            };
+            
+            // Handle cancellation
+            window.cancelToken = () => {
+                document.body.removeChild(overlay);
+                resolve('');
+            };
+            
+            // Handle Enter key
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    window.submitToken();
+                }
+            });
+        });
     }
     
     startAutoRefresh() {
@@ -327,4 +441,24 @@ function saveConfig() {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     servicesMonitor = new ServicesMonitor();
+    
+    // Add modal click outside to close
+    const configModal = document.getElementById('configModal');
+    if (configModal) {
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) {
+                closeConfigModal();
+            }
+        });
+    }
+    
+    // Add escape key to close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('configModal');
+            if (modal && modal.classList.contains('show')) {
+                closeConfigModal();
+            }
+        }
+    });
 });
