@@ -1,41 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚀 Deploy to Servers</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 Deploy to Servers - Trigger Deploy</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <div class="container">
-    <h1>🚀 Deploy to Servers</h1>
-    <div id="server-list">Loading...</div>
+    <div class="header">
+      <h1>🚀 Deploy to Servers</h1>
+      <p>Select a server to trigger deployment</p>
+    </div>
+    
+    <div class="content">
+      <!-- Navigation -->
+      <div class="text-center mb-3">
+        <a href="/" class="btn btn-secondary">← Back to Home</a>
+        <button onclick="refreshServerList()" class="btn btn-primary" id="refreshBtn">
+          🔄 Refresh Servers
+        </button>
+      </div>
+
+      <!-- Server List Container -->
+      <div id="server-list" class="server-grid">
+        <div class="text-center p-3">
+          <div class="spinner"></div>
+          <p class="mt-2 text-muted">Loading servers...</p>
+        </div>
+      </div>
+
+      <!-- Status Display -->
+      <div id="status" class="alert hidden"></div>
+    </div>
   </div>
 
-  <!-- Modal Token -->
+  <!-- Authentication Modal -->
   <div id="authModal" class="modal">
     <div class="modal-content">
-      <h2>🔒 Enter Your Token</h2>
+      <h2>🔒 Authentication Required</h2>
+      <p class="text-muted mb-3">Enter your deployment token to proceed</p>
+      
       <form onsubmit="event.preventDefault(); submitDeploy();">
-        <input 
-          type="password" 
-          id="deployTokenInput" 
-          placeholder="Enter token..." 
-          autocomplete="off" 
-          required 
-        />
+        <div class="form-group">
+          <input 
+            type="password" 
+            id="deployTokenInput" 
+            class="form-control"
+            placeholder="Enter deployment token..." 
+            autocomplete="off" 
+            required 
+          />
+        </div>
+        
         <div class="buttons">
-          <button type="button" onclick="closeModal()">Cancel</button>
-          <button type="submit">Deploy</button>
+          <button type="button" onclick="closeModal()" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            🚀 Deploy Now
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Spinner (toggle by JS) -->
-  <div id="spinner" class="spinner-overlay" style="display: none;">
-    <div class="spinner"></div>
-    <div class="spinner-text">⏳ Deploying...</div>
+  <!-- Global Loading Overlay -->
+  <div id="spinner" class="spinner-overlay hidden">
+    <div class="spinner-content">
+      <div class="spinner"></div>
+      <p class="spinner-text">⏳ Processing deployment...</p>
+    </div>
   </div>
 
   <script src="/static/deploy.js"></script>
