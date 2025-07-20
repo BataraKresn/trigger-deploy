@@ -41,9 +41,8 @@
     <div class="modal-content">
       <h2>🔒 Authentication Required</h2>
       <p class="text-muted mb-3">Enter your deployment token to proceed</p>
-      <p class="text-info mb-3"><small>💡 Use the token configured in your .env file (DEPLOY_TOKEN)</small></p>
       
-      <form onsubmit="event.preventDefault(); deployManager.submitDeploy();">
+      <form onsubmit="event.preventDefault(); window.deployManager ? window.deployManager.submitDeploy() : submitDeploy();">
         <div class="form-group">
           <input 
             type="password" 
@@ -56,7 +55,7 @@
         </div>
         
         <div class="buttons">
-          <button type="button" onclick="deployManager.closeModal()" class="btn btn-secondary">
+          <button type="button" onclick="window.deployManager ? window.deployManager.closeModal() : closeModal()" class="btn btn-secondary">
             Cancel
           </button>
           <button type="submit" class="btn btn-primary">

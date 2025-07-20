@@ -1018,11 +1018,11 @@ def get_log_file(filename):
 @rate_limit(max_requests=30, window=60)
 def health():
     target = request.args.get("target") or "google.co.id"
-    result = {"target": target, "resolve": None, "ping": None, "timestamp": datetime.now().isoformat()}
+    result = {"target": target, "resolve": None, "ping": None, "http": None, "timestamp": datetime.now().isoformat()}
 
     try:
         ip = socket.gethostbyname(target)
-        result["resolve"] = f"{target} resolved to {ip}"
+        result["resolve"] = f"✅ {target} resolved to {ip}"
         logger.info(f"DNS resolution successful for {target} -> {ip}")
     except Exception as e:
         result["resolve"] = f"❌ DNS resolve failed: {str(e)}"
@@ -1046,6 +1046,23 @@ def health():
     except Exception as e:
         result["ping"] = f"❌ Ping error: {str(e)}"
         logger.error(f"Ping error to {target}: {e}")
+
+    # HTTP check
+    try:
+        import requests
+        url = f"http://{target}" if not target.startswith(('http://', 'https://')) else target
+        response = requests.get(url, timeout=5, allow_redirects=True)
+        result["http"] = f"✅ HTTP {response.status_code} - {len(response.content)} bytes"
+        logger.info(f"HTTP check successful for {target}: {response.status_code}")
+    except requests.exceptions.Timeout:
+        result["http"] = "❌ HTTP timeout"
+        logger.warning(f"HTTP timeout to {target}")
+    except requests.exceptions.ConnectionError:
+        result["http"] = "❌ HTTP connection failed"
+        logger.warning(f"HTTP connection failed to {target}")
+    except Exception as e:
+        result["http"] = f"❌ HTTP error: {str(e)}"
+        logger.error(f"HTTP error to {target}: {e}")
 
     return jsonify(result)
 

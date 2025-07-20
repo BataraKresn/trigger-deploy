@@ -1137,6 +1137,13 @@ button:disabled {
     padding: 8px 6px;
   }
   
+  /* Status badge responsive */
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    min-width: 60px;
+  }
+  
   /* Hide less important columns on mobile */
   .history-table th:nth-child(4), /* Duration */
   .history-table td:nth-child(4),
@@ -1444,6 +1451,33 @@ button:disabled {
     .log-output {
         font-size: 11px;
         padding: 10px;
+    }
+    
+    /* Extra responsive for very small screens */
+    .history-table {
+        font-size: 11px;
+    }
+    
+    .history-table th,
+    .history-table td {
+        padding: 4px 2px;
+    }
+    
+    .status-badge {
+        font-size: 8px;
+        padding: 2px 4px;
+        min-width: 40px;
+    }
+    
+    .btn-small {
+        padding: 2px 4px;
+        font-size: 9px;
+    }
+    
+    /* Hide even more columns on very small screens */
+    .history-table th:nth-child(3), /* Started */
+    .history-table td:nth-child(3) {
+        display: none;
     }
 }
   

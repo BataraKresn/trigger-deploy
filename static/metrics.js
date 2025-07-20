@@ -374,6 +374,9 @@ function refreshMetrics() {
 }
 
 // Initialize when DOM is loaded
+let metricsDashboard;
+
 document.addEventListener('DOMContentLoaded', () => {
-    window.metricsDashboard = new MetricsDashboard();
+    metricsDashboard = new MetricsDashboard();
+    window.metricsDashboard = metricsDashboard;
 });

@@ -1,12 +1,12 @@
 [
   {
-    "name": "Profiling Database",
+    "name": "Profiling Identity",
     "ip": "30.30.30.202",
     "user": "ubuntu",
-    "description": "Production database server",
-    "alias": "Profilinginsight",
+    "description": "Identity Search & Profiling System",
+    "alias": "Profiling Identity Search",
     "path": "/home/ubuntu/profiling-database",
-    "type": "Database Server",
+    "type": "Profiling Identity System",
     "port": 22
   },
   {

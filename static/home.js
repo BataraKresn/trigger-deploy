@@ -30,8 +30,19 @@ function cancelHealthCheck() {
   
   container.classList.add("hidden");
   btn.textContent = "💗 Check Health";
+  btn.onclick = showHealthInput;
   btn.disabled = false;
   input.value = "";
+}
+
+function hideHealthResults() {
+  const el = document.getElementById("healthStatus");
+  const btn = document.getElementById("healthBtn");
+  
+  el.classList.add("hidden");
+  btn.textContent = "💗 Check Health";
+  btn.onclick = showHealthInput;
+  btn.disabled = false;
 }
 
 function executeHealthCheck() {
@@ -53,6 +64,7 @@ function executeHealthCheck() {
     .then(res => res.json())
     .then(data => {
       btn.textContent = "❌ Hide Health";
+      btn.onclick = hideHealthResults;
       btn.disabled = false;
       
       const healthContent = document.getElementById("healthContent");
@@ -83,6 +95,7 @@ function executeHealthCheck() {
     })
     .catch(err => {
       btn.textContent = "💗 Check Health";
+      btn.onclick = showHealthInput;
       btn.disabled = false;
       el.innerHTML = `
         <div class="health-item error">

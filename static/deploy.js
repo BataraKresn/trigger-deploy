@@ -72,7 +72,7 @@ class DeployManager {
         }
 
         const serversHtml = this.servers.map(server => `
-            <div class="server-card" onclick="deployManager.selectServer('${server.ip || server.alias}', '${server.name}')">
+            <div class="server-card" onclick="window.deployManager ? window.deployManager.selectServer('${server.ip || server.alias}', '${server.name}') : deployManager.selectServer('${server.ip || server.alias}', '${server.name}')">
                 <div class="server-header">
                     <h4>🖥️ ${server.name}</h4>
                     <span class="server-status ${server.status || 'unknown'}">${this.getStatusIcon(server.status)}</span>
@@ -83,7 +83,7 @@ class DeployManager {
                     ${server.description ? `<p class="text-muted">${server.description}</p>` : ''}
                 </div>
                 <div class="server-actions">
-                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); deployManager.selectServer('${server.ip || server.alias}', '${server.name}')">
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); window.deployManager ? window.deployManager.selectServer('${server.ip || server.alias}', '${server.name}') : deployManager.selectServer('${server.ip || server.alias}', '${server.name}')">
                         🚀 Deploy
                     </button>
                 </div>
@@ -271,35 +271,35 @@ class DeployManager {
 let deployManager;
 
 function refreshServerList() {
-    if (deployManager) {
-        deployManager.loadServers();
+    if (window.deployManager) {
+        window.deployManager.loadServers();
     }
 }
 
 function closeModal() {
-    if (deployManager) {
-        deployManager.closeModal();
+    if (window.deployManager) {
+        window.deployManager.closeModal();
     }
 }
 
 function submitDeploy() {
-    if (deployManager) {
-        deployManager.submitDeploy();
+    if (window.deployManager) {
+        window.deployManager.submitDeploy();
     }
 }
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    deployManager = new DeployManager();
-});
-
-// Handle form submission with Enter key
-document.addEventListener('DOMContentLoaded', () => {
+    window.deployManager = new DeployManager();
+    
+    // Handle form submission with Enter key
     const form = document.querySelector('#authModal form');
     if (form) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            submitDeploy();
+            if (window.deployManager) {
+                window.deployManager.submitDeploy();
+            }
         });
     }
 });
