@@ -21,9 +21,9 @@ services:
       - ./templates:/app/templates
       - ./static:/app/static
     networks:
-      - trigger-deployer
+      - dev-trigger-deploy
 
 networks:
-  trigger-deployer:
-    name: trigger-deployer-network
+  tdev-trigger-deploy:
+    name: dev-trigger-deploy-network
     driver: bridge
