@@ -433,6 +433,10 @@ Trigger Deploy Service Monitor
         """Get current status of all services"""
         return self.check_all_services()
     
+    def is_monitoring_active(self) -> bool:
+        """Check if monitoring is currently active"""
+        return self.monitoring_active
+    
     def get_service_history(self, service_name: str = None, hours: int = 24) -> List[Dict]:
         """Get service status history (placeholder for future implementation)"""
         # This would typically query a database or log files

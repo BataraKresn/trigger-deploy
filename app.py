@@ -544,11 +544,17 @@ def services_monitor_dashboard():
 def api_services_status():
     """Get current status of all monitored services"""
     try:
-        from service_monitor import service_monitor
+        # Use global service_monitor from app.py, not from service_monitor module
+        global service_monitor
+        logger.info(f"Service monitor status: {service_monitor is not None}")
+        
         if not service_monitor:
+            logger.error("Service monitor is None - not initialized")
             return jsonify({"error": "Service monitor not initialized"}), 500
         
+        logger.info("Getting service status...")
         status = service_monitor.get_service_status()
+        logger.info(f"Service status retrieved: {len(status) if status else 0} items")
         
         # Add monitoring configuration info
         status['monitoring_config'] = {
@@ -564,9 +570,10 @@ def api_services_status():
             'monitoring_active': service_monitor.is_monitoring_active() if hasattr(service_monitor, 'is_monitoring_active') else True
         }
         
+        logger.info("Service status API response prepared successfully")
         return jsonify(status)
     except Exception as e:
-        logger.error(f"Services status API error: {e}")
+        logger.error(f"Services status API error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/services/config', methods=['GET'])
@@ -602,7 +609,7 @@ def api_services_config_update():
             json.dump(new_config, f, indent=2)
         
         # Reload service monitor
-        from service_monitor import service_monitor
+        global service_monitor
         if service_monitor:
             service_monitor.load_services_config()
         
@@ -625,7 +632,7 @@ def api_toggle_monitoring():
         data = request.get_json() or {}
         enable = data.get('enable', True)
         
-        from service_monitor import service_monitor
+        global service_monitor
         if not service_monitor:
             return jsonify({"error": "Service monitor not initialized"}), 500
         
@@ -658,6 +665,11 @@ def deploy_servers():
 @app.route("/invalid-token")
 def invalid_token():
     return render_template("invalid_token.html")
+
+@app.route("/docs")
+def api_docs():
+    """API Documentation endpoint"""
+    return render_template("docs.html")
 
 @app.route("/trigger-result")
 def trigger_result():

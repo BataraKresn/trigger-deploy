@@ -1,38 +1,37 @@
 {
   "local_services": [
     {
-      "name": "Nginx Proxy",
+      "name": "Elastic Search",
       "type": "docker",
-      "container_name": "nginx",
+      "container_name": "es-coord",
       "port": 80,
-      "health_endpoint": "http://localhost",
+      "health_endpoint": "http://30.30.30.11:9200/_cluster/health",
       "critical": true,
-      "description": "Main web server proxy"
+      "description": "Elastic Search coordination node"
     },
     {
-      "name": "PostgreSQL Database",
+      "name": "WB Blas app",
       "type": "docker",
-      "container_name": "postgres",
-      "port": 5432,
+      "container_name": "wb_blas_app",
+      "port": 2111,
       "critical": true,
-      "description": "Primary database server"
+      "description": "WB Blas application container"
     },
     {
-      "name": "Redis Cache",
+      "name": "WB Blas DB",
       "type": "docker",
-      "container_name": "redis",
-      "port": 6379,
+      "container_name": "wb_blas_db",
+      "port": 5141,
       "critical": false,
-      "description": "Session and cache storage"
+      "description": "WB Blas application container"
     },
     {
-      "name": "Application Server",
+      "name": "WB Multi App",
       "type": "docker",
-      "container_name": "app",
-      "port": 8000,
-      "health_endpoint": "http://localhost:8000/health",
+      "container_name": "wb_multi_app",
+      "port": 8788,
       "critical": true,
-      "description": "Main application container"
+      "description": "WB Multi application container"
     }
   ],
   "remote_services": [
