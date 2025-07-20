@@ -13,6 +13,8 @@ import ipaddress
 import hashlib
 import hmac
 import logging
+import sys
+import platform
 from logging.handlers import RotatingFileHandler
 import smtplib
 from email.mime.text import MIMEText
@@ -33,22 +35,22 @@ from service_monitor import initialize_service_monitor
 
 @dataclass
 class Config:
-    TOKEN: str = os.getenv("DEPLOY_TOKEN", "SATindonesia2025")
-    LOG_DIR: str = os.getenv("LOG_DIR", "trigger-logs")
+    TOKEN: str = os.getenv("DEPLOY_TOKEN")  # No default, must be set in .env
+    LOG_DIR: str = os.getenv("LOG_DIR")
     LOG_RETENTION_DAYS: int = int(os.getenv("LOG_RETENTION_DAYS", "7"))
-    SERVERS_FILE: str = os.getenv("SERVERS_FILE", "static/servers.json")
-    MAX_LOG_SIZE: int = int(os.getenv("MAX_LOG_SIZE", "10485760"))  # 10MB
+    SERVERS_FILE: str = os.getenv("SERVERS_FILE")
+    MAX_LOG_SIZE: int = int(os.getenv("MAX_LOG_SIZE", "10485760"))
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
     RATE_LIMIT_WINDOW: int = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
     
     # Email Configuration
     EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
-    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "trigger-deploy@localhost")
-    EMAIL_TO: str = os.getenv("EMAIL_TO", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM")
+    EMAIL_TO: str = os.getenv("EMAIL_TO")
     # Telegram Configuration
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -80,9 +82,16 @@ if not os.path.exists('logs'):
 # Initialize config after logger is available
 config = Config()
 
-# Log warning if using default token
+# Validate required environment variables
+required_vars = ['TOKEN', 'LOG_DIR', 'SERVERS_FILE', 'SMTP_SERVER', 'EMAIL_FROM', 'EMAIL_TO']
+for var in required_vars:
+    value = getattr(config, var, None)
+    if not value:
+        logger.error(f"Required environment variable {var} is not set in .env file!")
+
+# Log warning if using specific token
 if config.TOKEN == "SATindonesia2026":
-    logger.warning("Using default token. Please set DEPLOY_TOKEN environment variable for production!")
+    logger.warning("Using specific trigger token. Make sure this matches your webhook configuration!")
 
 # Enhanced logging setup with multiple handlers
 app_handler = RotatingFileHandler('logs/app.log', maxBytes=config.MAX_LOG_SIZE, backupCount=3)
