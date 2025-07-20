@@ -14,7 +14,7 @@ fi
 
 echo "�🔄 [$start_fmt] Rebuilding Docker image with no cache..."
 # docker compose build --no-cache > /dev/null 2>&1
-docker compose build --no-cache --quiet
+docker compose build --no-cache
 
 echo "🚀 Restarting container..."
 # docker compose up -d > /dev/null 2>&1

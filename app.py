@@ -24,9 +24,6 @@ from email import encoders
 import threading
 import requests
 
-# Import deployment history
-from deployment_history import deployment_history
-
 # Import service monitor
 from service_monitor import initialize_service_monitor
 
@@ -538,6 +535,21 @@ def api_services_status():
             return jsonify({"error": "Service monitor not initialized"}), 500
         
         status = service_monitor.get_service_status()
+        
+        # Add monitoring configuration info
+        status['monitoring_config'] = {
+            'interval': config.MONITORING_INTERVAL,
+            'timeout': config.HEALTH_CHECK_TIMEOUT,
+            'enabled': config.MONITORING_ENABLED,
+            'alert_cooldown': config.ALERT_COOLDOWN
+        }
+        
+        # Add system info
+        status['system_info'] = {
+            'uptime': int(time.time() - start_time),
+            'monitoring_active': service_monitor.is_monitoring_active() if hasattr(service_monitor, 'is_monitoring_active') else True
+        }
+        
         return jsonify(status)
     except Exception as e:
         logger.error(f"Services status API error: {e}")

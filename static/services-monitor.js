@@ -8,6 +8,7 @@ class ServicesMonitor {
         this.autoRefreshInterval = null;
         this.countdownInterval = null;
         this.lastUpdateTime = new Date();
+        this.refreshInterval = 60; // Default interval
         this.init();
         this.loadServices();
         
@@ -71,11 +72,35 @@ class ServicesMonitor {
                 second: '2-digit'
             })}`;
         
-        // Update monitor status
+        // Update monitor status from backend or local state
+        const monitorActive = data.system_info?.monitoring_active ?? this.monitoringActive;
         document.getElementById('monitorStatus').textContent = 
-            this.monitoringActive ? 'Active' : 'Paused';
+            monitorActive ? 'Active' : 'Paused';
         document.getElementById('monitorStatus').style.color = 
-            this.monitoringActive ? '#28a745' : '#ffc107';
+            monitorActive ? '#28a745' : '#ffc107';
+        
+        // Update check interval from backend config
+        if (data.monitoring_config && data.monitoring_config.interval) {
+            const newInterval = data.monitoring_config.interval;
+            document.getElementById('checkInterval').textContent = 
+                `${newInterval} seconds`;
+            
+            // Update interval and restart auto-refresh if changed
+            if (this.refreshInterval !== newInterval) {
+                this.refreshInterval = newInterval;
+                if (this.monitoringActive) {
+                    this.startAutoRefresh(); // Restart with new interval
+                }
+            }
+        } else {
+            document.getElementById('checkInterval').textContent = '60 seconds';
+            if (this.refreshInterval !== 60) {
+                this.refreshInterval = 60;
+                if (this.monitoringActive) {
+                    this.startAutoRefresh();
+                }
+            }
+        }
         
         // Update next check countdown
         this.updateNextCheckCountdown();
@@ -96,7 +121,7 @@ class ServicesMonitor {
         
         const now = new Date();
         const timeSinceUpdate = Math.floor((now - (this.lastUpdateTime || now)) / 1000);
-        const refreshInterval = 60; // 60 seconds
+        const refreshInterval = this.refreshInterval || 60; // Use dynamic interval or default to 60
         const timeUntilNext = Math.max(0, refreshInterval - timeSinceUpdate);
         
         if (timeUntilNext > 0) {
@@ -391,11 +416,13 @@ class ServicesMonitor {
             clearInterval(this.autoRefreshInterval);
         }
         
+        const intervalMs = (this.refreshInterval || 60) * 1000; // Convert to milliseconds
+        
         this.autoRefreshInterval = setInterval(() => {
             if (this.monitoringActive) {
                 this.loadServices();
             }
-        }, 60000); // 60 seconds
+        }, intervalMs);
     }
     
     stopAutoRefresh() {
