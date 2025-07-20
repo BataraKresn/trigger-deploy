@@ -10,7 +10,7 @@ class ServicesMonitor {
         this.lastUpdateTime = new Date();
         this.refreshInterval = 60; // Default interval
         this.init();
-        this.loadServices(true); // Show loading spinner for initial load
+        this.loadServices(false); // Load tanpa loading spinner di awal
         
         // Auto-refresh every 60 seconds
         this.startAutoRefresh();
@@ -51,6 +51,9 @@ class ServicesMonitor {
             // Only show error alert if it's a manual refresh (with loading spinner)
             if (showLoadingSpinner) {
                 this.showError(`Failed to load services: ${error.message}`);
+            } else {
+                // Silent fail for background refresh
+                console.warn('Background refresh failed:', error.message);
             }
         } finally {
             if (showLoadingSpinner) {
@@ -178,6 +181,7 @@ class ServicesMonitor {
                     ${service.container_name ? `<p><strong>Container:</strong> ${service.container_name}</p>` : ''}
                     ${service.container_id ? `<p><strong>Container ID:</strong> <code>${service.container_id}</code></p>` : ''}
                     <p><strong>Status:</strong> ${service.status}</p>
+                    ${service.uptime ? `<p><strong>Uptime:</strong> ${service.uptime}</p>` : ''}
                     ${service.response_time ? `<p><strong>Response Time:</strong> ${service.response_time.toFixed(2)}s</p>` : ''}
                     <p><strong>Critical:</strong> ${service.critical ? 'Yes' : 'No'}</p>
                     <p><strong>Last Check:</strong> ${new Date(service.checked_at).toLocaleTimeString()}</p>

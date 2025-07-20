@@ -5,7 +5,9 @@
     "user": "ubuntu",
     "description": "Production database server",
     "alias": "Profilinginsight",
-    "path": "/home/ubuntu/profiling-database"
+    "path": "/home/ubuntu/profiling-database",
+    "type": "Database Server",
+    "port": 22
   },
   {
     "name": "Test Deploy",
@@ -13,6 +15,8 @@
     "user": "satrd",
     "description": "Development testing server",
     "alias": "newrnd",
-    "path": "/home/satrd/test-deploy"
+    "path": "/home/satrd/test-deploy",
+    "type": "Development Server",
+    "port": 22
   }
 ]

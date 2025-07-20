@@ -684,10 +684,47 @@ def get_servers():
     try:
         with open(SERVERS_FILE, "r") as f:
             servers = json.load(f)
+        
+        # Add health check status for each server
+        for server in servers:
+            server['status'] = check_server_health(server['ip'], server.get('port', 22))
+            
         return jsonify(servers)
     except Exception as e:
         logger.error(f"Failed to load servers.json: {e}")
         return jsonify({"error": f"Failed to load servers.json: {str(e)}"}), 500
+
+def check_server_health(ip, port=22, timeout=3):
+    """Check if server is reachable via ping and port check"""
+    import subprocess
+    import socket
+    
+    try:
+        # Check ping first (quick check)
+        ping_result = subprocess.run(
+            ['ping', '-c', '1', '-W', '2', ip], 
+            capture_output=True, 
+            text=True, 
+            timeout=timeout
+        )
+        
+        if ping_result.returncode != 0:
+            return 'offline'
+        
+        # Check if SSH port is open
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        result = sock.connect_ex((ip, port))
+        sock.close()
+        
+        if result == 0:
+            return 'online'
+        else:
+            return 'unknown'  # Ping works but SSH port closed
+            
+    except (subprocess.TimeoutExpired, OSError, Exception) as e:
+        logger.debug(f"Health check failed for {ip}: {e}")
+        return 'offline'
 
 
 @app.route('/favicon.ico')

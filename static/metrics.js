@@ -4,6 +4,10 @@
 
 class MetricsDashboard {
     constructor() {
+        this.currentPage = 1;
+        this.itemsPerPage = 3;
+        this.deployments = [];
+        this.expandedRows = new Set();
         this.init();
         this.loadMetrics();
         
@@ -19,10 +23,10 @@ class MetricsDashboard {
         try {
             // Load all metrics in parallel
             const [stats, history, serverStats, systemInfo] = await Promise.all([
-                fetch('/api/metrics/stats'),
-                fetch('/api/metrics/history'),
-                fetch('/api/metrics/servers'),
-                fetch('/api/metrics/system')
+                fetch('/api/metrics/stats').catch(() => ({ ok: false })),
+                fetch('/api/metrics/history').catch(() => ({ ok: false })),
+                fetch('/api/metrics/servers').catch(() => ({ ok: false })),
+                fetch('/api/metrics/system').catch(() => ({ ok: false }))
             ]);
             
             if (stats.ok) {
@@ -47,7 +51,7 @@ class MetricsDashboard {
             
         } catch (error) {
             console.error('Error loading metrics:', error);
-            this.showError('Failed to load metrics data');
+            // Don't show error to user for background refresh
         }
     }
     
@@ -72,6 +76,18 @@ class MetricsDashboard {
             return;
         }
         
+        // Store deployments for pagination
+        this.deployments = history.deployments;
+        this.renderDeploymentTable();
+    }
+    
+    renderDeploymentTable() {
+        const container = document.getElementById('deploymentHistory');
+        const totalPages = Math.ceil(this.deployments.length / this.itemsPerPage);
+        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+        const endIndex = startIndex + this.itemsPerPage;
+        const currentDeployments = this.deployments.slice(startIndex, endIndex);
+        
         const tableHtml = `
             <table class="history-table">
                 <thead>
@@ -85,32 +101,151 @@ class MetricsDashboard {
                     </tr>
                 </thead>
                 <tbody>
-                    ${history.deployments.map(deployment => `
-                        <tr>
-                            <td><strong>${deployment.server_name}</strong><br>
-                                <small class="text-muted">${deployment.server_ip}</small>
-                            </td>
-                            <td>
-                                <span class="status-badge ${this.getStatusClass(deployment)}">
-                                    ${this.getStatusText(deployment)}
-                                </span>
-                            </td>
-                            <td>${this.formatDateTime(deployment.started_at)}</td>
-                            <td>${this.formatDuration(deployment.duration)}</td>
-                            <td><code>${deployment.client_ip}</code></td>
-                            <td>
-                                ${deployment.log_file ? 
-                                    `<a href="/logs/${deployment.log_file}" class="btn btn-small btn-secondary">📄 View Log</a>` : 
-                                    '-'
-                                }
-                            </td>
-                        </tr>
-                    `).join('')}
+                    ${currentDeployments.map((deployment, index) => {
+                        const globalIndex = startIndex + index;
+                        const isExpanded = this.expandedRows.has(globalIndex);
+                        return `
+                            <tr>
+                                <td><strong>${deployment.server_name}</strong><br>
+                                    <small class="text-muted">${deployment.server_ip}</small>
+                                </td>
+                                <td>
+                                    <span class="status-badge ${this.getStatusClass(deployment)}">
+                                        ${this.getStatusText(deployment)}
+                                    </span>
+                                </td>
+                                <td>${this.formatDateTime(deployment.started_at)}</td>
+                                <td>${this.formatDuration(deployment.duration)}</td>
+                                <td><code>${deployment.client_ip}</code></td>
+                                <td>
+                                    ${deployment.log_file ? 
+                                        `<button onclick="metricsDashboard.toggleLog(${globalIndex})" class="btn btn-small btn-secondary">
+                                            📄 ${isExpanded ? 'Hide' : 'View'} Log
+                                        </button>` : 
+                                        '-'
+                                    }
+                                </td>
+                            </tr>
+                            ${isExpanded ? `
+                                <tr class="log-row">
+                                    <td colspan="6">
+                                        <div class="log-content" id="log-${globalIndex}">
+                                            <div class="log-header">
+                                                📄 Log: ${deployment.log_file}
+                                                <button onclick="metricsDashboard.toggleLog(${globalIndex})" class="btn btn-small btn-secondary float-right">✕ Close</button>
+                                            </div>
+                                            <div class="log-body">Loading log...</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ` : ''}
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
+            
+            ${totalPages > 1 ? this.renderPagination(totalPages) : ''}
         `;
         
         container.innerHTML = tableHtml;
+        
+        // Load logs for expanded rows
+        this.expandedRows.forEach(index => {
+            const deployment = this.deployments[index];
+            if (deployment && deployment.log_file) {
+                this.loadLogContent(index, deployment.log_file);
+            }
+        });
+    }
+    
+    renderPagination(totalPages) {
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        let paginationHtml = '<div class="pagination">';
+        
+        // First page and previous
+        if (this.currentPage > 1) {
+            paginationHtml += `
+                <button onclick="metricsDashboard.goToPage(1)" class="pagination-btn" title="First page">&laquo;</button>
+                <button onclick="metricsDashboard.goToPage(${this.currentPage - 1})" class="pagination-btn" title="Previous page">&lsaquo;</button>
+            `;
+        }
+        
+        // Page numbers
+        if (startPage > 1) {
+            paginationHtml += `<button onclick="metricsDashboard.goToPage(1)" class="pagination-btn">1</button>`;
+            if (startPage > 2) {
+                paginationHtml += `<span class="pagination-ellipsis">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button onclick="metricsDashboard.goToPage(${i})" 
+                        class="pagination-btn ${i === this.currentPage ? 'active' : ''}">${i}</button>
+            `;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHtml += `<span class="pagination-ellipsis">...</span>`;
+            }
+            paginationHtml += `<button onclick="metricsDashboard.goToPage(${totalPages})" class="pagination-btn">${totalPages}</button>`;
+        }
+        
+        // Next and last page
+        if (this.currentPage < totalPages) {
+            paginationHtml += `
+                <button onclick="metricsDashboard.goToPage(${this.currentPage + 1})" class="pagination-btn" title="Next page">&rsaquo;</button>
+                <button onclick="metricsDashboard.goToPage(${totalPages})" class="pagination-btn" title="Last page">&raquo;</button>
+            `;
+        }
+        
+        paginationHtml += '</div>';
+        return paginationHtml;
+    }
+    
+    goToPage(page) {
+        this.currentPage = page;
+        this.renderDeploymentTable();
+    }
+    
+    async toggleLog(index) {
+        if (this.expandedRows.has(index)) {
+            this.expandedRows.delete(index);
+        } else {
+            this.expandedRows.add(index);
+        }
+        this.renderDeploymentTable();
+    }
+    
+    async loadLogContent(index, logFile) {
+        const logBody = document.querySelector(`#log-${index} .log-body`);
+        if (!logBody) return;
+        
+        try {
+            const response = await fetch(`/logs/${logFile}`);
+            if (response.ok) {
+                const logContent = await response.text();
+                logBody.innerHTML = `<pre class="log-output">${this.escapeHtml(logContent)}</pre>`;
+            } else {
+                logBody.innerHTML = `<div class="alert alert-error">Failed to load log: ${response.statusText}</div>`;
+            }
+        } catch (error) {
+            logBody.innerHTML = `<div class="alert alert-error">Error loading log: ${error.message}</div>`;
+        }
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     updateServerStats(serverStats) {

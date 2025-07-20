@@ -84,7 +84,16 @@ function executeHealthCheck() {
     .catch(err => {
       btn.textContent = "💗 Check Health";
       btn.disabled = false;
-      showError("Health check failed: " + err.message);
+      el.innerHTML = `
+        <div class="health-item error">
+          <div class="health-icon">❌</div>
+          <div class="health-content">
+            <h4>Health Check Failed</h4>
+            <p>Error: ${err.message}</p>
+          </div>
+        </div>
+      `;
+      console.error("Health check failed:", err.message);
     });
 }
 
@@ -268,6 +277,14 @@ function showStatus(message, type = 'info') {
   setTimeout(() => {
     statusEl.classList.add('hidden');
   }, 5000);
+}
+
+function showError(message) {
+  showStatus(message, 'error');
+}
+
+function showSuccess(message) {
+  showStatus(message, 'success');
 }
 
 /**

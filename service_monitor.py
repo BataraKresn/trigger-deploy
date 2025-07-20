@@ -34,18 +34,16 @@ class ServiceMonitor:
     def init_docker_client(self):
         """Initialize Docker client"""
         try:
-            # Check if Docker is available in environment
-            result = subprocess.run(['docker', 'info'], 
-                                    capture_output=True, text=True, timeout=5)
-            if result.returncode == 0:
-                self.docker_client = docker.from_env()
-                logger.info("Docker client initialized successfully")
-            else:
-                logger.warning("Docker daemon not available, using HTTP-only monitoring")
-                self.docker_client = None
-        except (Exception, subprocess.TimeoutExpired, FileNotFoundError) as e:
-            logger.warning(f"Docker not available in this environment: {e}")
-            logger.info("Service monitoring will use HTTP endpoints only")
+            # Test Docker connection
+            self.docker_client = docker.from_env()
+            # Test if we can actually connect by listing containers
+            self.docker_client.containers.list(limit=1)
+            logger.info("Docker client initialized successfully")
+        except docker.errors.DockerException as e:
+            logger.error(f"Docker API error: {e}")
+            self.docker_client = None
+        except Exception as e:
+            logger.error(f"Docker client initialization failed: {e}")
             self.docker_client = None
     
     def load_services_config(self):
@@ -184,67 +182,112 @@ class ServiceMonitor:
             "checked_at": datetime.now().isoformat()
         }
         
-        # Try Docker check first if client is available
-        docker_check_failed = False
-        if self.docker_client:
-            try:
-                # Get container info
-                container = self.docker_client.containers.get(container_name)
-                result["status"] = container.status
-                result["container_id"] = container.short_id
-                
-                if container.status == "running":
-                    result["healthy"] = True
-                    result["message"] = f"Container {container_name} is running"
-                else:
-                    result["healthy"] = False
-                    result["message"] = f"Container {container_name} is {container.status}"
-                    
-            except docker.errors.NotFound:
-                result["status"] = "not_found"
-                result["healthy"] = False
-                result["message"] = f"Container {container_name} not found"
-                docker_check_failed = True
-            except Exception as e:
-                result["status"] = "error"
-                result["healthy"] = False
-                result["message"] = f"Error checking container: {str(e)}"
-                docker_check_failed = True
-        else:
-            docker_check_failed = True
-            result["message"] = "Docker client not available"
-        
-        # If Docker check failed or if we have a health endpoint, check HTTP endpoint
-        if "health_endpoint" in service_config:
-            try:
-                health_result = self._check_http_endpoint(
-                    service_config["health_endpoint"],
-                    service_config.get("timeout", 10)
-                )
-                
-                # If Docker check failed, use HTTP check as primary
-                if docker_check_failed:
-                    result["status"] = "http_monitored"
-                    result["healthy"] = health_result["healthy"]
-                    if health_result["healthy"]:
-                        result["message"] = f"HTTP health check: {health_result['message']} (Docker unavailable)"
-                    else:
-                        result["message"] = f"HTTP health check failed: {health_result['message']}"
-                # If Docker is running but HTTP fails, mark as unhealthy
-                elif result["healthy"] and not health_result["healthy"]:
-                    result["healthy"] = False
-                    result["message"] += f" but health check failed: {health_result['message']}"
-                    
-            except Exception as e:
-                if docker_check_failed:
-                    result["status"] = "error"
-                    result["message"] = f"Docker unavailable and health check failed: {str(e)}"
-        elif docker_check_failed:
-            # No health endpoint and Docker failed
+        # Primary check: Docker API
+        if not self.docker_client:
             result["status"] = "docker_unavailable"
-            result["message"] = f"Docker unavailable - configure health_endpoint for HTTP monitoring"
+            result["message"] = "Docker client not available"
+            # Fall back to HTTP check if available
+            if "health_endpoint" in service_config:
+                return self._fallback_to_http_check(service_config, result)
+            return result
+        
+        try:
+            # Get container info using Docker API
+            container = self.docker_client.containers.get(container_name)
+            result["status"] = container.status
+            result["container_id"] = container.short_id
+            
+            if container.status == "running":
+                result["healthy"] = True
+                
+                # Get detailed container info including uptime
+                container_info = container.attrs
+                created_time = container_info.get('Created')
+                if created_time:
+                    # Parse creation time and calculate uptime
+                    from dateutil import parser
+                    created_dt = parser.parse(created_time)
+                    uptime = datetime.now(created_dt.tzinfo) - created_dt
+                    uptime_str = self._format_uptime(uptime)
+                    result["uptime"] = uptime_str
+                    result["message"] = f"Container {container_name} running (Up {uptime_str})"
+                else:
+                    result["message"] = f"Container {container_name} is running"
+                
+                # Additional health check if endpoint provided
+                if "health_endpoint" in service_config:
+                    health_result = self._check_http_endpoint(
+                        service_config["health_endpoint"],
+                        service_config.get("timeout", 10)
+                    )
+                    if not health_result["healthy"]:
+                        result["healthy"] = False
+                        result["message"] += f" but health endpoint failed: {health_result['message']}"
+                        
+            else:
+                result["healthy"] = False
+                result["message"] = f"Container {container_name} is {container.status}"
+                
+        except docker.errors.NotFound:
+            result["status"] = "container_not_found" 
+            result["message"] = f"Container {container_name} not found"
+            # Fall back to HTTP check if available
+            if "health_endpoint" in service_config:
+                return self._fallback_to_http_check(service_config, result)
+                
+        except docker.errors.APIError as e:
+            result["status"] = "docker_api_error"
+            result["message"] = f"Docker API error: {str(e)}"
+            # Fall back to HTTP check if available
+            if "health_endpoint" in service_config:
+                return self._fallback_to_http_check(service_config, result)
+                
+        except Exception as e:
+            result["status"] = "error"
+            result["message"] = f"Error checking container: {str(e)}"
+            # Fall back to HTTP check if available
+            if "health_endpoint" in service_config:
+                return self._fallback_to_http_check(service_config, result)
         
         return result
+    
+    def _fallback_to_http_check(self, service_config, docker_result) -> Dict:
+        """Fallback to HTTP health check when Docker fails"""
+        try:
+            health_result = self._check_http_endpoint(
+                service_config["health_endpoint"],
+                service_config.get("timeout", 10)
+            )
+            
+            # Update result to show it's using HTTP fallback
+            docker_result["status"] = "http_fallback"
+            docker_result["healthy"] = health_result["healthy"]
+            
+            if health_result["healthy"]:
+                docker_result["message"] = f"HTTP health check: {health_result['message']} (Docker: {docker_result['message']})"
+            else:
+                docker_result["message"] = f"HTTP health check failed: {health_result['message']} (Docker: {docker_result['message']})"
+                
+        except Exception as e:
+            docker_result["message"] += f" and HTTP health check failed: {str(e)}"
+            
+        return docker_result
+    
+    def _format_uptime(self, uptime_delta):
+        """Format uptime delta to human readable string like docker ps"""
+        total_seconds = int(uptime_delta.total_seconds())
+        
+        if total_seconds < 60:
+            return f"{total_seconds} seconds"
+        elif total_seconds < 3600:
+            minutes = total_seconds // 60
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+        elif total_seconds < 86400:
+            hours = total_seconds // 3600
+            return f"{hours} hour{'s' if hours != 1 else ''}"
+        else:
+            days = total_seconds // 86400
+            return f"{days} day{'s' if days != 1 else ''}"
     
     def check_remote_service(self, service_config) -> Dict:
         """Check remote service"""

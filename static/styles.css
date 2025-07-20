@@ -9,7 +9,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -461,6 +460,95 @@ body {
 /* ==============================
    📊 Status & Alerts
    ============================== */
+
+/* Deployment History Table */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-table th,
+.history-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.history-table th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.history-table tbody tr:hover {
+  background-color: #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+.history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  min-width: 80px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.status-badge.status-success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.status-badge.status-failed,
+.status-badge.status-error {
+  background: linear-gradient(135deg, #dc3545, #e74c3c);
+  color: white;
+}
+
+.status-badge.status-pending,
+.status-badge.status-running {
+  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  color: #333;
+}
+
+.status-badge.status-unknown {
+  background: linear-gradient(135deg, #6c757d, #495057);
+  color: white;
+}
+
+/* Action Buttons in Table */
+.history-table .btn {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.history-table .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
 .alert {
   padding: 1rem;
   border-radius: 8px;
@@ -967,6 +1055,29 @@ button:disabled {
   .last-update {
     font-size: 0.8rem;
   }
+  
+  /* Table responsive for tablet */
+  .history-table {
+    font-size: 0.9rem;
+  }
+  
+  .history-table th,
+  .history-table td {
+    padding: 10px 8px;
+  }
+  
+  /* Hide Client IP column on tablet */
+  .history-table th:nth-child(5),
+  .history-table td:nth-child(5) {
+    display: none;
+  }
+  
+  /* Status badge tablet size */
+  .status-badge {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    min-width: 70px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1014,6 +1125,51 @@ button:disabled {
   
   .summary-value {
     font-size: 1.5rem;
+  }
+  
+  /* Table responsiveness for mobile */
+  .history-table {
+    font-size: 0.85rem;
+  }
+  
+  .history-table th,
+  .history-table td {
+    padding: 8px 6px;
+  }
+  
+  /* Hide less important columns on mobile */
+  .history-table th:nth-child(4), /* Duration */
+  .history-table td:nth-child(4),
+  .history-table th:nth-child(5) { /* Client IP */
+    display: none;
+  }
+  
+  .history-table td:nth-child(5) {
+    display: none;
+  }
+  
+  /* Make server column more compact */
+  .history-table td:first-child {
+    min-width: 100px;
+  }
+  
+  .history-table td:first-child small {
+    display: block;
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+  
+  /* Status badge responsive */
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    min-width: 60px;
+  }
+  
+  /* Action buttons responsive */
+  .history-table .btn {
+    padding: 3px 6px;
+    font-size: 0.7rem;
   }
   
   /* Configuration modal responsiveness */
@@ -1080,5 +1236,219 @@ button:disabled {
     min-height: 250px;
     max-height: 50vh;
     padding: 8px;
+  }
+  
+  /* Token modal for very small screens */
+  .token-modal {
+    min-width: 260px;
+    padding: 1rem;
+  }
+  
+  .token-modal h3 {
+    font-size: 1.2rem;
+  }
+  
+  /* History table adjustments for very small screens */
+  .history-table {
+    font-size: 11px;
+  }
+  
+  .history-table th,
+  .history-table td {
+    padding: 4px 2px;
+  }
+  
+  .status-badge {
+    font-size: 8px;
+    padding: 1px 3px;
+  }
+  
+  .btn-small {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+}
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.pagination-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    min-width: 40px;
+    text-align: center;
+}
+
+.pagination-btn:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.pagination-btn.active {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+    transform: scale(1.05);
+}
+
+.pagination-btn:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.pagination-ellipsis {
+    padding: 8px 4px;
+    color: #6b7280;
+    font-weight: bold;
+}
+
+/* Log Content Styles */
+.log-row {
+    background-color: #f8f9fa;
+}
+
+.log-content {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 10px;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.log-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.log-header .btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.log-header .btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.log-body {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.log-output {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+}
+
+.float-right {
+    float: right;
+}
+
+/* Responsive Design for Pagination and Logs */
+@media (max-width: 768px) {
+    .pagination {
+        gap: 3px;
+    }
+    
+    .pagination-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 35px;
+    }
+    
+    .log-header {
+        padding: 8px 12px;
+        font-size: 14px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .log-header .btn {
+        align-self: flex-end;
+    }
+    
+    .log-body {
+        padding: 12px;
+        max-height: 300px;
+    }
+    
+    .log-output {
+        font-size: 12px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .pagination {
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding: 0 10px;
+    }
+    
+    .pagination-btn {
+        padding: 5px 8px;
+        font-size: 11px;
+        min-width: 30px;
+    }
+    
+    .log-content {
+        margin: 5px;
+    }
+    
+    .log-header {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    .log-body {
+        padding: 10px;
+        max-height: 250px;
+    }
+    
+    .log-output {
+        font-size: 11px;
+        padding: 10px;
+    }
+}
+  
+  .token-modal input {
+    font-size: 0.9rem;
+    padding: 0.6rem;
   }
 }
