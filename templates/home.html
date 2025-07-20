@@ -10,20 +10,29 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🚀 Trigger Deploy Server</h1>
+      <h1>Trigger Deploy Server</h1>
       <p>Automated deployment management platform</p>
     </div>
     
     <div class="content">
       <!-- Quick Actions -->
       <div class="text-center mb-3">
-        <div class="form-group">
+        <!-- Health Input - Hidden by default -->
+        <div id="healthInputContainer" class="form-group hidden">
           <input 
             id="healthTarget" 
             class="form-control" 
             placeholder="Enter domain for health check (default: google.co.id)" 
             style="max-width: 400px; margin: 0 auto;"
           />
+          <div class="mt-2">
+            <button onclick="executeHealthCheck()" class="btn btn-success btn-small">
+              ✅ Execute Check
+            </button>
+            <button onclick="cancelHealthCheck()" class="btn btn-secondary btn-small">
+              ❌ Cancel
+            </button>
+          </div>
         </div>
         
         <a href="/deploy-servers" class="btn btn-primary">
@@ -32,7 +41,7 @@
         <button onclick="loadLogList()" class="btn btn-secondary" id="logBtn">
           📁 Browse Logs
         </button>
-        <button onclick="checkHealth()" class="btn btn-success" id="healthBtn">
+        <button onclick="showHealthInput()" class="btn btn-success" id="healthBtn">
           💗 Check Health
         </button>
       </div>

@@ -10,24 +10,40 @@ let currentViewedLog = null;
 /**
  * 🏥 Health Check Functions
  */
-function checkHealth() {
+function showHealthInput() {
+  const container = document.getElementById("healthInputContainer");
+  const btn = document.getElementById("healthBtn");
+  
+  hideAllDisplays();
+  container.classList.remove("hidden");
+  btn.textContent = "🔄 Checking Health...";
+  btn.disabled = true;
+  
+  // Focus on input
+  document.getElementById("healthTarget").focus();
+}
+
+function cancelHealthCheck() {
+  const container = document.getElementById("healthInputContainer");
+  const btn = document.getElementById("healthBtn");
+  const input = document.getElementById("healthTarget");
+  
+  container.classList.add("hidden");
+  btn.textContent = "💗 Check Health";
+  btn.disabled = false;
+  input.value = "";
+}
+
+function executeHealthCheck() {
   const el = document.getElementById("healthStatus");
   const btn = document.getElementById("healthBtn");
-  const output = document.getElementById("logOutput");
-  const logBox = document.getElementById("logListBox");
+  const container = document.getElementById("healthInputContainer");
+  const target = document.getElementById("healthTarget").value || "google.co.id";
 
-  // Toggle logic
-  if (!el.classList.contains("hidden")) {
-    hideAllDisplays();
-    btn.textContent = "💗 Check Health";
-    return;
-  }
-
-  // Hide other displays
-  hideAllDisplays();
+  // Hide input container and show results
+  container.classList.add("hidden");
   el.classList.remove("hidden");
 
-  const target = document.getElementById("healthTarget").value || "google.co.id";
   btn.textContent = "⏳ Checking...";
   btn.disabled = true;
 
@@ -49,7 +65,6 @@ function checkHealth() {
             <p>${data.resolve}</p>
           </div>
         </div>
-        
         <div class="health-item ${data.ping.includes('❌') ? 'error' : 'success'}">
           <div class="health-icon">📡</div>
           <div class="health-content">
@@ -57,31 +72,25 @@ function checkHealth() {
             <p>${data.ping}</p>
           </div>
         </div>
-        
-        <div class="health-item success">
-          <div class="health-icon">🕐</div>
+        <div class="health-item ${data.http.includes('❌') ? 'error' : 'success'}">
+          <div class="health-icon">🌍</div>
           <div class="health-content">
-            <h4>Timestamp</h4>
-            <p>${new Date(data.timestamp).toLocaleString()}</p>
+            <h4>HTTP Response</h4>
+            <p>${data.http}</p>
           </div>
         </div>
       `;
     })
     .catch(err => {
-      btn.textContent = "❌ Hide Health";
+      btn.textContent = "💗 Check Health";
       btn.disabled = false;
-      
-      const healthContent = document.getElementById("healthContent");
-      healthContent.innerHTML = `
-        <div class="health-item error">
-          <div class="health-icon">❌</div>
-          <div class="health-content">
-            <h4>Health Check Failed</h4>
-            <p>${err.message}</p>
-          </div>
-        </div>
-      `;
+      showError("Health check failed: " + err.message);
     });
+}
+
+// Legacy function for backward compatibility  
+function checkHealth() {
+  showHealthInput();
 }
 
 /**

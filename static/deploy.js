@@ -83,7 +83,7 @@ class DeployManager {
                     ${server.description ? `<p class="text-muted">${server.description}</p>` : ''}
                 </div>
                 <div class="server-actions">
-                    <button class="btn btn-primary btn-sm">
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); deployManager.selectServer('${server.ip || server.alias}', '${server.name}')">
                         🚀 Deploy
                     </button>
                 </div>
@@ -104,6 +104,8 @@ class DeployManager {
     }
 
     selectServer(serverIp, serverName) {
+        console.log('selectServer called with:', serverIp, serverName);
+        
         if (this.isLoading) return;
         
         this.selectedServer = {
@@ -111,22 +113,34 @@ class DeployManager {
             name: serverName
         };
         
+        console.log('Selected server:', this.selectedServer);
         this.showAuthModal();
     }
 
     showAuthModal() {
+        console.log('showAuthModal called');
         const modal = document.getElementById('authModal');
         const tokenInput = document.getElementById('deployTokenInput');
         
+        if (!modal) {
+            console.error('Auth modal not found!');
+            return;
+        }
+        
+        console.log('Showing modal...');
         modal.style.display = 'flex';
         
         // Focus on token input
         setTimeout(() => {
-            tokenInput.focus();
+            if (tokenInput) {
+                tokenInput.focus();
+            }
         }, 100);
         
         // Clear previous token
-        tokenInput.value = '';
+        if (tokenInput) {
+            tokenInput.value = '';
+        }
     }
 
     closeModal() {
