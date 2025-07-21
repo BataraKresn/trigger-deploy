@@ -12,10 +12,10 @@ else
     echo "✅ .env file found"
 fi
 
-echo "🔧 Checking if network 'dev-trigger-network' exists..."
+echo "🔧 Ensuring network 'dev-trigger-network' exists with correct configuration..."
 if ! docker network ls | grep -q 'dev-trigger-network'; then
     echo "🌐 Creating Docker network: dev-trigger-network"
-    docker network create dev-trigger-network
+    docker network create --driver bridge --subnet 172.20.0.0/16 --gateway 172.20.0.1 dev-trigger-network
 else
     echo "✅ Network 'dev-trigger-network' already exists"
 fi

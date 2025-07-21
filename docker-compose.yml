@@ -119,9 +119,5 @@ volumes:
 
 networks:
   dev-trigger-network:
-    driver: bridge
+    external: true
     name: dev-trigger-network
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-          gateway: 172.20.0.1

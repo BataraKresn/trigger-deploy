@@ -27,8 +27,12 @@ trigger-deploy/
 ├── 📁 scripts/                 # Shell scripts
 ├── 📁 logs/                    # Application logs
 ├── 📁 trigger-logs/            # Deployment logs
-├── app.py                      # Legacy main application (deprecated)
-├── app_new.py                  # New clean main application
+├── 📁 tests/                   # Test files
+├── 📁 data/                    # Database data
+├── app.py                      # Main Flask application
+├── wsgi.py                     # WSGI entry point
+├── docker-compose.yml          # Docker compose configuration
+├── Dockerfile                  # Docker image configuration
 └── requirements.txt            # Python dependencies
 ```
 
@@ -42,16 +46,21 @@ trigger-deploy/
 - **📱 Responsive Design**: Mobile-friendly interface
 - **📧 Email Notifications**: Deployment status alerts
 - **🐳 Docker Support**: Container deployment capabilities
+- **🗃️ PostgreSQL Integration**: Robust database with health monitoring
+- **📺 Telegram Notifications**: Real-time deployment alerts
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.8+
-- Docker (optional)
+- Python 3.12+
+- Docker & Docker Compose (recommended)
+- PostgreSQL (if not using Docker)
 - SSH access to target servers
 
 ### Installation
+
+#### Option 1: Docker Deployment (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -59,26 +68,70 @@ trigger-deploy/
    cd trigger-deploy
    ```
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment**
+2. **Configure environment**
    ```bash
    cp .env.example .env
    # Edit .env with your configurations
    ```
 
-4. **Setup server configurations**
+3. **Setup server configurations**
    ```bash
    # Edit config/servers.json
    # Edit config/services.json
    ```
 
-5. **Run the application**
+4. **Run with Docker Compose**
    ```bash
-   python app_new.py
+   docker-compose up -d
+   ```
+
+5. **Access the application**
+   ```bash
+   # Application: http://localhost:3111
+   # PostgreSQL: localhost:5432
+   ```
+
+#### Option 2: Manual Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd trigger-deploy
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Setup PostgreSQL database**
+   ```bash
+   # Install PostgreSQL and create database
+   createdb trigger_deploy
+   psql trigger_deploy < scripts/init-db.sql
+   ```
+
+5. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configurations
+   ```
+
+6. **Setup server configurations**
+   ```bash
+   # Edit config/servers.json
+   # Edit config/services.json
+   ```
+
+7. **Run the application**
+   ```bash
+   python app.py
    ```
 
 ## ⚙️ Configuration
@@ -88,6 +141,20 @@ trigger-deploy/
 ```bash
 # Security
 DEPLOY_TOKEN=your-secure-token
+LOGIN_PASSWORD=admin123
+JWT_SECRET=your-jwt-secret-key
+
+# PostgreSQL Database Configuration
+POSTGRES_DB=trigger_deploy
+POSTGRES_USER=trigger_deploy_user
+POSTGRES_PASSWORD=secure_password_123
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+DATABASE_URL=postgresql://trigger_deploy_user:secure_password_123@localhost:5432/trigger_deploy
+
+# Application Configuration
+APP_PORT=3111
+FLASK_ENV=production
 
 # Logging
 LOG_DIR=trigger-logs
@@ -102,13 +169,27 @@ SERVICES_FILE=config/services.json
 RATE_LIMIT_REQUESTS=10
 RATE_LIMIT_WINDOW=60
 
-# Email Notifications (optional)
+# Email Notifications
 EMAIL_ENABLED=false
 EMAIL_TO=admin@example.com
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
+
+# Telegram Notifications
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_CHAT_ID=your-chat-id
+TELEGRAM_ENABLED=false
+
+# Docker Configuration
+DOCKER_ENABLED=true
+SHOW_DEMO_CREDENTIALS=false
+
+# Security Headers
+SECURE_HEADERS=true
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_HTTPONLY=true
 ```
 
 ### Server Configuration (config/servers.json)
@@ -195,20 +276,97 @@ The application follows a clean architecture pattern:
 
 ### Development
 ```bash
-python app_new.py
+# Manual
+python app.py
+
+# Or with Docker
+docker-compose up
 ```
 
 ### Production with Gunicorn
 ```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app_new:app
+gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
 ```
 
-### Docker
+### Docker Production
 ```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Update and rebuild
+docker-compose down
+docker-compose build --no-cache
 docker-compose up -d
 ```
 
-## 📊 Monitoring
+### Health Checks
+
+The application includes comprehensive health monitoring:
+
+- **Application Health**: `GET /api/health`
+- **PostgreSQL Health**: Automated health checks in Docker
+- **Service Monitoring**: Real-time HTTP endpoint monitoring
+
+## � Docker Configuration
+
+The project includes a comprehensive Docker setup with the following services:
+
+### Services
+
+- **PostgreSQL**: Database service with persistent storage
+- **Trigger Deploy App**: Main application service
+
+### Docker Compose Features
+
+- **Health Checks**: Automated service health monitoring
+- **Volume Persistence**: Data and logs persistence
+- **Network Isolation**: Custom bridge network for security
+- **Environment Configuration**: Flexible environment variable setup
+- **Development Mode**: Hot reload with volume mounting
+
+### Container Details
+
+```yaml
+# PostgreSQL Container
+- Image: postgres:15-alpine
+- Port: 5432
+- Health Check: pg_isready
+- Volumes: postgres_data, init-db.sql, logs
+
+# Application Container
+- Build: Custom Dockerfile
+- Port: 3111 (configurable via APP_PORT)
+- Health Check: curl /api/health
+- Volumes: SSH keys, logs, config, development files
+```
+
+### Docker Commands
+
+```bash
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f [service-name]
+
+# Execute commands in container
+docker-compose exec dev-trigger-deploy bash
+docker-compose exec postgres psql -U trigger_deploy_user -d trigger_deploy
+
+# Restart specific service
+docker-compose restart [service-name]
+
+# Remove containers and volumes
+docker-compose down -v
+```
+
+## �📊 Monitoring
 
 The application provides comprehensive monitoring:
 
@@ -237,14 +395,114 @@ The application provides comprehensive monitoring:
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
+## 🆘 Support & Troubleshooting
 
-For issues and questions:
-1. Check the logs in `logs/` directory
+### Common Issues
+
+#### Database Connection Issues
+```bash
+# Check PostgreSQL status
+docker-compose exec postgres pg_isready
+
+# View PostgreSQL logs
+docker-compose logs postgres
+
+# Connect to database
+docker-compose exec postgres psql -U trigger_deploy_user -d trigger_deploy
+```
+
+#### Application Issues
+```bash
+# Check application logs
+docker-compose logs dev-trigger-deploy
+
+# Check application health
+curl http://localhost:3111/api/health
+
+# Restart application
+docker-compose restart dev-trigger-deploy
+```
+
+#### SSH Key Issues
+```bash
+# Ensure SSH keys exist and have correct permissions
+ls -la ~/.ssh/
+chmod 600 ~/.ssh/id_rsa
+chmod 644 ~/.ssh/id_rsa.pub
+```
+
+#### Port Conflicts
+```bash
+# If port 3111 is in use, change APP_PORT in .env
+APP_PORT=3112
+
+# If PostgreSQL port 5432 is in use
+POSTGRES_PORT=5433
+```
+
+### Debug Mode
+
+To run in debug mode:
+```bash
+# Set environment variable
+FLASK_ENV=development
+
+# Or in .env file
+echo "FLASK_ENV=development" >> .env
+```
+
+### Logs Location
+
+- Application logs: `logs/app.log`
+- Deployment logs: `trigger-logs/`
+- PostgreSQL logs: `logs/postgresql/`
+- Docker logs: `docker-compose logs`
+
+For additional issues and questions:
+1. Check the logs in respective directories
 2. Review configuration files
 3. Ensure all dependencies are installed
-4. Verify server connectivity
+4. Verify server connectivity and SSH access
 
 ---
+
+## 🚀 Quick Reference
+
+### Essential Commands
+
+```bash
+# Start the application
+docker-compose up -d
+
+# View all logs
+docker-compose logs -f
+
+# Stop the application
+docker-compose down
+
+# Update and restart
+docker-compose down && docker-compose build && docker-compose up -d
+
+# Database access
+docker-compose exec postgres psql -U trigger_deploy_user -d trigger_deploy
+
+# Application shell
+docker-compose exec dev-trigger-deploy bash
+```
+
+### Default Access
+
+- **Web Interface**: http://localhost:3111
+- **PostgreSQL**: localhost:5432
+- **Default Login**: admin123 (configurable via LOGIN_PASSWORD)
+- **API Token**: SATindonesia2026 (configurable via DEPLOY_TOKEN)
+
+### Important Files
+
+- **Main Config**: `.env`
+- **Servers**: `config/servers.json`
+- **Services**: `config/services.json`
+- **Docker**: `docker-compose.yml`
+- **Logs**: `logs/` and `trigger-logs/`
 
 **Built with ❤️ for streamlined deployment management**
