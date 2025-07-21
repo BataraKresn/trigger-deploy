@@ -62,6 +62,15 @@ trigger-deploy/
 
 #### Option 1: Docker Deployment (Recommended)
 
+**Quick Setup (First Time):**
+```bash
+git clone <repository-url>
+cd trigger-deploy
+chmod +x setup.sh
+./setup.sh
+```
+
+**Manual Setup:**
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
@@ -74,18 +83,23 @@ trigger-deploy/
    # Edit .env with your configurations
    ```
 
-3. **Setup server configurations**
+3. **Create required directories**
+   ```bash
+   mkdir -p ./data/postgres ./logs ./trigger-logs ./config
+   ```
+
+4. **Setup server configurations**
    ```bash
    # Edit config/servers.json
    # Edit config/services.json
    ```
 
-4. **Run with Docker Compose**
+5. **Run with Docker Compose**
    ```bash
    docker-compose up -d
    ```
 
-5. **Access the application**
+6. **Access the application**
    ```bash
    # Application: http://localhost:3111
    # PostgreSQL: localhost:5432
@@ -411,6 +425,20 @@ docker-compose logs postgres
 docker-compose exec postgres psql -U trigger_deploy_user -d trigger_deploy
 ```
 
+#### Volume/Directory Issues
+```bash
+# If you get "no such file or directory" errors:
+mkdir -p ./data/postgres ./logs ./trigger-logs ./config
+
+# Clean start (removes all data):
+docker-compose down -v
+docker volume prune -f
+./setup.sh
+
+# Fix permissions (if needed):
+sudo chown -R $USER:$USER ./data ./logs ./trigger-logs
+```
+
 #### Application Issues
 ```bash
 # Check application logs
@@ -471,8 +499,17 @@ For additional issues and questions:
 ### Essential Commands
 
 ```bash
+# First time setup (recommended)
+./setup.sh
+
 # Start the application
 docker-compose up -d
+
+# Update and restart
+./update-docker.sh
+
+# Fix network/volume issues
+./fix-network.sh
 
 # View all logs
 docker-compose logs -f
@@ -480,8 +517,8 @@ docker-compose logs -f
 # Stop the application
 docker-compose down
 
-# Update and restart
-docker-compose down && docker-compose build && docker-compose up -d
+# Clean restart (removes data)
+docker-compose down -v && ./setup.sh
 
 # Database access
 docker-compose exec postgres psql -U trigger_deploy_user -d trigger_deploy
@@ -492,7 +529,9 @@ docker-compose exec dev-trigger-deploy bash
 
 ### Default Access
 
-- **Web Interface**: http://localhost:3111
+- **Landing Page**: http://localhost:3111
+- **Dashboard**: http://localhost:3111/home
+- **Login Page**: http://localhost:3111/login
 - **PostgreSQL**: localhost:5432
 - **Default Login**: admin123 (configurable via LOGIN_PASSWORD)
 - **API Token**: SATindonesia2026 (configurable via DEPLOY_TOKEN)

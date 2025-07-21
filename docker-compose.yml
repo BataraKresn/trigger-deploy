@@ -78,7 +78,7 @@ services:
     env_file:
       - .env
     volumes:
-      # SSH keys for deployment
+      # SSH keys for deployment (optional - comment out if not needed)
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
       # Application data
@@ -112,12 +112,19 @@ services:
 volumes:
   postgres_data:
     driver: local
+    # Option 1: Bind mount (current)
     driver_opts:
       type: none
       o: bind
       device: ./data/postgres
+    # Option 2: Named volume (alternative - uncomment if bind mount fails)
+    # driver: local
 
 networks:
   dev-trigger-network:
-    external: true
+    driver: bridge
     name: dev-trigger-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

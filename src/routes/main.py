@@ -13,8 +13,20 @@ main_bp = Blueprint('main', __name__)
 
 
 @main_bp.route('/')
+def landing():
+    """Landing page"""
+    return render_template('landing.html')
+
+
+@main_bp.route('/home')
 def home():
-    """Home page"""
+    """Home page (dashboard)"""
+    return render_template('home.html')
+
+
+@main_bp.route('/dashboard')
+def dashboard():
+    """Dashboard page (same as home but with explicit route)"""
     return render_template('home.html')
 
 
@@ -22,12 +34,6 @@ def home():
 def login():
     """Login page"""
     return render_template('login.html')
-
-
-@main_bp.route('/dashboard')
-def dashboard():
-    """Dashboard page (same as home but with explicit route)"""
-    return render_template('home.html')
 
 
 @main_bp.route('/users')
