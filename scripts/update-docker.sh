@@ -12,12 +12,16 @@ else
     echo "✅ .env file found"
 fi
 
-echo "📁 Creating required directories..."
-mkdir -p ./data/postgres
-mkdir -p ./logs
-mkdir -p ./trigger-logs
-mkdir -p ./config
-echo "✅ Directories created"
+echo "📁 Ensuring required directories exist..."
+for dir in ./data/postgres ./logs ./trigger-logs ./config; do
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir"
+        echo "📂 Created: $dir"
+    else
+        echo "📂 Exists: $dir"
+    fi
+done
+echo "✅ Directory check complete"
 
 echo "🔧 Ensuring network 'dev-trigger-network' exists with correct configuration..."
 if ! docker network ls | grep -q 'dev-trigger-network'; then
