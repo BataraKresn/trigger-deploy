@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Trigger Deploy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.0/index.min.js"></script>
+</head>
+<body>
+    <div class="analytics-container">
+        <!-- Header -->
+        <header class="analytics-header">
+            <div class="header-content">
+                <h1><i class="fas fa-chart-line"></i> Analytics Dashboard</h1>
+                <div class="header-actions">
+                    <button class="refresh-btn" onclick="refreshAllData()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <a href="{{ url_for('main.home') }}" class="home-btn">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="analytics-main">
+            <!-- Summary Cards -->
+            <section class="summary-section">
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="card-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Total Deployments</h3>
+                            <div class="card-value" id="total-deployments">-</div>
+                            <div class="card-change positive" id="deployments-change">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Success Rate</h3>
+                            <div class="card-value" id="success-rate">-</div>
+                            <div class="card-change" id="success-rate-change">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Avg Duration</h3>
+                            <div class="card-value" id="avg-duration">-</div>
+                            <div class="card-change" id="duration-change">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Active Servers</h3>
+                            <div class="card-value" id="active-servers">-</div>
+                            <div class="card-change" id="servers-change">-</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="charts-grid">
+                    <!-- Deployment Trends -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Deployment Trends</h3>
+                            <div class="chart-controls">
+                                <select id="trend-period" onchange="updateDeploymentTrends()">
+                                    <option value="7">Last 7 days</option>
+                                    <option value="30" selected>Last 30 days</option>
+                                    <option value="90">Last 90 days</option>
+                                </select>
+                            </div>
+                        </div>
+                        <canvas id="deployment-trends-chart"></canvas>
+                    </div>
+
+                    <!-- Success Rate Pie Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Success vs Failure Rate</h3>
+                        </div>
+                        <canvas id="success-rate-chart"></canvas>
+                    </div>
+
+                    <!-- Server Performance -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Server Performance</h3>
+                            <div class="chart-controls">
+                                <button class="btn-small" onclick="refreshServerPerformance()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <canvas id="server-performance-chart"></canvas>
+                    </div>
+
+                    <!-- Response Time Trends -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>Response Time Trends</h3>
+                        </div>
+                        <canvas id="response-time-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Health Monitoring Section -->
+            <section class="health-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-heartbeat"></i> System Health</h2>
+                    <button class="btn-secondary" onclick="refreshHealthData()">
+                        <i class="fas fa-sync-alt"></i> Refresh Health
+                    </button>
+                </div>
+
+                <div class="health-grid">
+                    <!-- Health Summary -->
+                    <div class="health-card">
+                        <h3>Health Summary</h3>
+                        <div id="health-summary" class="health-content">
+                            <div class="loading">Loading health data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Alerts -->
+                    <div class="health-card">
+                        <h3>Recent Alerts</h3>
+                        <div id="recent-alerts" class="health-content">
+                            <div class="loading">Loading alerts...</div>
+                        </div>
+                    </div>
+
+                    <!-- System Metrics -->
+                    <div class="health-card full-width">
+                        <h3>System Metrics</h3>
+                        <div id="system-metrics" class="metrics-grid">
+                            <div class="metric-item">
+                                <label>CPU Usage</label>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="cpu-usage" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="cpu-value">0%</span>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <label>Memory Usage</label>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="memory-usage" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="memory-value">0%</span>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <label>Disk Usage</label>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="disk-usage" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="disk-value">0%</span>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <label>Response Time</label>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="response-time" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="response-time-value">0ms</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Activity Section -->
+            <section class="activity-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> User Activity</h2>
+                    <div class="activity-controls">
+                        <select id="activity-period" onchange="updateUserActivity()">
+                            <option value="7">Last 7 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="activity-grid">
+                    <!-- Top Users -->
+                    <div class="activity-card">
+                        <h3>Top Users</h3>
+                        <div id="top-users" class="user-list">
+                            <div class="loading">Loading user data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="activity-card">
+                        <h3>Recent Activity</h3>
+                        <div id="recent-activity" class="activity-list">
+                            <div class="loading">Loading activity...</div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Chart -->
+                    <div class="activity-card full-width">
+                        <h3>User Activity Trends</h3>
+                        <canvas id="user-activity-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Section -->
+            <section class="config-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cogs"></i> Configuration Management</h2>
+                    <button class="btn-primary" onclick="openConfigModal()">
+                        <i class="fas fa-plus"></i> New Configuration
+                    </button>
+                </div>
+
+                <div class="config-grid">
+                    <!-- Config Types -->
+                    <div class="config-card">
+                        <h3>Configuration Types</h3>
+                        <div id="config-types" class="config-list">
+                            <div class="config-item" onclick="loadConfigVersions('servers')">
+                                <i class="fas fa-server"></i>
+                                <span>Servers Configuration</span>
+                                <div class="config-status active">Active</div>
+                            </div>
+                            <div class="config-item" onclick="loadConfigVersions('services')">
+                                <i class="fas fa-globe"></i>
+                                <span>Services Configuration</span>
+                                <div class="config-status active">Active</div>
+                            </div>
+                            <div class="config-item" onclick="loadConfigVersions('application')">
+                                <i class="fas fa-cog"></i>
+                                <span>Application Configuration</span>
+                                <div class="config-status warning">Needs Update</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Changes -->
+                    <div class="config-card">
+                        <h3>Recent Changes</h3>
+                        <div id="config-changes" class="changes-list">
+                            <div class="loading">Loading configuration changes...</div>
+                        </div>
+                    </div>
+
+                    <!-- Config Versions -->
+                    <div class="config-card full-width">
+                        <h3>Configuration Versions</h3>
+                        <div id="config-versions" class="versions-table">
+                            <p class="info-text">Select a configuration type to view versions</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Configuration Modal -->
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Configuration Management</h3>
+                <span class="close" onclick="closeConfigModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="config-type-select">Configuration Type:</label>
+                    <select id="config-type-select">
+                        <option value="servers">Servers</option>
+                        <option value="services">Services</option>
+                        <option value="application">Application</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="config-description">Description:</label>
+                    <textarea id="config-description" placeholder="Describe the changes..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="config-data">Configuration Data (JSON):</label>
+                    <textarea id="config-data" rows="15" placeholder="Enter JSON configuration..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-secondary" onclick="validateConfiguration()">
+                        <i class="fas fa-check"></i> Validate
+                    </button>
+                    <button class="btn-primary" onclick="saveConfiguration()">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                </div>
+                <div id="config-validation" class="validation-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading analytics data...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/analytics-dashboard.js') }}"></script>
+</body>
+</html>
