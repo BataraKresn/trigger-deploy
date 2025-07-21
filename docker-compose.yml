@@ -1,8 +1,8 @@
 services:
-  trigger-deployer:
+  dev-trigger-deploy:
     build: .
-    image: trigger-deploy
-    container_name: trigger-deployer
+    image: dev-trigger-deploy
+    container_name: dev-trigger-deploy
     ports:
       - "5000:5000"
     restart: always

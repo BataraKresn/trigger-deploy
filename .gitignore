@@ -3,3 +3,6 @@ trigger-logs/
 __pycache__/
 *.pyc
 *.log
+.venv
+*.env
+*.DS_Store
