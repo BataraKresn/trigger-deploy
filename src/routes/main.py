@@ -89,6 +89,12 @@ def docs():
     return render_template('docs.html')
 
 
+@main_bp.route('/help')
+def help_center():
+    """Help Center page"""
+    return render_template('help.html')
+
+
 @main_bp.route('/api')
 def api_docs():
     """API Documentation page (alias)"""

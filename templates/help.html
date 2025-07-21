@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🆘 Help Center - Trigger Deploy Server</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/help.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="help-container">
+        <!-- Header -->
+        <header class="help-header">
+            <div class="container">
+                <div class="header-content">
+                    <h1>🆘 Help Center</h1>
+                    <p>Get help with Trigger Deploy Server - Your automated deployment management platform</p>
+                </div>
+                <div class="header-actions">
+                    <a href="/dashboard" class="btn btn-primary">← Back to Dashboard</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="help-content">
+            <div class="container">
+                <!-- Search Box -->
+                <div class="search-section">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="🔍 Search for help topics..." class="search-input">
+                        <button id="search-btn" class="search-btn">Search</button>
+                    </div>
+                </div>
+
+                <!-- Help Categories -->
+                <div class="help-grid">
+                    <!-- FAQ Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">❓</div>
+                            <h3>Frequently Asked Questions</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="faq" class="help-content-section">
+                            <div class="faq-item">
+                                <h4>Q: How do I trigger a deployment?</h4>
+                                <p><strong>A:</strong> Go to Deploy Servers page, select your target server, and click "Trigger Deployment". You can also use the API endpoint <code>POST /trigger</code> with your deployment token.</p>
+                            </div>
+                            <div class="faq-item">
+                                <h4>Q: What is the difference between LOGIN_PASSWORD and DEPLOY_TOKEN?</h4>
+                                <p><strong>A:</strong> LOGIN_PASSWORD is for web interface access, while DEPLOY_TOKEN is for API operations and CI/CD integrations. They serve different authentication purposes.</p>
+                            </div>
+                            <div class="faq-item">
+                                <h4>Q: How do I add a new server for deployment?</h4>
+                                <p><strong>A:</strong> Edit the <code>config/servers.json</code> file and add your server configuration with IP, username, SSH key path, and deployment directory.</p>
+                            </div>
+                            <div class="faq-item">
+                                <h4>Q: Why is my deployment failing?</h4>
+                                <p><strong>A:</strong> Check: 1) SSH connectivity to target server, 2) SSH key permissions, 3) Deployment path exists, 4) User has necessary permissions. View logs in the deployment history.</p>
+                            </div>
+                            <div class="faq-item">
+                                <h4>Q: How do I configure email notifications?</h4>
+                                <p><strong>A:</strong> Set EMAIL_ENABLED=true in .env file and configure SMTP settings (server, port, username, password). Test with the notification endpoint.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Troubleshooting Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">🔧</div>
+                            <h3>Troubleshooting Guide</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="troubleshooting" class="help-content-section">
+                            <div class="troubleshooting-item">
+                                <h4>🔴 Docker Container Won't Start</h4>
+                                <ul>
+                                    <li>Check if ports 3111 and 5432 are available</li>
+                                    <li>Ensure .env file exists with proper configurations</li>
+                                    <li>Verify PostgreSQL data directory permissions</li>
+                                    <li>Run: <code>docker-compose logs</code> to see error details</li>
+                                </ul>
+                            </div>
+                            <div class="troubleshooting-item">
+                                <h4>🔴 SSH Connection Failures</h4>
+                                <ul>
+                                    <li>Verify SSH key exists at ~/.ssh/id_rsa</li>
+                                    <li>Check SSH key permissions: <code>chmod 600 ~/.ssh/id_rsa</code></li>
+                                    <li>Test SSH manually: <code>ssh user@server-ip</code></li>
+                                    <li>Add server to known_hosts</li>
+                                </ul>
+                            </div>
+                            <div class="troubleshooting-item">
+                                <h4>🔴 PostgreSQL Connection Issues</h4>
+                                <ul>
+                                    <li>Check if PostgreSQL container is running</li>
+                                    <li>Verify database credentials in .env file</li>
+                                    <li>Ensure database network connectivity</li>
+                                    <li>Check PostgreSQL logs for errors</li>
+                                </ul>
+                            </div>
+                            <div class="troubleshooting-item">
+                                <h4>🔴 API Authentication Failures</h4>
+                                <ul>
+                                    <li>Verify DEPLOY_TOKEN matches in .env file</li>
+                                    <li>Use correct Authorization header: Bearer TOKEN</li>
+                                    <li>Check token expiration if using JWT</li>
+                                    <li>Ensure special characters are properly encoded</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Tutorials Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">🎥</div>
+                            <h3>Video Tutorials</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="tutorials" class="help-content-section">
+                            <div class="tutorial-item">
+                                <h4>📹 Getting Started with Trigger Deploy</h4>
+                                <p>Learn the basics of setting up and configuring your deployment server.</p>
+                                <div class="tutorial-placeholder">
+                                    <div class="video-placeholder">
+                                        <span>🎬</span>
+                                        <p>Video Tutorial Coming Soon</p>
+                                        <p>Duration: ~15 minutes</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tutorial-item">
+                                <h4>📹 Advanced Configuration & CI/CD Integration</h4>
+                                <p>Advanced setup including GitHub Actions, webhook configurations, and monitoring.</p>
+                                <div class="tutorial-placeholder">
+                                    <div class="video-placeholder">
+                                        <span>🎬</span>
+                                        <p>Video Tutorial Coming Soon</p>
+                                        <p>Duration: ~25 minutes</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tutorial-item">
+                                <h4>📹 Monitoring & Troubleshooting</h4>
+                                <p>How to effectively monitor deployments and troubleshoot common issues.</p>
+                                <div class="tutorial-placeholder">
+                                    <div class="video-placeholder">
+                                        <span>🎬</span>
+                                        <p>Video Tutorial Coming Soon</p>
+                                        <p>Duration: ~20 minutes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Support Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">📞</div>
+                            <h3>Contact Support</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="contact" class="help-content-section">
+                            <div class="contact-options">
+                                <div class="contact-method">
+                                    <h4>📧 Email Support</h4>
+                                    <p>For technical issues and general inquiries</p>
+                                    <button data-method="email" class="btn btn-outline">
+                                        Send Email
+                                    </button>
+                                </div>
+                                <div class="contact-method">
+                                    <h4>💬 Live Chat</h4>
+                                    <p>Real-time support for urgent issues</p>
+                                    <button data-method="chat" class="btn btn-primary">
+                                        Start Chat
+                                    </button>
+                                </div>
+                                <div class="contact-method">
+                                    <h4>📋 Bug Report</h4>
+                                    <p>Report bugs or request features</p>
+                                    <button data-method="ticket" class="btn btn-secondary">
+                                        Report Issue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Known Issues Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">⚠️</div>
+                            <h3>Known Issues</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="issues" class="help-content-section">
+                            <div class="issue-item">
+                                <div class="issue-severity high">HIGH</div>
+                                <h4>PostgreSQL Connection Pool Timeout</h4>
+                                <p><strong>Status:</strong> Under Investigation</p>
+                                <p><strong>Workaround:</strong> Restart PostgreSQL container if experiencing timeouts</p>
+                                <p><strong>ETA Fix:</strong> Next release</p>
+                            </div>
+                            <div class="issue-item">
+                                <div class="issue-severity medium">MEDIUM</div>
+                                <h4>Large Log Files Performance Impact</h4>
+                                <p><strong>Status:</strong> Known Issue</p>
+                                <p><strong>Workaround:</strong> Enable log rotation in configuration</p>
+                                <p><strong>ETA Fix:</strong> v2.2.0</p>
+                            </div>
+                            <div class="issue-item">
+                                <div class="issue-severity low">LOW</div>
+                                <h4>Mobile UI Minor Layout Issues</h4>
+                                <p><strong>Status:</strong> In Progress</p>
+                                <p><strong>Workaround:</strong> Use desktop browser for optimal experience</p>
+                                <p><strong>ETA Fix:</strong> v2.1.1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Requests Section -->
+                    <div class="help-card">
+                        <div class="help-card-header">
+                            <div class="help-icon">💡</div>
+                            <h3>Feature Requests</h3>
+                            <span class="expand-icon">▼</span>
+                        </div>
+                        <div id="features" class="help-content-section">
+                            <div class="feature-request-form">
+                                <h4>Submit a Feature Request</h4>
+                                <form id="feature-request-form">
+                                    <div class="form-group">
+                                        <label for="featureTitle">Feature Title</label>
+                                        <input type="text" id="featureTitle" name="feature-title" placeholder="Brief description of the feature" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="featureDescription">Detailed Description</label>
+                                        <textarea id="featureDescription" name="feature-description" rows="4" placeholder="Describe the feature and its benefits" required></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="featurePriority">Priority</label>
+                                        <select id="featurePriority" name="feature-priority">
+                                            <option value="low">Low</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="high">High</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="featureCategory">Category</label>
+                                        <select id="featureCategory" name="feature-category">
+                                            <option value="ui">User Interface</option>
+                                            <option value="api">API</option>
+                                            <option value="deployment">Deployment</option>
+                                            <option value="monitoring">Monitoring</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                                </form>
+                            </div>
+                            
+                            <div class="popular-requests">
+                                <h4>Popular Feature Requests</h4>
+                                <div class="request-item">
+                                    <div class="request-votes">👍 23</div>
+                                    <div class="request-content">
+                                        <h5>Multi-branch Deployment Support</h5>
+                                        <p>Support for deploying different git branches to different environments</p>
+                                        <span class="request-status planned">Planned</span>
+                                    </div>
+                                </div>
+                                <div class="request-item">
+                                    <div class="request-votes">👍 18</div>
+                                    <div class="request-content">
+                                        <h5>Slack Integration</h5>
+                                        <p>Send deployment notifications to Slack channels</p>
+                                        <span class="request-status reviewing">Under Review</span>
+                                    </div>
+                                </div>
+                                <div class="request-item">
+                                    <div class="request-votes">👍 15</div>
+                                    <div class="request-content">
+                                        <h5>Rollback Functionality</h5>
+                                        <p>One-click rollback to previous deployment</p>
+                                        <span class="request-status development">In Development</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/help.js') }}"></script>
+</body>
+</html>
+    <script src="/static/js/help.js"></script>
+</body>
+</html>
