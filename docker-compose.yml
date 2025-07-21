@@ -4,7 +4,7 @@ services:
     image: dev-trigger-deploy
     container_name: dev-trigger-deploy
     ports:
-      - "5000:5000"
+      - "5002:5000"
     restart: always
     environment:
       - TZ=Asia/Jakarta
@@ -26,9 +26,9 @@ services:
       - ./src:/app/src
       - ./scripts:/app/scripts
     networks:
-      - dev-trigger-deploy
+      - dev-trigger-network
 
 networks:
-  dev-trigger-deploy:
-    name: dev-trigger-deploy-network
+  dev-trigger-network:
+    name: dev-trigger-network
     driver: bridge
