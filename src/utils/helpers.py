@@ -83,7 +83,34 @@ def load_services() -> List[Service]:
         with open(config.SERVICES_FILE, 'r') as f:
             services_data = json.load(f)
         
-        return [Service.from_dict(service_data) for service_data in services_data]
+        services = []
+        
+        # Handle different formats
+        if isinstance(services_data, dict):
+            # Format: {"local_services": [...], "remote_services": [...]}
+            all_services = []
+            for category in services_data.values():
+                if isinstance(category, list):
+                    all_services.extend(category)
+            
+            for service_data in all_services:
+                if isinstance(service_data, dict):
+                    # Convert to expected format
+                    service = {
+                        'name': service_data.get('name', ''),
+                        'url': service_data.get('health_endpoint', ''),
+                        'check_interval': service_data.get('check_interval', 300),
+                        'timeout': service_data.get('timeout', 10)
+                    }
+                    services.append(Service.from_dict(service))
+                    
+        elif isinstance(services_data, list):
+            # Format: [{"name": "", "url": "", ...}, ...]
+            for service_data in services_data:
+                if isinstance(service_data, dict):
+                    services.append(Service.from_dict(service_data))
+        
+        return services
     except Exception as e:
         logger.error(f"Failed to load services: {e}")
         return []

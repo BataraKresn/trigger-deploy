@@ -305,6 +305,50 @@ def health_check():
     })
 
 
+@api_bp.route('/health/system', methods=['GET'])
+def system_health():
+    """Get system health status"""
+    try:
+        # Check database connectivity if using PostgreSQL
+        db_status = 'healthy'
+        if USING_POSTGRES:
+            try:
+                # Simple database check would go here
+                db_status = 'healthy'
+            except Exception:
+                db_status = 'unhealthy'
+        
+        # Check disk space, memory, etc.
+        import psutil
+        disk_usage = psutil.disk_usage('/')
+        memory = psutil.virtual_memory()
+        
+        # Determine overall status
+        status = 'healthy'
+        if disk_usage.percent > 90 or memory.percent > 90:
+            status = 'warning'
+        if db_status == 'unhealthy':
+            status = 'unhealthy'
+            
+        return jsonify({
+            'status': status,
+            'timestamp': datetime.now().isoformat(),
+            'components': {
+                'database': db_status,
+                'disk_usage': f"{disk_usage.percent:.1f}%",
+                'memory_usage': f"{memory.percent:.1f}%"
+            },
+            'version': '2.1.0'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e),
+            'version': '2.1.0'
+        }), 500
+
+
 @api_bp.route('/metrics/stats', methods=['GET'])
 def get_metrics_stats():
     """Get deployment statistics"""

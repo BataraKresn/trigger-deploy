@@ -36,9 +36,8 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             const activeElement = document.activeElement;
             
-            if (activeElement.id === 'deployToken') {
-                loginWithToken();
-            } else if (activeElement.closest('#loginForm')) {
+            // Handle Enter key on main form only
+            if (activeElement.closest('#loginForm')) {
                 e.preventDefault();
                 handleLogin(e);
             }

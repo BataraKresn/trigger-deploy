@@ -95,6 +95,20 @@ body {
     color: var(--primary-color);
 }
 
+.nav-links .btn {
+    background: var(--primary-color);
+    color: white !important;
+    border: 2px solid var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-links .btn:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: white !important;
+    transform: translateY(-1px);
+}
+
 .mobile-menu-toggle {
     display: none;
     font-size: 1.25rem;

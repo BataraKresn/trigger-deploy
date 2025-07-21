@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🔐 Login - Trigger Deploy Server</title>
-  <link rel="icon" type="image/svg+xml" href="/static/images/favicon/home.svg">
+  <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
   <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body>
@@ -72,28 +72,8 @@
             <a href="#" onclick="showForgotPassword()">🔄 Forgot Password?</a>
           </div>
           
-          <div class="divider">
-            <span>or</span>
-          </div>
-          
-          <div class="quick-access">
-            <h4>🔑 Quick Access</h4>
-            <p class="text-muted">Use deployment token for quick access (different from login password)</p>
-            <div class="token-form">
-              <input 
-                type="password" 
-                id="deployToken" 
-                class="form-control" 
-                placeholder="Enter deployment token (not login password)"
-              >
-              <button type="button" onclick="loginWithToken()" class="btn btn-secondary">
-                ⚡ Quick Login with Deploy Token
-              </button>
-            </div>
-            <small class="help-text">
-              💡 <strong>Note:</strong> This is the deployment token used for CI/CD operations, 
-              not your regular login password.
-            </small>
+          <div class="home-button">
+            <a href="/" class="btn btn-outline">🏠 Back to Home</a>
           </div>
           
           <!-- Demo Information -->

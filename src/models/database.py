@@ -173,7 +173,7 @@ class PostgreSQLManager:
     def _hash_password(self, password: str, salt: str) -> str:
         """Hash password with salt using PBKDF2"""
         import hashlib
-        return hashlib.pbkdf2_hex(password.encode('utf-8'), salt.encode('utf-8'), 100000, 64)
+        return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
 
     def _verify_password(self, password: str, salt: str, password_hash: str) -> bool:
         """Verify password against hash"""
