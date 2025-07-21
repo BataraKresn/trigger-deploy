@@ -79,16 +79,40 @@ def docs():
     return render_template('docs.html')
 
 
+@main_bp.route('/api/docs')
+def api_docs():
+    """Redirect /api/docs to docs page"""
+    return redirect(url_for('main.docs'))
+
+
+@main_bp.route('/api/docs/')
+def api_docs_slash():
+    """Redirect /api/docs/ to docs page"""
+    return redirect(url_for('main.docs'))
+
+
 @main_bp.route('/help')
 def help_center():
     """Help Center page"""
     return render_template('help.html')
 
 
+@main_bp.route('/contact')
+def contact():
+    """Contact Us page"""
+    return render_template('contact.html')
+
+
 @main_bp.route('/api')
-def api_docs():
-    """API Documentation page (alias)"""
-    return render_template('docs.html')
+def api_redirect():
+    """Redirect /api to Swagger UI docs"""
+    return redirect(url_for('main.docs'))
+
+
+@main_bp.route('/openapi.json')
+def openapi_spec():
+    """Serve OpenAPI specification"""
+    return send_from_directory('static', 'openapi.json', mimetype='application/json')
 
 
 @main_bp.route('/invalid-token')

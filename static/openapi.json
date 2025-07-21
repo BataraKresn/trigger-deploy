@@ -1,0 +1,473 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Trigger Deploy API",
+    "description": "Automated deployment management platform API",
+    "version": "2.1.0",
+    "contact": {
+      "name": "API Support",
+      "email": "sysadmin.app@sateknologi.id"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://dev-trigger.mugshot.dev",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication endpoints"
+    },
+    {
+      "name": "Servers",
+      "description": "Server management operations"
+    },
+    {
+      "name": "Deployment",
+      "description": "Deployment operations"
+    },
+    {
+      "name": "Health",
+      "description": "Health check operations"
+    },
+    {
+      "name": "Logs",
+      "description": "Log management"
+    }
+  ],
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login",
+        "description": "Authenticate user with username and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "admin"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "admin123"
+                  }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Login successful"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "username": {
+                          "type": "string",
+                          "example": "admin"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "admin"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Invalid username or password"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User logout",
+        "description": "Logout user and clear session",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Logout successful"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/servers": {
+      "get": {
+        "tags": ["Servers"],
+        "summary": "List all servers",
+        "description": "Get list of all configured servers with their status",
+        "responses": {
+          "200": {
+            "description": "Server list retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Server"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to load servers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deploy": {
+      "post": {
+        "tags": ["Deployment"],
+        "summary": "Trigger deployment",
+        "description": "Trigger deployment to specified server",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "server_alias": {
+                    "type": "string",
+                    "example": "web-server-01"
+                  },
+                  "deploy_token": {
+                    "type": "string",
+                    "example": "SATindonesia2026"
+                  }
+                },
+                "required": ["server_alias", "deploy_token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deployment triggered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Deployment triggered successfully"
+                    },
+                    "log_file": {
+                      "type": "string",
+                      "example": "trigger-20250721-123456.log"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/{target}": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Perform health check on specified target",
+        "parameters": [
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "google.co.id"
+            },
+            "description": "Target domain or IP to check"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Health check completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "type": "string",
+                      "example": "google.co.id"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "online"
+                    },
+                    "response_time": {
+                      "type": "number",
+                      "example": 0.123
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2025-07-21T16:30:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "List log files",
+        "description": "Get list of available log files",
+        "responses": {
+          "200": {
+            "description": "Log files list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "filename": {
+                        "type": "string",
+                        "example": "trigger-20250721-123456.log"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "example": 2048
+                      },
+                      "created": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-07-21T12:34:56Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs/{filename}": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "Get log file content",
+        "description": "Retrieve content of specific log file",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "trigger-20250721-123456.log"
+            },
+            "description": "Log filename to retrieve"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log file content",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "2025-07-21 12:34:56 - INFO - Deployment started..."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Log file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Server": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "type": "string",
+            "example": "web-server-01"
+          },
+          "ip": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "name": {
+            "type": "string",
+            "example": "Production Web Server"
+          },
+          "user": {
+            "type": "string",
+            "example": "deploy"
+          },
+          "script_path": {
+            "type": "string",
+            "example": "/opt/deploy/deploy.sh"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "unknown"],
+            "example": "online"
+          },
+          "last_check": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-07-21T16:30:00Z"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string",
+            "example": "Error description"
+          },
+          "code": {
+            "type": "string",
+            "example": "ERROR_CODE"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      },
+      "TokenAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Deploy-Token"
+      }
+    }
+  },
+  "security": [
+    {
+      "SessionAuth": []
+    },
+    {
+      "TokenAuth": []
+    }
+  ]
+}

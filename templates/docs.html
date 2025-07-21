@@ -1,467 +1,506 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Documentation - Trigger Deploy</title>
-  <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-  <link rel="stylesheet" href="/static/css/styles.css">
-  <style>
-    .docs-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    
-    .endpoint {
-      background: white;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-    
-    .endpoint-header {
-      background: #f8f9fa;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #e9ecef;
-    }
-    
-    .method {
-      padding: 0.25rem 0.75rem;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 0.8rem;
-      margin-right: 1rem;
-    }
-    
-    .method.GET { background: #d4edda; color: #155724; }
-    .method.POST { background: #cce7ff; color: #004085; }
-    .method.PUT { background: #fff3cd; color: #856404; }
-    .method.DELETE { background: #f8d7da; color: #721c24; }
-    
-    .endpoint-path {
-      font-family: 'Courier New', monospace;
-      font-size: 1.1rem;
-      color: #495057;
-    }
-    
-    .endpoint-body {
-      padding: 1.5rem;
-    }
-    
-    .code-block {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 4px;
-      padding: 1rem;
-      margin: 1rem 0;
-      overflow-x: auto;
-    }
-    
-    .code-block code {
-      font-family: 'Courier New', monospace;
-      font-size: 0.9rem;
-      white-space: pre;
-    }
-    
-    .parameter {
-      background: #f8f9fa;
-      padding: 0.5rem;
-      margin: 0.25rem 0;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .required {
-      color: #dc3545;
-      font-weight: bold;
-    }
-    
-    .optional {
-      color: #6c757d;
-    }
-    
-    .section {
-      margin-bottom: 3rem;
-    }
-    
-    .toc {
-      background: #f8f9fa;
-      padding: 1.5rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-    }
-    
-    .toc ul {
-      list-style: none;
-      padding-left: 0;
-    }
-    
-    .toc li {
-      margin: 0.5rem 0;
-    }
-    
-    .toc a {
-      text-decoration: none;
-      color: #007bff;
-    }
-    
-    .toc a:hover {
-      text-decoration: underline;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 API Documentation - Trigger Deploy</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+        }
+        
+        .docs-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        .docs-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .docs-header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.125rem;
+            opacity: 0.9;
+        }
+        
+        .docs-nav {
+            background: white;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #6c757d;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .api-info {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #28a745;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .docs-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .endpoint {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+        
+        .endpoint-header {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .method {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .method.get { background: #28a745; color: white; }
+        .method.post { background: #007bff; color: white; }
+        .method.put { background: #ffc107; color: #212529; }
+        .method.delete { background: #dc3545; color: white; }
+        
+        .endpoint-url {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .endpoint-body {
+            padding: 1.5rem;
+        }
+        
+        .endpoint-description {
+            margin-bottom: 1.5rem;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+        
+        .params-section, .response-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #495057;
+        }
+        
+        .param-item, .response-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+        
+        .param-name, .response-code {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .param-type {
+            color: #28a745;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .param-description {
+            margin-top: 0.5rem;
+            color: #6c757d;
+        }
+        
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        .try-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        
+        .try-button:hover {
+            background: #5a67d8;
+        }
+        
+        .quick-links {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .link-card {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #495057;
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+        
+        .link-card:hover {
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        
+        .link-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
 </head>
 <body>
-  <div class="docs-container">
-    <div class="header">
-      <h1>📚 API Documentation</h1>
-      <p>Complete reference for Trigger Deploy Server API endpoints</p>
+    <!-- Header -->
+    <div class="docs-header">
+        <h1>📚 API Documentation</h1>
+        <p>Trigger Deploy Flask API Reference</p>
     </div>
 
-    <!-- Table of Contents -->
-    <div class="toc">
-      <h3>📑 Table of Contents</h3>
-      <ul>
-        <li><a href="#authentication">🔐 Authentication</a></li>
-        <li><a href="#deployment">🚀 Deployment Endpoints</a></li>
-        <li><a href="#monitoring">🔍 Service Monitoring</a></li>
-        <li><a href="#metrics">📊 Metrics & Analytics</a></li>
-        <li><a href="#logs">📋 Log Management</a></li>
-        <li><a href="#health">🏥 Health Checks</a></li>
-        <li><a href="#examples">💡 Usage Examples</a></li>
-      </ul>
+    <!-- Navigation -->
+    <div class="docs-nav">
+        <div class="nav-container">
+            <a href="/" class="back-btn">
+                🏠 Back to Home
+            </a>
+            <div class="api-info">
+                <div class="api-status">
+                    <div class="status-dot"></div>
+                    API Online
+                </div>
+                <span>Version 2.1.0</span>
+            </div>
+        </div>
     </div>
 
-    <!-- Authentication Section -->
-    <div class="section" id="authentication">
-      <h2>🔐 Authentication</h2>
-      <p>All protected endpoints require a valid token. The token can be provided via:</p>
-      <ul>
-        <li><strong>Query Parameter:</strong> <code>?token=YOUR_TOKEN</code></li>
-        <li><strong>POST Body:</strong> <code>{"token": "YOUR_TOKEN"}</code></li>
-        <li><strong>Authorization Header:</strong> <code>Authorization: Bearer YOUR_TOKEN</code></li>
-      </ul>
-      
-      <div class="code-block">
-        <code># Current token (from .env)
-TOKEN = SATindonesia2026</code>
-      </div>
-    </div>
-
-    <!-- Deployment Endpoints -->
-    <div class="section" id="deployment">
-      <h2>🚀 Deployment Endpoints</h2>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="method POST">POST</span>
-          <span class="endpoint-path">/trigger</span>
+    <!-- Documentation Content -->
+    <div class="docs-container">
+        <!-- Quick Links -->
+        <div class="quick-links">
+            <h2>🚀 Quick Links</h2>
+            <div class="links-grid">
+                <a href="/login" class="link-card">
+                    <div class="link-icon">🔐</div>
+                    <h4>Dashboard</h4>
+                    <p>Access the main dashboard</p>
+                </a>
+                <a href="/help" class="link-card">
+                    <div class="link-icon">🆘</div>
+                    <h4>Help Center</h4>
+                    <p>FAQ and troubleshooting</p>
+                </a>
+                <a href="/contact" class="link-card">
+                    <div class="link-icon">📞</div>
+                    <h4>Contact Support</h4>
+                    <p>Get help from our team</p>
+                </a>
+                <a href="#endpoints" class="link-card">
+                    <div class="link-icon">📋</div>
+                    <h4>API Endpoints</h4>
+                    <p>Browse available endpoints</p>
+                </a>
+            </div>
         </div>
-        <div class="endpoint-body">
-          <h4>Trigger Deployment</h4>
-          <p>Triggers a deployment process on the server or specified target.</p>
-          
-          <h5>Parameters:</h5>
-          <div class="parameter"><span class="required">token</span> (required) - Authentication token</div>
-          <div class="parameter"><span class="optional">server</span> (optional) - Target server IP address</div>
-          
-          <h5>Example Request:</h5>
-          <div class="code-block">
-            <code>GET /trigger?token=SATindonesia2026
-POST /trigger
-{
-  "token": "SATindonesia2026",
-  "server": "192.168.1.100"
-}</code>
-          </div>
-          
-          <h5>Response:</h5>
-          <div class="code-block">
-            <code>{
-  "status": "success",
-  "deployment_id": "deploy-20250720-123456",
-  "log_file": "trigger-20250720-123456.log",
-  "view_log_url": "https://yourdomain.com/logs/trigger-20250720-123456.log",
-  "stream_log_url": "https://yourdomain.com/stream-log?file=trigger-20250720-123456.log",
-  "timestamp": "2025-07-20T12:34:56",
-  "server_name": "Production Server"
-}</code>
-          </div>
-        </div>
-      </div>
 
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method POST">POST</span>
-          <span class="endpoint-path">/ping</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Ping Server</h4>
-          <p>Test SSH connectivity to a configured server.</p>
-          
-          <h5>Request Body:</h5>
-          <div class="code-block">
-            <code>{
-  "server": "192.168.1.100"
-}</code>
-          </div>
-          
-          <h5>Response:</h5>
-          <div class="code-block">
-            <code>{
-  "status": "ok",
-  "server": "192.168.1.100",
-  "timestamp": "2025-07-20T12:34:56"
-}</code>
-          </div>
-        </div>
-      </div>
-    </div>
+        <h2 id="endpoints">🔗 API Endpoints</h2>
 
-    <!-- Service Monitoring -->
-    <div class="section" id="monitoring">
-      <h2>🔍 Service Monitoring</h2>
+        <!-- Authentication Endpoints -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/auth/login</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    Authenticate user with username and password to access protected resources.
+                </div>
+                
+                <div class="params-section">
+                    <div class="section-title">Parameters</div>
+                    <div class="param-item">
+                        <div class="param-name">username <span class="param-type">string</span></div>
+                        <div class="param-description">User's username (any username accepted)</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-name">password <span class="param-type">string</span></div>
+                        <div class="param-description">Password (check LOGIN_PASSWORD in .env file)</div>
+                    </div>
+                </div>
 
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/api/services/status</span>
+                <div class="response-section">
+                    <div class="section-title">Example Request</div>
+                    <div class="code-example">
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'</div>
+                </div>
+            </div>
         </div>
-        <div class="endpoint-body">
-          <h4>Get Services Status</h4>
-          <p>Get current status of all monitored services including Docker containers and remote services.</p>
-          
-          <h5>Response:</h5>
-          <div class="code-block">
-            <code>{
-  "services": {
-    "local": [...],
-    "remote": [...]
-  },
-  "summary": {
-    "total": 5,
-    "healthy": 4,
-    "unhealthy": 1,
-    "critical_down": 0
-  },
-  "monitoring_config": {
-    "interval": 60,
-    "timeout": 30,
-    "enabled": true,
-    "alert_cooldown": 300
+
+        <!-- Server Management -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/servers</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    Retrieve list of all configured servers with their current status and information.
+                </div>
+                
+                <div class="response-section">
+                    <div class="section-title">Example Request</div>
+                    <div class="code-example">
+curl -X GET http://localhost:5000/api/servers \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"</div>
+                </div>
+
+                <div class="response-section">
+                    <div class="section-title">Response Example</div>
+                    <div class="code-example">
+[
+  {
+    "alias": "web-server-01",
+    "ip": "192.168.1.100",
+    "name": "Production Web Server",
+    "user": "deploy",
+    "script_path": "/opt/deploy/deploy.sh",
+    "status": "online"
   }
-}</code>
-          </div>
+]</div>
+                </div>
+            </div>
         </div>
-      </div>
 
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/api/services/config</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Get Services Configuration</h4>
-          <p>Retrieve the current services monitoring configuration.</p>
-        </div>
-      </div>
+        <!-- Deployment -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/api/deploy</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    Trigger deployment to a specific server using server alias and deploy token.
+                </div>
+                
+                <div class="params-section">
+                    <div class="section-title">Parameters</div>
+                    <div class="param-item">
+                        <div class="param-name">server_alias <span class="param-type">string</span></div>
+                        <div class="param-description">Target server alias from servers.json</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-name">deploy_token <span class="param-type">string</span></div>
+                        <div class="param-description">Deploy token (check DEPLOY_TOKEN in .env)</div>
+                    </div>
+                </div>
 
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method POST">POST</span>
-          <span class="endpoint-path">/api/services/config</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Update Services Configuration</h4>
-          <p>Update the services monitoring configuration. Requires authentication.</p>
-          
-          <h5>Headers:</h5>
-          <div class="parameter">Authorization: Bearer SATindonesia2026</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Metrics & Analytics -->
-    <div class="section" id="metrics">
-      <h2>📊 Metrics & Analytics</h2>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/metrics</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Basic System Metrics</h4>
-          <p>Get basic system health and deployment metrics.</p>
-          
-          <h5>Response:</h5>
-          <div class="code-block">
-            <code>{
-  "status": "healthy",
-  "uptime_seconds": 86400,
-  "active_deployments": 2,
-  "total_logs": 45,
-  "memory_usage_percent": 65.2,
-  "disk_usage_percent": 23.1,
-  "timestamp": "2025-07-20T12:34:56"
-}</code>
-          </div>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/api/metrics/stats</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Deployment Statistics</h4>
-          <p>Get detailed deployment statistics and history.</p>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/api/metrics/history</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Deployment History</h4>
-          <p>Get recent deployment history with optional limit.</p>
-          
-          <h5>Parameters:</h5>
-          <div class="parameter"><span class="optional">limit</span> - Number of records (default: 20)</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Log Management -->
-    <div class="section" id="logs">
-      <h2>📋 Log Management</h2>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/logs</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>List Available Logs</h4>
-          <p>Get list of all available log files.</p>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/log-content</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Get Log Content</h4>
-          <p>Get content of a specific log file.</p>
-          
-          <h5>Parameters:</h5>
-          <div class="parameter"><span class="required">file</span> - Log filename</div>
-          
-          <h5>Example:</h5>
-          <div class="code-block">
-            <code>GET /log-content?file=trigger-20250720-123456.log</code>
-          </div>
-        </div>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/stream-log</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Stream Log (Real-time)</h4>
-          <p>Stream log content in real-time using Server-Sent Events.</p>
-          
-          <h5>Parameters:</h5>
-          <div class="parameter"><span class="required">file</span> - Log filename</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Health Checks -->
-    <div class="section" id="health">
-      <h2>🏥 Health Checks</h2>
-
-      <div class="endpoint">
-        <div class="endpoint-header">
-          <span class="method GET">GET</span>
-          <span class="endpoint-path">/health</span>
-        </div>
-        <div class="endpoint-body">
-          <h4>Network Health Check</h4>
-          <p>Test DNS resolution and ping connectivity to a target.</p>
-          
-          <h5>Parameters:</h5>
-          <div class="parameter"><span class="optional">target</span> - Target hostname/IP (default: google.co.id)</div>
-          
-          <h5>Response:</h5>
-          <div class="code-block">
-            <code>{
-  "target": "google.co.id",
-  "resolve": "google.co.id resolved to 172.217.194.94",
-  "ping": "✅ Ping successful",
-  "timestamp": "2025-07-20T12:34:56"
-}</code>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Usage Examples -->
-    <div class="section" id="examples">
-      <h2>💡 Usage Examples</h2>
-
-      <h3>🔧 Basic Deployment Trigger</h3>
-      <div class="code-block">
-        <code># Trigger deployment via GET
-curl "https://yourdomain.com/trigger?token=SATindonesia2026"
-
-# Trigger deployment via POST
-curl -X POST https://yourdomain.com/trigger \
+                <div class="response-section">
+                    <div class="section-title">Example Request</div>
+                    <div class="code-example">
+curl -X POST http://localhost:5000/api/deploy \
   -H "Content-Type: application/json" \
-  -d '{"token": "SATindonesia2026"}'
+  -d '{
+    "server_alias": "web-server-01",
+    "deploy_token": "SATindonesia2026"
+  }'</div>
+                </div>
+            </div>
+        </div>
 
-# Trigger deployment to specific server
-curl -X POST https://yourdomain.com/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"token": "SATindonesia2026", "server": "192.168.1.100"}'</code>
-      </div>
+        <!-- Health Check -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/health/{target}</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    Perform health check on specified target domain or IP address.
+                </div>
+                
+                <div class="params-section">
+                    <div class="section-title">Path Parameters</div>
+                    <div class="param-item">
+                        <div class="param-name">target <span class="param-type">string</span></div>
+                        <div class="param-description">Domain or IP to check (e.g., google.co.id)</div>
+                    </div>
+                </div>
 
-      <h3>📊 Monitor Services</h3>
-      <div class="code-block">
-        <code># Get services status
-curl https://yourdomain.com/api/services/status
+                <div class="response-section">
+                    <div class="section-title">Example Request</div>
+                    <div class="code-example">
+curl -X GET http://localhost:5000/api/health/google.co.id</div>
+                </div>
+            </div>
+        </div>
 
-# Get system metrics
-curl https://yourdomain.com/metrics
+        <!-- Logs -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/logs</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    Retrieve list of available log files with metadata.
+                </div>
+                
+                <div class="response-section">
+                    <div class="section-title">Example Request</div>
+                    <div class="code-example">
+curl -X GET http://localhost:5000/api/logs</div>
+                </div>
+            </div>
+        </div>
 
-# Stream deployment log
-curl https://yourdomain.com/stream-log?file=trigger-20250720-123456.log</code>
-      </div>
+        <!-- Authentication Info -->
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem;">INFO</span>
+                <span class="endpoint-url">Authentication Methods</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="endpoint-description">
+                    This API supports two authentication methods:
+                </div>
+                
+                <div class="params-section">
+                    <div class="section-title">Session-based Authentication</div>
+                    <div class="param-item">
+                        <div class="param-name">Cookie: session <span class="param-type">automatic</span></div>
+                        <div class="param-description">Automatically handled after login via web interface</div>
+                    </div>
+                </div>
 
-      <h3>🐙 GitHub Webhook Integration</h3>
-      <div class="code-block">
-        <code># GitHub webhook payload URL:
-https://yourdomain.com/trigger?token=SATindonesia2026
+                <div class="params-section">
+                    <div class="section-title">Token-based Authentication</div>
+                    <div class="param-item">
+                        <div class="param-name">X-Deploy-Token <span class="param-type">header</span></div>
+                        <div class="param-description">Deploy token for specific operations (from .env DEPLOY_TOKEN)</div>
+                    </div>
+                </div>
 
-# The webhook will automatically trigger deployment
-# when push events occur on configured repositories</code>
-      </div>
+                <div class="response-section">
+                    <div class="section-title">Configuration</div>
+                    <div class="code-example">
+# Check your .env file for these values:
+LOGIN_PASSWORD=admin123
+DEPLOY_TOKEN=SATindonesia2026
+
+# Or check defaults in code if .env not found</div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div class="controls" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e9ecef;">
-      <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
-      <a href="/services-monitor" class="btn btn-info">🔍 Services Monitor</a>
-      <a href="/metrics-dashboard" class="btn btn-primary">📊 Metrics Dashboard</a>
-    </div>
-  </div>
 </body>
 </html>
