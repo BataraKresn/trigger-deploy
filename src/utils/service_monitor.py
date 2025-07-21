@@ -30,11 +30,19 @@ class ServiceMonitor:
     def init_docker_client(self):
         """Initialize Docker client if available"""
         try:
+            # Check if Docker monitoring is enabled via environment
+            docker_enabled = os.getenv('DOCKER_ENABLED', 'true').lower() == 'true'
+            if not docker_enabled:
+                logger.info("Docker monitoring is disabled via DOCKER_ENABLED=false")
+                self.docker_client = None
+                return
+                
             self.docker_client = docker.from_env()
             self.docker_client.ping()
             logger.info("Docker client initialized successfully")
         except Exception as e:
             logger.warning(f"Docker client initialization failed: {e}")
+            logger.info("Service monitoring will work without Docker integration")
             self.docker_client = None
     
     def load_services(self) -> List[Dict]:
@@ -48,6 +56,38 @@ class ServiceMonitor:
     
     def check_docker_service(self, service_name: str) -> Dict:
         """Check Docker container status"""
+        if self.docker_client is None:
+            return {
+                'name': service_name,
+                'status': 'unavailable',
+                'message': 'Docker client not available',
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        try:
+            container = self.docker_client.containers.get(service_name)
+            return {
+                'name': service_name,
+                'status': container.status,
+                'image': container.image.tags[0] if container.image.tags else 'unknown',
+                'created': container.attrs['Created'],
+                'timestamp': datetime.now().isoformat()
+            }
+        except docker.errors.NotFound:
+            return {
+                'name': service_name,
+                'status': 'not_found',
+                'message': f'Container {service_name} not found',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Error checking Docker service {service_name}: {e}")
+            return {
+                'name': service_name,
+                'status': 'error',
+                'message': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
         if not self.docker_client:
             return {
                 'status': 'unknown',

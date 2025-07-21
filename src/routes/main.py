@@ -18,6 +18,18 @@ def home():
     return render_template('home.html')
 
 
+@main_bp.route('/login')
+def login():
+    """Login page"""
+    return render_template('login.html')
+
+
+@main_bp.route('/dashboard')
+def dashboard():
+    """Dashboard page (same as home but with explicit route)"""
+    return render_template('home.html')
+
+
 @main_bp.route('/deploy-servers')
 def deploy_servers():
     """Deploy servers page"""

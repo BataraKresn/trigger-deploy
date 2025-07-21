@@ -16,6 +16,9 @@ python-dateutil>=2.8.0
 # HTTP and Network
 requests>=2.31.0
 
+# Authentication
+PyJWT>=2.8.0
+
 # Configuration and Environment
 python-dotenv>=1.0.0
 

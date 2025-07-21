@@ -3,54 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 Trigger Deploy Server</title>
+  <title>🏠 Dashboard - Trigger Deploy Server</title>
   <link rel="icon" type="image/svg+xml" href="/static/images/favicon/home.svg">
-  <link rel="stylesheet" href="/static/css/styles.css">
+    <link href="/static/css/styles.css" rel="stylesheet">
+  <link href="/static/css/dashboard.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Trigger Deploy Server</h1>
-      <p>Automated deployment management platform</p>
+  <!-- Navigation Header -->
+  <nav class="dashboard-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h2>🚀 Trigger Deploy</h2>
+      </div>
+      <div class="nav-menu">
+        <a href="/dashboard" class="nav-item active">🏠 Dashboard</a>
+        <a href="/deploy-servers" class="nav-item">🔐 Deploy</a>
+        <a href="/metrics" class="nav-item">📊 Metrics</a>
+        <a href="/services-monitor" class="nav-item">🐳 Services</a>
+        <a href="/docs" class="nav-item">📚 Docs</a>
+      </div>
+      <div class="nav-user">
+        <div class="user-info">
+          <span class="user-name" id="userName">User</span>
+          <span class="user-role" id="userRole">admin</span>
+        </div>
+        <div class="user-actions">
+          <button onclick="showUserMenu()" class="user-menu-btn">⚙️</button>
+          <button onclick="logout()" class="logout-btn">🚪</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+      <div class="welcome-content">
+        <h1>Welcome to Dashboard</h1>
+        <p>Automated deployment management platform - <span id="currentTime"></span></p>
+      </div>
+      <div class="system-status-indicator">
+        <span class="status-dot" id="systemStatusDot"></span>
+        <span id="systemStatusText">System Online</span>
+      </div>
+    </div>
     </div>
     
+    <!-- Quick Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🚀</div>
+        <div class="stat-info">
+          <div class="stat-value" id="totalDeployments">-</div>
+          <div class="stat-label">Total Deployments</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-info">
+          <div class="stat-value" id="successfulDeployments">-</div>
+          <div class="stat-label">Successful</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🖥️</div>
+        <div class="stat-info">
+          <div class="stat-value" id="activeServers">-</div>
+          <div class="stat-label">Active Servers</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🐳</div>
+        <div class="stat-info">
+          <div class="stat-value" id="runningServices">-</div>
+          <div class="stat-label">Running Services</div>
+        </div>
+      </div>
+    </div>
+
     <div class="content">
       <!-- Quick Actions -->
-      <div class="text-center mb-3">
-        <a href="/deploy-servers" class="btn btn-primary">
-          🔐 Deploy to Servers
-        </a>
-        <button onclick="loadLogList()" class="btn btn-secondary" id="logBtn">
-          📁 Browse Logs
-        </button>
-        <button onclick="showHealthInput()" class="btn btn-success" id="healthBtn">
-          💗 Check Health
-        </button>
-        <a href="/docs" class="btn btn-warning">
-          📚 API Documentation
-        </a>
-        <a href="/metrics-dashboard" class="btn btn-info">
-          📊 Metrics Dashboard
-        </a>
-        <a href="/services-monitor" class="btn btn-primary">
-          🐳 Services Monitor
-        </a>
-        
-        <!-- Health Input - Hidden by default, positioned below buttons -->
-        <div id="healthInputContainer" class="form-group hidden mt-3">
-          <input 
-            id="healthTarget" 
-            class="form-control" 
-            placeholder="Enter domain for health check (default: google.co.id)" 
-            style="max-width: 400px; margin: 0 auto;"
-          />
-          <div class="mt-2">
-            <button onclick="executeHealthCheck()" class="btn btn-success btn-small">
-              ✅ Execute Check
-            </button>
-            <button onclick="cancelHealthCheck()" class="btn btn-secondary btn-small">
-              ❌ Cancel
-            </button>
+      <div class="quick-actions-section">
+        <h3>🎯 Quick Actions</h3>
+        <div class="actions-grid">
+          <a href="/deploy-servers" class="action-card">
+            <div class="action-icon">🔐</div>
+            <div class="action-content">
+              <h4>Deploy to Servers</h4>
+              <p>Trigger deployment to configured servers</p>
+            </div>
+          </a>
+          
+          <button onclick="loadLogList()" class="action-card action-button">
+            <div class="action-icon">📁</div>
+            <div class="action-content">
+              <h4>Browse Logs</h4>
+              <p>View deployment and system logs</p>
+            </div>
+          </button>
+          
+          <button onclick="showHealthInput()" class="action-card action-button">
+            <div class="action-icon">💗</div>
+            <div class="action-content">
+              <h4>Health Check</h4>
+              <p>Test system and server connectivity</p>
+            </div>
+          </button>
+          
+          <a href="/services-monitor" class="action-card">
+            <div class="action-icon">🐳</div>
+            <div class="action-content">
+              <h4>Services Monitor</h4>
+              <p>Monitor Docker containers and services</p>
+            </div>
+          </a>
+          
+          <a href="/metrics" class="action-card">
+            <div class="action-icon">📊</div>
+            <div class="action-content">
+              <h4>Metrics Dashboard</h4>
+              <p>View system metrics and analytics</p>
+            </div>
+          </a>
+          
+          <a href="/docs" class="action-card">
+            <div class="action-icon">📚</div>
+            <div class="action-content">
+              <h4>API Documentation</h4>
+              <p>Explore API endpoints and usage</p>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Health Input - Hidden by default -->
+      <div id="healthInputContainer" class="health-input-section hidden">
+        <div class="health-input-card">
+          <h4>🔍 System Health Check</h4>
+          <div class="health-form">
+            <input 
+              id="healthTarget" 
+              class="form-control" 
+              placeholder="Enter domain for health check (default: google.co.id)" 
+            />
+            <div class="health-buttons">
+              <button onclick="executeHealthCheck()" class="btn btn-success">
+                ✅ Execute Check
+              </button>
+              <button onclick="cancelHealthCheck()" class="btn btn-secondary">
+                ❌ Cancel
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -64,6 +168,14 @@
         <div id="healthContent"></div>
       </div>
 
+      <!-- Recent Activity -->
+      <div class="recent-activity-section">
+        <h3>📋 Recent Activity</h3>
+        <div id="recentActivity" class="activity-list">
+          <!-- Activity items will be loaded here -->
+        </div>
+      </div>
+
       <!-- Log Output Display -->
       <div id="logOutput" class="log-output hidden"></div>
 
@@ -75,6 +187,47 @@
     </div>
   </div>
 
+  <!-- User Menu Modal -->
+  <div id="userMenuModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 User Settings</h3>
+        <button type="button" class="modal-close" onclick="closeUserMenu()">✖️</button>
+      </div>
+      <div class="modal-body">
+        <div class="user-profile">
+          <div class="profile-info">
+            <strong id="profileName">User</strong>
+            <span id="profileRole">admin</span>
+          </div>
+        </div>
+        <div class="settings-options">
+          <label class="setting-item">
+            <input type="checkbox" id="darkModeToggle">
+            <span>🌙 Dark Mode</span>
+          </label>
+          <label class="setting-item">
+            <input type="checkbox" id="notificationsToggle" checked>
+            <span>🔔 Notifications</span>
+          </label>
+          <label class="setting-item">
+            <input type="checkbox" id="autoRefreshToggle" checked>
+            <span>🔄 Auto Refresh</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="saveUserSettings()" class="btn btn-primary">
+          💾 Save Settings
+        </button>
+        <button type="button" onclick="logout()" class="btn btn-danger">
+          🚪 Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/home.js"></script>
+  <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

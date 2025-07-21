@@ -11,7 +11,9 @@ class Config:
     """Application configuration"""
     
     # Security
-    TOKEN: str = os.getenv("DEPLOY_TOKEN")
+    TOKEN: str = os.getenv("DEPLOY_TOKEN")  # For deployment operations
+    LOGIN_PASSWORD: str = os.getenv("LOGIN_PASSWORD", "admin")  # For web login authentication
+    JWT_SECRET: str = os.getenv("JWT_SECRET")  # For JWT token signing
     
     # Logging
     LOG_DIR: str = os.getenv("LOG_DIR", "trigger-logs")
@@ -37,10 +39,17 @@ class Config:
     # Docker
     DOCKER_ENABLED: bool = os.getenv("DOCKER_ENABLED", "True").lower() == "true"
     
+    # Demo Credentials Display
+    SHOW_DEMO_CREDENTIALS: bool = os.getenv("SHOW_DEMO_CREDENTIALS", "False").lower() == "true"
+    
     def __post_init__(self):
         """Validate configuration after initialization"""
         if not self.TOKEN:
             raise ValueError("DEPLOY_TOKEN environment variable is required")
+        
+        # Set JWT secret if not provided - use deploy token as fallback
+        if not self.JWT_SECRET:
+            self.JWT_SECRET = self.TOKEN + "_jwt_secret"
         
         # Create log directory if it doesn't exist
         if not os.path.exists(self.LOG_DIR):

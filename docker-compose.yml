@@ -4,7 +4,7 @@ services:
     image: dev-trigger-deploy
     container_name: dev-trigger-deploy
     ports:
-      - "5002:5000"
+      - "3111:5000"
     restart: always
     environment:
       - TZ=Asia/Jakarta
@@ -13,6 +13,8 @@ services:
       - SERVERS_FILE=${SERVERS_FILE:-config/servers.json}
       - SERVICES_FILE=${SERVICES_FILE:-config/services.json}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
+      - DOCKER_ENABLED=${DOCKER_ENABLED:-true}
+      - SHOW_DEMO_CREDENTIALS=${SHOW_DEMO_CREDENTIALS:-false}
     env_file:
       - .env
     volumes:
@@ -25,10 +27,12 @@ services:
       - ./static:/app/static
       - ./src:/app/src
       - ./scripts:/app/scripts
+      # Mount Docker socket for service monitoring
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - dev-trigger-network
 
 networks:
   dev-trigger-network:
+    external: true
     name: dev-trigger-network
-    driver: bridge

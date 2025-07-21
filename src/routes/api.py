@@ -3,9 +3,11 @@
 # =================================
 
 from flask import Blueprint, jsonify, request
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
+import jwt
+import hashlib
 from src.utils.helpers import (
     load_servers, load_services, ping_check, 
     dns_resolve_check, http_check
@@ -17,6 +19,221 @@ from src.utils.service_monitor import service_monitor
 
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+
+# Authentication endpoints
+@api_bp.route('/auth/login', methods=['POST'])
+def login():
+    """Authenticate user with username/password and return JWT token"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request format'}), 400
+            
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        # Validation
+        if not username:
+            return jsonify({'success': False, 'error': 'Username is required'}), 400
+            
+        if not password:
+            return jsonify({'success': False, 'error': 'Password is required'}), 400
+        
+        # Authenticate using login password (separate from deployment token)
+        if password == config.LOGIN_PASSWORD:
+            # Generate JWT token using separate JWT secret
+            payload = {
+                'username': username,
+                'role': 'admin',
+                'auth_type': 'password',
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }
+            
+            try:
+                token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+                return jsonify({
+                    'success': True,
+                    'token': token,
+                    'user': {
+                        'name': username,
+                        'role': 'admin'
+                    },
+                    'message': f'Welcome back, {username}!'
+                })
+            except Exception as e:
+                return jsonify({'success': False, 'error': 'Token generation failed. Please try again.'}), 500
+        else:
+            # Password doesn't match
+            return jsonify({
+                'success': False, 
+                'error': 'Invalid password. Please check your credentials and try again.'
+            }), 401
+            
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': 'An unexpected error occurred. Please try again.'
+        }), 500
+
+
+@api_bp.route('/auth/verify', methods=['POST'])
+def verify_token():
+    """Verify JWT token"""
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({'valid': False, 'error': 'No token provided'}), 400
+    
+    try:
+        payload = jwt.decode(token, config.JWT_SECRET, algorithms=['HS256'])
+        return jsonify({
+            'valid': True,
+            'user': {
+                'name': payload.get('username'),
+                'role': payload.get('role', 'admin'),
+                'auth_type': payload.get('auth_type', 'unknown')
+            }
+        })
+    except jwt.ExpiredSignatureError:
+        return jsonify({'valid': False, 'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'valid': False, 'error': 'Invalid token'}), 401
+
+
+@api_bp.route('/auth/token-login', methods=['POST'])
+def token_login():
+    """Login using deployment token directly (for quick access)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request format'}), 400
+            
+        token = data.get('token', '').strip()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Deployment token is required'}), 400
+        
+        # Use deployment token for quick access (this is different from login password)
+        if token == config.TOKEN:
+            # Generate JWT token
+            payload = {
+                'username': 'deploy-user',
+                'role': 'admin',
+                'auth_type': 'deploy_token',
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }
+            
+            try:
+                jwt_token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+                return jsonify({
+                    'success': True,
+                    'token': jwt_token,
+                    'user': {
+                        'name': 'Deploy User',
+                        'role': 'admin'
+                    },
+                    'message': 'Quick access granted with deployment token!'
+                })
+            except Exception as e:
+                return jsonify({'success': False, 'error': 'Token generation failed. Please try again.'}), 500
+        else:
+            return jsonify({
+                'success': False, 
+                'error': 'Invalid deployment token. Please verify your token and try again.'
+            }), 401
+            
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': 'An unexpected error occurred. Please try again.'
+        }), 500
+
+
+# Dashboard endpoints
+@api_bp.route('/stats', methods=['GET'])
+def get_dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        # Get deployment history stats
+        history = deployment_history.get_recent_deployments(50)
+        total_deployments = len(history)
+        successful_deployments = len([d for d in history if d.get('status') == 'success'])
+        
+        # Get server count
+        servers = load_servers()
+        active_servers = len(servers)
+        
+        # Get service count (basic implementation)
+        try:
+            services = load_services()
+            running_services = len(services)
+        except:
+            running_services = 0
+        
+        return jsonify({
+            'totalDeployments': str(total_deployments),
+            'successfulDeployments': str(successful_deployments),
+            'activeServers': str(active_servers),
+            'runningServices': str(running_services)
+        })
+    except Exception as e:
+        return jsonify({
+            'totalDeployments': '0',
+            'successfulDeployments': '0',
+            'activeServers': '0',
+            'runningServices': '0'
+        })
+
+
+@api_bp.route('/recent-activity', methods=['GET'])
+def get_recent_activity():
+    """Get recent deployment activity"""
+    try:
+        history = deployment_history.get_recent_deployments(10)
+        activities = []
+        
+        for deployment in history:
+            activity = {
+                'title': f"Deployment to {deployment.get('server', 'Unknown')}",
+                'description': deployment.get('details', 'Deployment executed'),
+                'type': 'success' if deployment.get('status') == 'success' else 'error',
+                'timestamp': deployment.get('timestamp', datetime.now().isoformat())
+            }
+            activities.append(activity)
+        
+        return jsonify(activities)
+    except Exception as e:
+        return jsonify([])
+
+
+@api_bp.route('/auth/demo-info', methods=['GET'])
+def get_demo_info():
+    """Get demo credentials info (configurable via SHOW_DEMO_CREDENTIALS)"""
+    try:
+        # Check if demo credentials should be shown
+        show_demo = os.getenv('SHOW_DEMO_CREDENTIALS', 'false').lower() == 'true'
+        
+        if not show_demo:
+            return jsonify({
+                'demo_available': False,
+                'message': 'Demo credentials are disabled. Set SHOW_DEMO_CREDENTIALS=true to enable.'
+            })
+        
+        # Show example username and indicate where to find actual credentials
+        return jsonify({
+            'demo_available': True,
+            'username_example': 'admin',
+            'password_hint': 'Check LOGIN_PASSWORD in your .env file',
+            'token_hint': 'Check DEPLOY_TOKEN in your .env file',
+            'note': 'Actual values are configured in environment variables'
+        })
+    except Exception as e:
+        return jsonify({
+            'demo_available': False,
+            'error': 'Unable to retrieve demo information'
+        })
 
 
 @api_bp.route('/health', methods=['POST'])
