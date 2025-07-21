@@ -49,51 +49,107 @@ class User:
 
 
 class PostgreSQLManager:
-    """PostgreSQL Database Manager"""
+    """PostgreSQL database manager with connection pooling"""
     
-    def __init__(self, database_url: str = None):
-        self.database_url = database_url or os.getenv('DATABASE_URL')
-        if not self.database_url:
-            # Fallback to individual components
-            host = os.getenv('POSTGRES_HOST', 'localhost')
-            port = os.getenv('POSTGRES_PORT', '5432')
-            user = os.getenv('POSTGRES_USER', 'trigger_deploy_user')
-            password = os.getenv('POSTGRES_PASSWORD', 'secure_password_123')
-            database = os.getenv('POSTGRES_DB', 'trigger_deploy')
-            self.database_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+    def __init__(self, database_url: str = None, config: dict = None):
+        """Initialize PostgreSQL manager
+        
+        Args:
+            database_url: Direct database URL string
+            config: Database configuration dictionary with connection settings
+        """
+        from .config import config as app_config
+        
+        # Set database URL from parameter or config
+        if database_url:
+            self.database_url = database_url
+        elif config and all(k in config for k in ['user', 'password', 'host', 'port', 'database']):
+            self.database_url = f"postgresql://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['database']}"
+        else:
+            # Fallback to environment variables or app config
+            self.database_url = app_config.database_url
+            
+        # Connection pool settings
+        self.min_connections = config.get('min_size', app_config.POSTGRES_MIN_CONNECTIONS) if config else app_config.POSTGRES_MIN_CONNECTIONS
+        self.max_connections = config.get('max_size', app_config.POSTGRES_MAX_CONNECTIONS) if config else app_config.POSTGRES_MAX_CONNECTIONS
+        self.command_timeout = config.get('command_timeout', app_config.POSTGRES_COMMAND_TIMEOUT) if config else app_config.POSTGRES_COMMAND_TIMEOUT
         
         self.pool = None
-        logger.info(f"PostgreSQL Manager initialized with URL: {self.database_url.split('@')[0]}@[REDACTED]")
+        
+        # Security: Log connection info without password
+        safe_url = self.database_url.split('@')[0].split(':')[:-1]
+        safe_url = ':'.join(safe_url) + ':***@[REDACTED]'
+        logger.info(f"PostgreSQL Manager initialized with URL: {safe_url}")
 
-    async def init_pool(self):
+    async def initialize(self):
         """Initialize connection pool"""
         try:
             self.pool = await asyncpg.create_pool(
                 self.database_url,
-                min_size=2,
-                max_size=10,
-                command_timeout=60
+                min_size=self.min_connections,
+                max_size=self.max_connections,
+                command_timeout=self.command_timeout,
+                server_settings={
+                    'application_name': 'trigger_deploy_app',
+                    'timezone': 'UTC'
+                }
             )
             logger.info("PostgreSQL connection pool created successfully")
-            await self.create_tables()
+            
+            # Create tables and default data
+            await self._create_tables()
+            await self._create_default_admin()
+            
         except Exception as e:
-            logger.error(f"Failed to create PostgreSQL connection pool: {e}")
+            logger.error(f"Failed to initialize PostgreSQL pool: {e}")
             raise
 
-    async def close_pool(self):
+    async def close(self):
         """Close connection pool"""
         if self.pool:
             await self.pool.close()
             logger.info("PostgreSQL connection pool closed")
 
-    async def create_tables(self):
+
+# Global database manager instance
+db_manager = None
+
+async def init_database():
+    """Initialize database connection"""
+    global db_manager
+    from .config import config as app_config
+    
+    # Create PostgreSQL manager with config
+    postgres_config = app_config.get_postgres_config()
+    db_manager = PostgreSQLManager(config=postgres_config)
+    await db_manager.initialize()
+    return db_manager
+
+async def close_database():
+    """Close database connection"""
+    global db_manager
+    if db_manager:
+        await db_manager.close()
+        db_manager = None
+
+def get_db_manager() -> PostgreSQLManager:
+    """Get database manager instance"""
+    global db_manager
+    if not db_manager:
+        raise RuntimeError("Database not initialized. Call init_database() first.")
+    return db_manager
+
+    async def _create_tables(self):
         """Create database tables"""
-        async with self.pool.acquire() as conn:
+        conn = None
+        try:
+            conn = await self.pool.acquire()
+            
             # Users table
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    nama_lengkap VARCHAR(255) NOT NULL,
+                    nama_lengkap VARCHAR(255) NOT NULL DEFAULT '',
                     username VARCHAR(100) UNIQUE NOT NULL,
                     email VARCHAR(255) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
@@ -102,73 +158,103 @@ class PostgreSQLManager:
                     is_active BOOLEAN DEFAULT true,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    last_login TIMESTAMP WITH TIME ZONE
+                    last_login TIMESTAMP WITH TIME ZONE NULL
                 )
             ''')
-
+            
+            # Create updated_at trigger for users table
+            await conn.execute('''
+                DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+                CREATE TRIGGER update_users_updated_at 
+                    BEFORE UPDATE ON users 
+                    FOR EACH ROW 
+                    EXECUTE FUNCTION update_updated_at_column();
+            ''')
+            
             # Deployment history table
             await conn.execute('''
-                CREATE TABLE IF NOT EXISTS deployments (
+                CREATE TABLE IF NOT EXISTS deployment_history (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    service_name VARCHAR(255) NOT NULL,
                     server_name VARCHAR(255) NOT NULL,
+                    service_name VARCHAR(255) NOT NULL,
                     status VARCHAR(50) NOT NULL,
-                    triggered_by VARCHAR(255),
-                    command TEXT,
-                    output TEXT,
-                    error_output TEXT,
-                    duration REAL,
+                    trigger_type VARCHAR(50) DEFAULT 'manual',
+                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    username VARCHAR(100) NOT NULL,
+                    start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    end_time TIMESTAMP WITH TIME ZONE NULL,
+                    duration_seconds INTEGER DEFAULT 0,
+                    logs TEXT DEFAULT '',
+                    error_message TEXT DEFAULT '',
+                    metadata JSONB DEFAULT '{}'::jsonb,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-
-            # Audit logs table
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    user_id UUID REFERENCES users(id),
-                    action VARCHAR(255) NOT NULL,
-                    resource VARCHAR(255),
-                    details JSONB,
-                    ip_address INET,
-                    user_agent TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-
-            # Create indexes
+            
+            # Indexes for performance
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployments_service ON deployments(service_name)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployments_created_at ON deployments(created_at)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_server ON deployment_history(server_name)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_user ON deployment_history(user_id)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_created ON deployment_history(created_at)')
+            
+            logger.info("Database tables created successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to create tables: {e}")
+            raise
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
-            logger.info("Database tables created/verified successfully")
-
-    async def create_default_admin(self):
-        """Create default superadmin user if none exists"""
+    async def _create_default_admin(self):
+        """Create default admin user if not exists"""
+        conn = None
         try:
-            async with self.pool.acquire() as conn:
-                # Check if any superadmin exists
-                result = await conn.fetchval(
-                    "SELECT COUNT(*) FROM users WHERE role = 'superadmin'"
-                )
+            from .config import config as app_config
+            
+            if not app_config.AUTO_CREATE_ADMIN:
+                logger.info("Auto-create admin is disabled")
+                return
                 
-                if result == 0:
-                    # Create default admin
-                    salt = secrets.token_hex(32)
-                    password_hash = self._hash_password("admin123", salt)
-                    
-                    await conn.execute('''
-                        INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', "Super Administrator", "admin", "admin@trigger-deploy.local", 
-                        password_hash, salt, "superadmin")
-                    
-                    logger.info("Default superadmin user created: admin/admin123")
+            conn = await self.pool.acquire()
+            
+            # Check if admin user exists
+            existing_user = await conn.fetchrow(
+                "SELECT id FROM users WHERE username = $1 OR email = $2",
+                app_config.DEFAULT_ADMIN_USERNAME,
+                app_config.DEFAULT_ADMIN_EMAIL
+            )
+            
+            if existing_user:
+                logger.info(f"Admin user '{app_config.DEFAULT_ADMIN_USERNAME}' already exists")
+                return
+            
+            # Create admin user
+            salt = secrets.token_hex(32)
+            password_hash = self._hash_password(app_config.DEFAULT_ADMIN_PASSWORD, salt)
+            
+            await conn.execute('''
+                INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ''', 
+                app_config.DEFAULT_ADMIN_USERNAME,  # nama_lengkap
+                app_config.DEFAULT_ADMIN_USERNAME,  # username
+                app_config.DEFAULT_ADMIN_EMAIL,     # email
+                password_hash,                      # password_hash
+                salt,                              # salt
+                'superadmin',                      # role
+                True                               # is_active
+            )
+            
+            logger.info(f"Default admin user '{app_config.DEFAULT_ADMIN_USERNAME}' created successfully")
+            
         except Exception as e:
             logger.error(f"Failed to create default admin: {e}")
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
     def _hash_password(self, password: str, salt: str) -> str:
         """Hash password with salt using PBKDF2"""
@@ -207,181 +293,75 @@ class PostgreSQLManager:
 
     async def create_user(self, user_data: Dict[str, Any]) -> User:
         """Create new user"""
+        conn = None
         try:
+            conn = await self.pool.acquire()
+            
+            # Generate salt and hash password
             salt = secrets.token_hex(32)
             password_hash = self._hash_password(user_data['password'], salt)
             
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow('''
-                    INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role, is_active)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    RETURNING *
-                ''', user_data['nama_lengkap'], user_data['username'], user_data['email'],
-                    password_hash, salt, user_data.get('role', 'user'), 
-                    user_data.get('is_active', True))
-                
-                return User(**dict(row))
-        except asyncpg.UniqueViolationError as e:
-            if 'username' in str(e):
-                raise ValueError("Username already exists")
-            elif 'email' in str(e):
-                raise ValueError("Email already exists")
-            else:
-                raise ValueError("User already exists")
+            user_id = await conn.fetchval('''
+                INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            ''', 
+                user_data.get('nama_lengkap', ''),
+                user_data['username'],
+                user_data['email'],
+                password_hash,
+                salt,
+                user_data.get('role', 'user'),
+                user_data.get('is_active', True)
+            )
+            
+            # Return created user
+            row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+            return User(**dict(row))
+            
         except Exception as e:
-            logger.error(f"Error creating user: {e}")
+            logger.error(f"Failed to create user: {e}")
             raise
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
-    async def get_user_by_id(self, user_id: str) -> Optional[User]:
-        """Get user by ID"""
-        try:
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
-                return User(**dict(row)) if row else None
-        except Exception as e:
-            logger.error(f"Error getting user by ID: {e}")
-            return None
-
-    async def get_user_by_username(self, username: str) -> Optional[User]:
-        """Get user by username"""
-        try:
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT * FROM users WHERE username = $1", username)
-                return User(**dict(row)) if row else None
-        except Exception as e:
-            logger.error(f"Error getting user by username: {e}")
-            return None
-
-    async def update_user(self, user_id: str, user_data: Dict[str, Any]) -> User:
-        """Update user"""
-        try:
-            # Build dynamic update query
-            update_fields = []
-            values = []
-            param_count = 1
-            
-            for field in ['nama_lengkap', 'username', 'email', 'role', 'is_active']:
-                if field in user_data:
-                    update_fields.append(f"{field} = ${param_count}")
-                    values.append(user_data[field])
-                    param_count += 1
-            
-            if not update_fields:
-                raise ValueError("No fields to update")
-            
-            update_fields.append(f"updated_at = CURRENT_TIMESTAMP")
-            values.append(user_id)
-            
-            query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = ${param_count} RETURNING *"
-            
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(query, *values)
-                if not row:
-                    raise ValueError("User not found")
-                return User(**dict(row))
-        except asyncpg.UniqueViolationError as e:
-            if 'username' in str(e):
-                raise ValueError("Username already exists")
-            elif 'email' in str(e):
-                raise ValueError("Email already exists")
-            else:
-                raise ValueError("Duplicate value")
-        except Exception as e:
-            logger.error(f"Error updating user: {e}")
-            raise
-
-    async def update_user_password(self, user_id: str, new_password: str) -> bool:
-        """Update user password"""
-        try:
-            salt = secrets.token_hex(32)
-            password_hash = self._hash_password(new_password, salt)
-            
-            async with self.pool.acquire() as conn:
-                result = await conn.execute(
-                    "UPDATE users SET password_hash = $1, salt = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
-                    password_hash, salt, user_id
-                )
-                return result == "UPDATE 1"
-        except Exception as e:
-            logger.error(f"Error updating password: {e}")
-            return False
-
-    async def delete_user(self, user_id: str) -> bool:
-        """Delete user"""
-        try:
-            async with self.pool.acquire() as conn:
-                result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
-                return result == "DELETE 1"
-        except Exception as e:
-            logger.error(f"Error deleting user: {e}")
-            return False
-
-    async def list_users(self, limit: int = 100, offset: int = 0) -> List[User]:
+    async def list_users(self) -> List[User]:
         """List all users"""
+        conn = None
         try:
-            async with self.pool.acquire() as conn:
-                rows = await conn.fetch(
-                    "SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-                    limit, offset
-                )
-                return [User(**dict(row)) for row in rows]
+            conn = await self.pool.acquire()
+            rows = await conn.fetch("SELECT * FROM users ORDER BY created_at DESC")
+            return [User(**dict(row)) for row in rows]
         except Exception as e:
-            logger.error(f"Error listing users: {e}")
+            logger.error(f"Failed to list users: {e}")
             return []
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
-    async def get_user_stats(self) -> Dict[str, int]:
+    async def get_user_stats(self) -> Dict[str, Any]:
         """Get user statistics"""
+        conn = None
         try:
-            async with self.pool.acquire() as conn:
-                total = await conn.fetchval("SELECT COUNT(*) FROM users")
-                active = await conn.fetchval("SELECT COUNT(*) FROM users WHERE is_active = true")
-                superadmins = await conn.fetchval("SELECT COUNT(*) FROM users WHERE role = 'superadmin'")
-                
-                return {
-                    'total': total,
-                    'active': active,
-                    'inactive': total - active,
-                    'superadmins': superadmins,
-                    'users': total - superadmins
-                }
+            conn = await self.pool.acquire()
+            
+            total_users = await conn.fetchval("SELECT COUNT(*) FROM users")
+            active_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE is_active = true")
+            superadmins = await conn.fetchval("SELECT COUNT(*) FROM users WHERE role = 'superadmin'")
+            recent_logins = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE last_login > CURRENT_TIMESTAMP - INTERVAL '7 days'"
+            )
+            
+            return {
+                'total_users': total_users,
+                'active_users': active_users,
+                'superadmins': superadmins,
+                'recent_logins': recent_logins
+            }
         except Exception as e:
-            logger.error(f"Error getting user stats: {e}")
-            return {'total': 0, 'active': 0, 'inactive': 0, 'superadmins': 0, 'users': 0}
-
-    async def log_audit(self, user_id: str, action: str, resource: str = None, 
-                       details: Dict = None, ip_address: str = None, user_agent: str = None):
-        """Log audit event"""
-        try:
-            async with self.pool.acquire() as conn:
-                await conn.execute('''
-                    INSERT INTO audit_logs (user_id, action, resource, details, ip_address, user_agent)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                ''', user_id, action, resource, json.dumps(details) if details else None,
-                    ip_address, user_agent)
-        except Exception as e:
-            logger.error(f"Error logging audit event: {e}")
-
-
-# Global database manager instance
-db_manager = None
-
-async def init_database():
-    """Initialize database connection"""
-    global db_manager
-    db_manager = PostgreSQLManager()
-    await db_manager.init_pool()
-    await db_manager.create_default_admin()
-    return db_manager
-
-async def close_database():
-    """Close database connection"""
-    global db_manager
-    if db_manager:
-        await db_manager.close_pool()
-
-def get_db_manager() -> PostgreSQLManager:
-    """Get database manager instance"""
-    global db_manager
-    if not db_manager:
-        raise RuntimeError("Database not initialized. Call init_database() first.")
-    return db_manager
+            logger.error(f"Failed to get user stats: {e}")
+            return {}
+        finally:
+            if conn:
+                await self.pool.release(conn)
