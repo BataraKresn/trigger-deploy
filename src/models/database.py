@@ -181,25 +181,29 @@ class PostgreSQLManager:
 
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """Authenticate user with username and password"""
+        conn = None
         try:
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT * FROM users WHERE username = $1 AND is_active = true",
-                    username
+            conn = await self.pool.acquire()
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE username = $1 AND is_active = true",
+                username
+            )
+            
+            if row and self._verify_password(password, row['salt'], row['password_hash']):
+                # Update last login
+                await conn.execute(
+                    "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+                    row['id']
                 )
                 
-                if row and self._verify_password(password, row['salt'], row['password_hash']):
-                    # Update last login
-                    await conn.execute(
-                        "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
-                        row['id']
-                    )
-                    
-                    return User(**dict(row))
-                return None
+                return User(**dict(row))
+            return None
         except Exception as e:
             logger.error(f"Authentication error: {e}")
             return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
     async def create_user(self, user_data: Dict[str, Any]) -> User:
         """Create new user"""

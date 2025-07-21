@@ -96,17 +96,31 @@ body {
 }
 
 .nav-links .btn {
-    background: var(--primary-color);
+    background: var(--primary-color) !important;
     color: white !important;
     border: 2px solid var(--primary-color);
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
     box-shadow: var(--shadow-sm);
+    text-decoration: none !important;
+}
+
+.nav-links .btn i {
+    color: white !important;
 }
 
 .nav-links .btn:hover {
-    background: var(--primary-dark);
+    background: var(--primary-dark) !important;
     border-color: var(--primary-dark);
     color: white !important;
     transform: translateY(-1px);
+    text-decoration: none !important;
+}
+
+.nav-links .btn:hover i {
+    color: white !important;
 }
 
 .mobile-menu-toggle {

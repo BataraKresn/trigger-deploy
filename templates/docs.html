@@ -259,8 +259,16 @@
 <body>
     <!-- Header -->
     <div class="docs-header">
-        <h1>📚 API Documentation</h1>
-        <p>Trigger Deploy Flask API Reference</p>
+        <h1>� Trigger Deploy API</h1>
+        <p>Complete API Reference & Interactive Documentation</p>
+        <div style="margin-top: 1rem; opacity: 0.8;">
+            <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; margin-right: 1rem;">
+                ⚡ Flask 2.3.x
+            </span>
+            <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px;">
+                🐘 PostgreSQL 15
+            </span>
+        </div>
     </div>
 
     <!-- Navigation -->
@@ -283,222 +291,506 @@
     <div class="docs-container">
         <!-- Quick Links -->
         <div class="quick-links">
-            <h2>🚀 Quick Links</h2>
+            <h2>🎯 Getting Started</h2>
+            <p style="margin-bottom: 1.5rem; color: #6c757d; line-height: 1.6;">
+                Welcome to Trigger Deploy API! This powerful automation platform helps you manage deployments, 
+                monitor services, and maintain your infrastructure with ease.
+            </p>
             <div class="links-grid">
                 <a href="/login" class="link-card">
-                    <div class="link-icon">🔐</div>
-                    <h4>Dashboard</h4>
-                    <p>Access the main dashboard</p>
+                    <div class="link-icon">🎛️</div>
+                    <h4>Control Panel</h4>
+                    <p>Access the main deployment dashboard</p>
                 </a>
                 <a href="/help" class="link-card">
-                    <div class="link-icon">🆘</div>
+                    <div class="link-icon">📖</div>
                     <h4>Help Center</h4>
-                    <p>FAQ and troubleshooting</p>
+                    <p>Tutorials, FAQ & troubleshooting guides</p>
                 </a>
                 <a href="/contact" class="link-card">
-                    <div class="link-icon">📞</div>
-                    <h4>Contact Support</h4>
-                    <p>Get help from our team</p>
+                    <div class="link-icon">�</div>
+                    <h4>Support</h4>
+                    <p>Get technical assistance from our team</p>
                 </a>
-                <a href="#endpoints" class="link-card">
-                    <div class="link-icon">📋</div>
-                    <h4>API Endpoints</h4>
-                    <p>Browse available endpoints</p>
+                <a href="#auth-section" class="link-card">
+                    <div class="link-icon">🔐</div>
+                    <h4>Authentication</h4>
+                    <p>Learn how to authenticate with the API</p>
+                </a>
+                <a href="#deploy-section" class="link-card">
+                    <div class="link-icon">🚀</div>
+                    <h4>Deploy</h4>
+                    <p>Trigger deployments to your servers</p>
+                </a>
+                <a href="#monitor-section" class="link-card">
+                    <div class="link-icon">�</div>
+                    <h4>Monitor</h4>
+                    <p>Health checks and server monitoring</p>
                 </a>
             </div>
         </div>
 
-        <h2 id="endpoints">🔗 API Endpoints</h2>
+        <!-- API Overview -->
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; border: 1px solid #dee2e6;">
+            <h2>📋 API Overview</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #28a745; margin-bottom: 0.5rem;">⚡</div>
+                    <h4 style="margin: 0; color: #495057;">Fast & Reliable</h4>
+                    <p style="margin: 0.5rem 0 0 0; color: #6c757d; font-size: 0.9rem;">High-performance Flask API</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #007bff; margin-bottom: 0.5rem;">🔒</div>
+                    <h4 style="margin: 0; color: #495057;">Secure</h4>
+                    <p style="margin: 0.5rem 0 0 0; color: #6c757d; font-size: 0.9rem;">JWT & Session authentication</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #6f42c1; margin-bottom: 0.5rem;">📡</div>
+                    <h4 style="margin: 0; color: #495057;">RESTful</h4>
+                    <p style="margin: 0.5rem 0 0 0; color: #6c757d; font-size: 0.9rem;">Standard HTTP methods</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #fd7e14; margin-bottom: 0.5rem;">📦</div>
+                    <h4 style="margin: 0; color: #495057;">Containerized</h4>
+                    <p style="margin: 0.5rem 0 0 0; color: #6c757d; font-size: 0.9rem;">Docker & PostgreSQL ready</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 id="endpoints">🔗 API Endpoints Reference</h2>
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span style="font-size: 1.2rem;">💡</span>
+                <strong style="color: #856404;">Quick Start</strong>
+            </div>
+            <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                All endpoints require authentication except health checks. 
+                Use session cookies (after web login) or include <code>X-Deploy-Token</code> header.
+            </p>
+        </div>
+
+        <!-- Authentication Section -->
+        <h3 id="auth-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #667eea;">🔐 Authentication</h3>
 
         <!-- Authentication Endpoints -->
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method post">POST</span>
                 <span class="endpoint-url">/api/auth/login</span>
+                <span style="background: #28a745; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">✅ PUBLIC</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    Authenticate user with username and password to access protected resources.
+                    <strong>🎯 Purpose:</strong> Authenticate user credentials and establish a session for accessing protected resources.
+                    <br><br>
+                    <strong>🔄 Process:</strong> Send username/password → Receive session cookie → Access protected endpoints
                 </div>
                 
                 <div class="params-section">
-                    <div class="section-title">Parameters</div>
+                    <div class="section-title">📥 Request Parameters</div>
                     <div class="param-item">
-                        <div class="param-name">username <span class="param-type">string</span></div>
-                        <div class="param-description">User's username (any username accepted)</div>
+                        <div class="param-name">username <span class="param-type">string (required)</span></div>
+                        <div class="param-description">
+                            <strong>Any valid username</strong> - The system accepts any username for authentication<br>
+                            <em>Example:</em> <code>admin</code>, <code>user123</code>, <code>developer</code>
+                        </div>
                     </div>
                     <div class="param-item">
-                        <div class="param-name">password <span class="param-type">string</span></div>
-                        <div class="param-description">Password (check LOGIN_PASSWORD in .env file)</div>
+                        <div class="param-name">password <span class="param-type">string (required)</span></div>
+                        <div class="param-description">
+                            <strong>System password</strong> - Check <code>LOGIN_PASSWORD</code> in your <code>.env</code> file<br>
+                            <em>Default:</em> <code>admin123</code> (if no .env configured)
+                        </div>
                     </div>
                 </div>
 
                 <div class="response-section">
-                    <div class="section-title">Example Request</div>
+                    <div class="section-title">📤 Example Request</div>
                     <div class="code-example">
-curl -X POST http://localhost:5000/api/auth/login \
+# Using cURL
+curl -X POST http://localhost:3111/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
     "password": "admin123"
-  }'</div>
+  }'
+
+# Using JavaScript fetch
+fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'admin123'
+  })
+})</div>
+                </div>
+
+                <div class="response-section">
+                    <div class="section-title">✅ Success Response</div>
+                    <div class="code-example">
+{
+  "status": "success",
+  "message": "Login successful",
+  "user": {
+    "username": "admin",
+    "authenticated": true,
+    "login_time": "2025-07-21T10:30:00Z"
+  }
+}</div>
                 </div>
             </div>
         </div>
 
-        <!-- Server Management -->
+        <!-- Server Management Section -->
+        <h3 id="server-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #28a745;">🖥️ Server Management</h3>
+
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
                 <span class="endpoint-url">/api/servers</span>
+                <span style="background: #ffc107; color: #212529; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">🔒 PROTECTED</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    Retrieve list of all configured servers with their current status and information.
+                    <strong>🎯 Purpose:</strong> Retrieve complete list of configured deployment servers with their current status, connection details, and metadata.
+                    <br><br>
+                    <strong>📊 Data Source:</strong> <code>config/servers.json</code> file with real-time status checks
                 </div>
                 
                 <div class="response-section">
-                    <div class="section-title">Example Request</div>
+                    <div class="section-title">📤 Example Request</div>
                     <div class="code-example">
-curl -X GET http://localhost:5000/api/servers \
-  -H "Authorization: Bearer YOUR_SESSION_TOKEN"</div>
+# With session cookie (after login)
+curl -X GET http://localhost:3111/api/servers \
+  -H "Cookie: session=your_session_cookie"
+
+# With deploy token
+curl -X GET http://localhost:3111/api/servers \
+  -H "X-Deploy-Token: SATindonesia2026"</div>
                 </div>
 
                 <div class="response-section">
-                    <div class="section-title">Response Example</div>
+                    <div class="section-title">✅ Success Response</div>
                     <div class="code-example">
 [
   {
     "alias": "web-server-01",
-    "ip": "192.168.1.100",
     "name": "Production Web Server",
+    "ip": "192.168.1.100",
     "user": "deploy",
     "script_path": "/opt/deploy/deploy.sh",
-    "status": "online"
+    "status": "online",
+    "last_check": "2025-07-21T10:25:00Z",
+    "response_time": "45ms"
+  },
+  {
+    "alias": "api-server-02", 
+    "name": "API Backend Server",
+    "ip": "192.168.1.101",
+    "user": "deploy",
+    "script_path": "/opt/api/deploy.sh",
+    "status": "offline",
+    "last_check": "2025-07-21T10:25:00Z",
+    "error": "Connection timeout"
   }
 ]</div>
                 </div>
             </div>
         </div>
 
-        <!-- Deployment -->
+        <!-- Deployment Section -->
+        <h3 id="deploy-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #007bff;">🚀 Deployment Operations</h3>
+
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method post">POST</span>
                 <span class="endpoint-url">/api/deploy</span>
+                <span style="background: #dc3545; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">⚡ CRITICAL</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    Trigger deployment to a specific server using server alias and deploy token.
+                    <strong>🎯 Purpose:</strong> Trigger automated deployment to a specific server using secure token authentication.
+                    <br><br>
+                    <strong>⚠️ Important:</strong> This executes deployment scripts on target servers. Use with caution in production!
                 </div>
                 
                 <div class="params-section">
-                    <div class="section-title">Parameters</div>
+                    <div class="section-title">📥 Request Parameters</div>
                     <div class="param-item">
-                        <div class="param-name">server_alias <span class="param-type">string</span></div>
-                        <div class="param-description">Target server alias from servers.json</div>
+                        <div class="param-name">server_alias <span class="param-type">string (required)</span></div>
+                        <div class="param-description">
+                            <strong>Target server identifier</strong> - Must match an alias from <code>config/servers.json</code><br>
+                            <em>Examples:</em> <code>web-server-01</code>, <code>api-backend</code>, <code>staging-env</code>
+                        </div>
                     </div>
                     <div class="param-item">
-                        <div class="param-name">deploy_token <span class="param-type">string</span></div>
-                        <div class="param-description">Deploy token (check DEPLOY_TOKEN in .env)</div>
+                        <div class="param-name">deploy_token <span class="param-type">string (required)</span></div>
+                        <div class="param-description">
+                            <strong>Security token</strong> - Check <code>DEPLOY_TOKEN</code> in your <code>.env</code> file<br>
+                            <em>Default:</em> <code>SATindonesia2026</code> (if no .env configured)
+                        </div>
                     </div>
                 </div>
 
                 <div class="response-section">
-                    <div class="section-title">Example Request</div>
+                    <div class="section-title">📤 Example Request</div>
                     <div class="code-example">
-curl -X POST http://localhost:5000/api/deploy \
+# Deploy to web server
+curl -X POST http://localhost:3111/api/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "server_alias": "web-server-01",
     "deploy_token": "SATindonesia2026"
+  }'
+
+# Deploy with custom parameters
+curl -X POST http://localhost:3111/api/deploy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "server_alias": "api-backend",
+    "deploy_token": "SATindonesia2026",
+    "branch": "main",
+    "environment": "production"
   }'</div>
+                </div>
+
+                <div class="response-section">
+                    <div class="section-title">✅ Success Response</div>
+                    <div class="code-example">
+{
+  "status": "success",
+  "message": "Deployment initiated successfully",
+  "deployment": {
+    "id": "deploy_20250721_103045",
+    "server": "web-server-01",
+    "started_at": "2025-07-21T10:30:45Z",
+    "log_file": "trigger-20250721-103045.log",
+    "estimated_duration": "2-5 minutes"
+  },
+  "redirect_url": "/trigger-result?log=trigger-20250721-103045.log"
+}</div>
                 </div>
             </div>
         </div>
 
-        <!-- Health Check -->
+        <!-- Monitoring Section -->
+        <h3 id="monitor-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #17a2b8;">📊 Health Monitoring</h3>
+
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
                 <span class="endpoint-url">/api/health/{target}</span>
+                <span style="background: #28a745; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">✅ PUBLIC</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    Perform health check on specified target domain or IP address.
+                    <strong>🎯 Purpose:</strong> Perform comprehensive health check on any domain, IP address, or service endpoint.
+                    <br><br>
+                    <strong>🔍 Features:</strong> Ping test, HTTP response check, response time measurement, and status analysis
                 </div>
                 
                 <div class="params-section">
-                    <div class="section-title">Path Parameters</div>
+                    <div class="section-title">📥 Path Parameters</div>
                     <div class="param-item">
-                        <div class="param-name">target <span class="param-type">string</span></div>
-                        <div class="param-description">Domain or IP to check (e.g., google.co.id)</div>
+                        <div class="param-name">target <span class="param-type">string (required)</span></div>
+                        <div class="param-description">
+                            <strong>Target to check</strong> - Domain, IP address, or hostname<br>
+                            <em>Examples:</em> <code>google.com</code>, <code>192.168.1.100</code>, <code>api.example.com</code>
+                        </div>
                     </div>
                 </div>
 
                 <div class="response-section">
-                    <div class="section-title">Example Request</div>
+                    <div class="section-title">📤 Example Requests</div>
                     <div class="code-example">
-curl -X GET http://localhost:5000/api/health/google.co.id</div>
+# Check Google's status
+curl -X GET http://localhost:3111/api/health/google.com
+
+# Check local server
+curl -X GET http://localhost:3111/api/health/192.168.1.100
+
+# Check API endpoint
+curl -X GET http://localhost:3111/api/health/api.myservice.com</div>
+                </div>
+
+                <div class="response-section">
+                    <div class="section-title">✅ Success Response</div>
+                    <div class="code-example">
+{
+  "status": "healthy",
+  "target": "google.com",
+  "checks": {
+    "ping": {
+      "status": "success",
+      "response_time": "23ms",
+      "packet_loss": "0%"
+    },
+    "http": {
+      "status": "success", 
+      "response_code": 200,
+      "response_time": "156ms",
+      "ssl_valid": true
+    }
+  },
+  "timestamp": "2025-07-21T10:30:00Z",
+  "overall_health": "excellent"
+}</div>
                 </div>
             </div>
         </div>
 
-        <!-- Logs -->
+        <!-- Logs Section -->
+        <h3 id="logs-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #6f42c1;">📄 Log Management</h3>
+
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
                 <span class="endpoint-url">/api/logs</span>
+                <span style="background: #ffc107; color: #212529; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">🔒 PROTECTED</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    Retrieve list of available log files with metadata.
+                    <strong>🎯 Purpose:</strong> Retrieve comprehensive list of system logs, deployment logs, and application logs with metadata.
+                    <br><br>
+                    <strong>📂 Log Types:</strong> Deployment logs, error logs, security logs, and application logs
                 </div>
                 
                 <div class="response-section">
-                    <div class="section-title">Example Request</div>
+                    <div class="section-title">📤 Example Request</div>
                     <div class="code-example">
-curl -X GET http://localhost:5000/api/logs</div>
+# Get all logs
+curl -X GET http://localhost:3111/api/logs \
+  -H "Cookie: session=your_session_cookie"
+
+# Filter by type
+curl -X GET "http://localhost:3111/api/logs?type=deployment" \
+  -H "X-Deploy-Token: SATindonesia2026"</div>
+                </div>
+
+                <div class="response-section">
+                    <div class="section-title">✅ Success Response</div>
+                    <div class="code-example">
+{
+  "logs": [
+    {
+      "filename": "trigger-20250721-103045.log",
+      "type": "deployment",
+      "size": "15.2 KB",
+      "created": "2025-07-21T10:30:45Z",
+      "server": "web-server-01",
+      "status": "completed"
+    },
+    {
+      "filename": "app.log",
+      "type": "application", 
+      "size": "892 KB",
+      "created": "2025-07-20T08:00:00Z",
+      "last_modified": "2025-07-21T10:31:00Z",
+      "status": "active"
+    }
+  ],
+  "total_logs": 15,
+  "total_size": "45.7 MB"
+}</div>
                 </div>
             </div>
         </div>
 
         <!-- Authentication Info -->
-        <div class="endpoint">
-            <div class="endpoint-header">
-                <span style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem;">INFO</span>
-                <span class="endpoint-url">Authentication Methods</span>
+        <div class="endpoint" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #667eea;">
+            <div class="endpoint-header" style="background: #667eea; color: white;">
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem;">🔐 AUTH</span>
+                <span class="endpoint-url" style="color: white;">Authentication Guide</span>
             </div>
             <div class="endpoint-body">
                 <div class="endpoint-description">
-                    This API supports two authentication methods:
+                    <strong>🔒 Security:</strong> This API implements multiple authentication methods to ensure secure access to deployment operations.
                 </div>
                 
                 <div class="params-section">
-                    <div class="section-title">Session-based Authentication</div>
-                    <div class="param-item">
-                        <div class="param-name">Cookie: session <span class="param-type">automatic</span></div>
-                        <div class="param-description">Automatically handled after login via web interface</div>
+                    <div class="section-title">🍪 Session-based Authentication</div>
+                    <div class="param-item" style="border-left-color: #28a745;">
+                        <div class="param-name">Method: Browser Session <span class="param-type">automatic</span></div>
+                        <div class="param-description">
+                            <strong>How it works:</strong> Login through web interface → Automatic session cookie → Protected access<br>
+                            <strong>Best for:</strong> Web dashboard usage and browser-based interactions<br>
+                            <strong>Duration:</strong> Session expires after inactivity or logout
+                        </div>
                     </div>
                 </div>
 
                 <div class="params-section">
-                    <div class="section-title">Token-based Authentication</div>
-                    <div class="param-item">
-                        <div class="param-name">X-Deploy-Token <span class="param-type">header</span></div>
-                        <div class="param-description">Deploy token for specific operations (from .env DEPLOY_TOKEN)</div>
+                    <div class="section-title">🎟️ Token-based Authentication</div>
+                    <div class="param-item" style="border-left-color: #007bff;">
+                        <div class="param-name">Header: X-Deploy-Token <span class="param-type">string</span></div>
+                        <div class="param-description">
+                            <strong>How it works:</strong> Include token in request headers → Direct API access<br>
+                            <strong>Best for:</strong> API integrations, automation scripts, CI/CD pipelines<br>
+                            <strong>Security:</strong> Stateless, no session management required
+                        </div>
                     </div>
                 </div>
 
                 <div class="response-section">
-                    <div class="section-title">Configuration</div>
+                    <div class="section-title">⚙️ Configuration Settings</div>
                     <div class="code-example">
-# Check your .env file for these values:
-LOGIN_PASSWORD=admin123
-DEPLOY_TOKEN=SATindonesia2026
+# Your .env file should contain:
+LOGIN_PASSWORD=admin123          # For web login
+DEPLOY_TOKEN=SATindonesia2026   # For API access
+JWT_SECRET=your_jwt_secret      # For session security
 
-# Or check defaults in code if .env not found</div>
+# Docker environment variables:
+- SECURE_HEADERS=true           # Enable security headers
+- SESSION_COOKIE_SECURE=true    # HTTPS-only cookies (production)
+- SESSION_COOKIE_HTTPONLY=true  # Prevent XSS attacks</div>
                 </div>
+
+                <div class="response-section">
+                    <div class="section-title">💡 Quick Examples</div>
+                    <div class="code-example">
+# Web login (get session cookie)
+curl -X POST http://localhost:3111/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Use session cookie for subsequent requests
+curl -X GET http://localhost:3111/api/servers \
+  -H "Cookie: session=YOUR_SESSION_COOKIE"
+
+# Or use deploy token directly
+curl -X GET http://localhost:3111/api/servers \
+  -H "X-Deploy-Token: SATindonesia2026"</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="background: #343a40; color: white; border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center;">
+            <h3 style="color: #ffffff; margin-bottom: 1rem;">🚀 Trigger Deploy API v2.1.0</h3>
+            <p style="margin-bottom: 1.5rem; opacity: 0.8;">
+                Powerful deployment automation platform built with Flask, PostgreSQL, and Docker
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <strong>⚡ Performance</strong><br>
+                    <span style="opacity: 0.8;">Sub-second response times</span>
+                </div>
+                <div>
+                    <strong>🔒 Security</strong><br>
+                    <span style="opacity: 0.8;">JWT + Token authentication</span>
+                </div>
+                <div>
+                    <strong>📊 Monitoring</strong><br>
+                    <span style="opacity: 0.8;">Real-time health checks</span>
+                </div>
+                <div>
+                    <strong>🐳 Containerized</strong><br>
+                    <span style="opacity: 0.8;">Docker & PostgreSQL ready</span>
+                </div>
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; opacity: 0.7;">
+                Need help? Visit our <a href="/help" style="color: #007bff;">Help Center</a> or <a href="/contact" style="color: #007bff;">Contact Support</a>
             </div>
         </div>
     </div>
