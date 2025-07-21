@@ -14,8 +14,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
       - ./logs:/var/log/postgresql
-    ports:
-      - "${POSTGRES_PORT:-5456}:5432"
+    # Port expose disabled - PostgreSQL only accessible internally via Docker network
+    # ports:
+    #   - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - dev-trigger-network
     restart: unless-stopped

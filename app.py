@@ -8,6 +8,7 @@ import sys
 import logging
 import asyncio
 import atexit
+import time
 from flask import Flask
 from flask_cors import CORS
 
@@ -60,25 +61,38 @@ def create_app():
     
     # Initialize PostgreSQL database if available
     if USING_POSTGRES:
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(init_database())
-            logger.info("PostgreSQL database initialized successfully")
-            
-            # Register cleanup function
-            def cleanup_db():
-                try:
-                    loop.run_until_complete(close_database())
-                    logger.info("PostgreSQL database connection closed")
-                except Exception as e:
-                    logger.error(f"Error closing database: {e}")
-            
-            atexit.register(cleanup_db)
-        except Exception as e:
-            logger.error(f"Failed to initialize PostgreSQL database: {e}")
-            logger.info("Falling back to file-based user management")
-            # Note: USING_POSTGRES already defined at import time
+        retry_count = 0
+        max_retries = 5
+        retry_delay = 2  # seconds
+        
+        while retry_count < max_retries:
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(init_database())
+                logger.info("PostgreSQL database initialized successfully")
+                
+                # Register cleanup function
+                def cleanup_db():
+                    try:
+                        loop.run_until_complete(close_database())
+                        logger.info("PostgreSQL database connection closed")
+                    except Exception as e:
+                        logger.error(f"Error closing database: {e}")
+                
+                atexit.register(cleanup_db)
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.warning(f"Failed to initialize PostgreSQL database (attempt {retry_count}/{max_retries}): {e}")
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to initialize PostgreSQL database after {max_retries} attempts: {e}")
+                    logger.info("Falling back to file-based user management")
+                    # Note: USING_POSTGRES already defined at import time
     
     # Register blueprints
     app.register_blueprint(main_bp)

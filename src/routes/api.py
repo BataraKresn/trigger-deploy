@@ -67,11 +67,11 @@ def login():
         user = None
         if USING_POSTGRES:
             try:
-                # For now, use simple file-based auth to avoid async issues
-                # PostgreSQL auth can be implemented later with proper async setup
-                user = user_manager.authenticate_user(username, password)
+                # Use PostgreSQL database manager
+                db_manager = get_db_manager()
+                user = asyncio.run(db_manager.authenticate_user(username, password))
             except Exception as e:
-                print(f"Authentication error: {e}")
+                print(f"PostgreSQL authentication error: {e}")
                 user = None
         else:
             user = user_manager.authenticate_user(username, password)
