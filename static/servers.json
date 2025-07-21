@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Profiling Identity",
+    "ip": "30.30.30.202",
+    "user": "ubuntu",
+    "description": "Identity Search & Profiling System",
+    "alias": "Profiling Identity Search",
+    "path": "/home/ubuntu/profiling-database",
+    "type": "Profiling Identity System",
+    "port": 22
+  },
+  {
+    "name": "Test Deploy",
+    "ip": "30.30.30.169", 
+    "user": "satrd",
+    "description": "Development testing server",
+    "alias": "newrnd",
+    "path": "/home/satrd/test-deploy",
+    "type": "Development Server",
+    "port": 22
+  }
+]

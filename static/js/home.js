@@ -1,330 +1,297 @@
-/**
- * 🏠 Home Page JavaScript
- * Trigger Deploy Platform
- */
+// =================================
+// Home Page JavaScript Functions
+// =================================
 
 // Global variables
-let eventSource = null;
-let currentViewedLog = null;
+let isHealthCheckVisible = false;
 
-/**
- * 🏥 Health Check Functions
- */
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Home page loaded');
+    loadInitialData();
+});
+
+function loadInitialData() {
+    // Load any initial data if needed
+    updateLastActivity();
+}
+
+function updateLastActivity() {
+    const now = new Date().toLocaleString();
+    const lastUpdateElement = document.getElementById('lastUpdate');
+    if (lastUpdateElement) {
+        lastUpdateElement.textContent = `Last updated: ${now}`;
+    }
+}
+
+// Health Check Functions
 function showHealthInput() {
-  const container = document.getElementById("healthInputContainer");
-  const btn = document.getElementById("healthBtn");
-  
-  hideAllDisplays();
-  container.classList.remove("hidden");
-  btn.textContent = "🔄 Checking Health...";
-  btn.disabled = true;
-  
-  // Focus on input
-  document.getElementById("healthTarget").focus();
+    const container = document.getElementById('healthInputContainer');
+    const btn = document.getElementById('healthBtn');
+    
+    if (container && btn) {
+        container.classList.remove('hidden');
+        btn.textContent = '💗 Health Check Active';
+        btn.disabled = true;
+        isHealthCheckVisible = true;
+        
+        // Focus on input
+        const input = document.getElementById('healthTarget');
+        if (input) input.focus();
+    }
 }
 
 function cancelHealthCheck() {
-  const container = document.getElementById("healthInputContainer");
-  const btn = document.getElementById("healthBtn");
-  const input = document.getElementById("healthTarget");
-  
-  container.classList.add("hidden");
-  btn.textContent = "💗 Check Health";
-  btn.onclick = showHealthInput;
-  btn.disabled = false;
-  input.value = "";
-}
-
-function hideHealthResults() {
-  const el = document.getElementById("healthStatus");
-  const btn = document.getElementById("healthBtn");
-  
-  el.classList.add("hidden");
-  btn.textContent = "💗 Check Health";
-  btn.onclick = showHealthInput;
-  btn.disabled = false;
+    const container = document.getElementById('healthInputContainer');
+    const btn = document.getElementById('healthBtn');
+    const input = document.getElementById('healthTarget');
+    
+    if (container && btn) {
+        container.classList.add('hidden');
+        btn.textContent = '💗 Check Health';
+        btn.disabled = false;
+        isHealthCheckVisible = false;
+        
+        if (input) input.value = '';
+        hideStatus();
+        hideHealthStatus();
+    }
 }
 
 function executeHealthCheck() {
-  const el = document.getElementById("healthStatus");
-  const btn = document.getElementById("healthBtn");
-  const container = document.getElementById("healthInputContainer");
-  const target = document.getElementById("healthTarget").value || "google.co.id";
-
-  // Hide input container and show results
-  container.classList.add("hidden");
-  el.classList.remove("hidden");
-
-  btn.textContent = "⏳ Checking...";
-  btn.disabled = true;
-
-  showSpinner(el);
-
-  fetch(`/health?target=${encodeURIComponent(target)}`)
-    .then(res => res.json())
+    const target = document.getElementById('healthTarget').value.trim() || 'google.co.id';
+    
+    showStatus('🔍 Performing health check...', 'info');
+    showSpinner();
+    
+    fetch('/api/health', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ target: target })
+    })
+    .then(response => response.json())
     .then(data => {
-      btn.textContent = "❌ Hide Health";
-      btn.onclick = hideHealthResults;
-      btn.disabled = false;
-      
-      const healthContent = document.getElementById("healthContent");
-      healthContent.innerHTML = `
-        <div class="health-item ${data.resolve.includes('❌') ? 'error' : 'success'}">
-          <div class="health-icon">🌐</div>
-          <div class="health-content">
-            <h4>DNS Resolution</h4>
+        hideSpinner();
+        displayHealthResults(data);
+        cancelHealthCheck();
+    })
+    .catch(error => {
+        hideSpinner();
+        showStatus(`❌ Error: ${error.message}`, 'error');
+        console.error('Health check error:', error);
+    });
+}
+
+function displayHealthResults(data) {
+    const healthStatus = document.getElementById('healthStatus');
+    const healthContent = document.getElementById('healthContent');
+    
+    if (!healthStatus || !healthContent) return;
+    
+    healthStatus.classList.remove('hidden');
+    
+    const pingStatus = data.ping?.success ? '✅' : '❌';
+    const dnsStatus = data.dns?.success ? '✅' : '❌';
+    const httpStatus = data.http?.success ? '✅' : '❌';
+    
+    healthContent.innerHTML = `
+        <div class="health-grid">
+            <div class="health-card">
+                <h4>${pingStatus} Ping Test</h4>
+                <p>${data.ping?.message || 'No data'}</p>
+                <small>${data.ping?.details || ''}</small>
+            </div>
+            <div class="health-card">
+                <h4>${dnsStatus} DNS Resolution</h4>
+                <p>${data.dns?.message || 'No data'}</p>
+                <small>IP: ${data.dns?.ip || 'N/A'}</small>
+            </div>
+            <div class="health-card">
+                <h4>${httpStatus} HTTP Check</h4>
+                <p>${data.http?.message || 'No data'}</p>
+                <small>Response time: ${data.http?.response_time ? (data.http.response_time * 1000).toFixed(0) + 'ms' : 'N/A'}</small>
+            </div>
+        </div>
+        <div class="mt-3">
             <p><strong>Target:</strong> ${data.target}</p>
-            <p>${data.resolve}</p>
-          </div>
+            <p><strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
         </div>
-        <div class="health-item ${data.ping.includes('❌') ? 'error' : 'success'}">
-          <div class="health-icon">📡</div>
-          <div class="health-content">
-            <h4>Network Connectivity</h4>
-            <p>${data.ping}</p>
-          </div>
-        </div>
-        <div class="health-item ${data.http.includes('❌') ? 'error' : 'success'}">
-          <div class="health-icon">🌍</div>
-          <div class="health-content">
-            <h4>HTTP Response</h4>
-            <p>${data.http}</p>
-          </div>
-        </div>
-      `;
-    })
-    .catch(err => {
-      btn.textContent = "💗 Check Health";
-      btn.onclick = showHealthInput;
-      btn.disabled = false;
-      el.innerHTML = `
-        <div class="health-item error">
-          <div class="health-icon">❌</div>
-          <div class="health-content">
-            <h4>Health Check Failed</h4>
-            <p>Error: ${err.message}</p>
-          </div>
-        </div>
-      `;
-      console.error("Health check failed:", err.message);
-    });
+    `;
 }
 
-// Legacy function for backward compatibility  
-function checkHealth() {
-  showHealthInput();
-}
-
-/**
- * 📁 Log Management Functions
- */
+// Log Functions
 function loadLogList() {
-  const logBox = document.getElementById('logListBox');
-  const btn = document.getElementById('logBtn');
-
-  if (!logBox.classList.contains('hidden')) {
-    hideAllDisplays();
-    btn.textContent = "📁 Browse Logs";
-    return;
-  }
-
-  hideAllDisplays();
-  logBox.classList.remove("hidden");
-  btn.textContent = "❌ Hide Logs";
-
-  showSpinner(document.getElementById("logList"));
-
-  fetch('/logs')
-    .then(res => res.json())
-    .then(logs => {
-      const listBox = document.getElementById("logList");
-      
-      if (logs.length === 0) {
-        listBox.innerHTML = `
-          <div class="alert alert-info">
-            📝 No deployment logs found yet.
-          </div>
-        `;
-        return;
-      }
-
-      listBox.innerHTML = logs.map(log => `
-        <div class="log-item">
-          <div>
-            <a href="#" onclick="viewLogFile('${log}'); return false;">
-              📄 ${log}
-            </a>
-            <small class="text-muted"> - ${formatLogDate(log)}</small>
-          </div>
-          <button class="btn btn-small btn-secondary" onclick="downloadLog('${log}')">
-            ⬇️ Download
-          </button>
-        </div>
-      `).join('');
-    })
-    .catch(err => {
-      const listBox = document.getElementById("logList");
-      listBox.innerHTML = `
-        <div class="alert alert-error">
-          ❌ Failed to load logs: ${err.message}
-        </div>
-      `;
-    });
-}
-
-function viewLogFile(filename) {
-  const output = document.getElementById("logOutput");
-  const logBox = document.getElementById("logListBox");
-  
-  if (currentViewedLog === filename && !output.classList.contains("hidden")) {
-    output.classList.add("hidden");
-    output.textContent = "";
-    currentViewedLog = null;
-    return;
-  }
-
-  // Hide log list but keep output visible
-  logBox.classList.add("hidden");
-  output.classList.remove("hidden");
-  currentViewedLog = filename;
-
-  output.textContent = "⏳ Loading log file...";
-
-  fetch(`/logs/${filename}`)
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    })
-    .then(text => {
-      output.textContent = text || "📝 Log file is empty.";
-      
-      // Add a back button
-      const backBtn = document.createElement('div');
-      backBtn.innerHTML = `
-        <button class="btn btn-secondary mt-2" onclick="goBackToLogList()">
-          ← Back to Log List
-        </button>
-      `;
-      output.parentNode.insertBefore(backBtn, output.nextSibling);
-    })
-    .catch(err => {
-      output.textContent = `❌ Error loading log: ${err.message}`;
-    });
-}
-
-function downloadLog(filename) {
-  const link = document.createElement('a');
-  link.href = `/logs/${filename}`;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function goBackToLogList() {
-  document.getElementById("logOutput").classList.add("hidden");
-  document.getElementById("logListBox").classList.remove("hidden");
-  
-  // Remove back button
-  const backBtn = document.querySelector('.btn.btn-secondary.mt-2');
-  if (backBtn && backBtn.parentNode) {
-    backBtn.parentNode.remove();
-  }
-  
-  currentViewedLog = null;
-}
-
-/**
- * 🛠️ Utility Functions
- */
-function hideAllDisplays() {
-  document.getElementById("healthStatus").classList.add("hidden");
-  document.getElementById("logOutput").classList.add("hidden");
-  document.getElementById("logListBox").classList.add("hidden");
-  document.getElementById("status").classList.add("hidden");
-  
-  // Reset button texts
-  document.getElementById("healthBtn").textContent = "💗 Check Health";
-  document.getElementById("logBtn").textContent = "📁 Browse Logs";
-  
-  // Close event source if open
-  if (eventSource) {
-    eventSource.close();
-    eventSource = null;
-  }
-}
-
-function showSpinner(element) {
-  element.innerHTML = `
-    <div class="text-center p-3">
-      <div class="spinner"></div>
-      <p class="mt-2 text-muted">Loading...</p>
-    </div>
-  `;
-}
-
-function formatLogDate(filename) {
-  // Extract date from filename like "trigger-20250719-234154.log"
-  const match = filename.match(/trigger-(\d{8})-(\d{6})\.log/);
-  if (!match) return "Unknown date";
-  
-  const [, date, time] = match;
-  const year = date.substr(0, 4);
-  const month = date.substr(4, 2);
-  const day = date.substr(6, 2);
-  const hour = time.substr(0, 2);
-  const minute = time.substr(2, 2);
-  const second = time.substr(4, 2);
-  
-  const dateObj = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
-  return dateObj.toLocaleString();
-}
-
-function showStatus(message, type = 'info') {
-  const statusEl = document.getElementById('status');
-  statusEl.className = `alert alert-${type}`;
-  statusEl.textContent = message;
-  statusEl.classList.remove('hidden');
-  
-  // Auto hide after 5 seconds
-  setTimeout(() => {
-    statusEl.classList.add('hidden');
-  }, 5000);
-}
-
-function showError(message) {
-  showStatus(message, 'error');
-}
-
-function showSuccess(message) {
-  showStatus(message, 'success');
-}
-
-/**
- * 🎬 Initialize when DOM is loaded
- */
-document.addEventListener('DOMContentLoaded', function() {
-  // Add keyboard shortcuts
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey || e.metaKey) {
-      switch(e.key) {
-        case 'h':
-          e.preventDefault();
-          checkHealth();
-          break;
-        case 'l':
-          e.preventDefault();
-          loadLogList();
-          break;
-        case 'Escape':
-          hideAllDisplays();
-          break;
-      }
+    const logBtn = document.getElementById('logBtn');
+    const logListBox = document.getElementById('logListBox');
+    
+    if (logBtn) {
+        logBtn.textContent = '📁 Loading...';
+        logBtn.disabled = true;
     }
-  });
-  
-  // Focus on health target input
-  document.getElementById('healthTarget').focus();
-  
-  console.log('🚀 Trigger Deploy Home - Initialized');
+    
+    showSpinner();
+    
+    fetch('/api/logs/list')
+    .then(response => response.json())
+    .then(data => {
+        hideSpinner();
+        displayLogList(data.logs || []);
+        
+        if (logBtn) {
+            logBtn.textContent = '📁 Browse Logs';
+            logBtn.disabled = false;
+        }
+        
+        if (logListBox) {
+            logListBox.classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        hideSpinner();
+        showStatus(`❌ Error loading logs: ${error.message}`, 'error');
+        console.error('Log loading error:', error);
+        
+        if (logBtn) {
+            logBtn.textContent = '📁 Browse Logs';
+            logBtn.disabled = false;
+        }
+    });
+}
+
+function displayLogList(logs) {
+    const logList = document.getElementById('logList');
+    if (!logList) return;
+    
+    if (logs.length === 0) {
+        logList.innerHTML = '<p class="text-muted">No log files found.</p>';
+        return;
+    }
+    
+    const logItems = logs.map(log => `
+        <div class="log-item">
+            <div class="log-info">
+                <strong>${log.name}</strong>
+                <span class="log-meta">
+                    ${log.size} | ${new Date(log.modified).toLocaleString()}
+                </span>
+            </div>
+            <div class="log-actions">
+                <button onclick="viewLog('${log.name}')" class="btn btn-sm btn-info">
+                    👁️ View
+                </button>
+                <button onclick="downloadLog('${log.name}')" class="btn btn-sm btn-secondary">
+                    💾 Download
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    logList.innerHTML = logItems;
+}
+
+function viewLog(logName) {
+    showSpinner();
+    
+    fetch(`/logs/${logName}`)
+    .then(response => response.text())
+    .then(content => {
+        hideSpinner();
+        displayLogContent(logName, content);
+    })
+    .catch(error => {
+        hideSpinner();
+        showStatus(`❌ Error loading log: ${error.message}`, 'error');
+        console.error('Log view error:', error);
+    });
+}
+
+function displayLogContent(logName, content) {
+    const logOutput = document.getElementById('logOutput');
+    if (!logOutput) return;
+    
+    logOutput.innerHTML = `
+        <div class="log-header">
+            <h3>📄 ${logName}</h3>
+            <button onclick="hideLogOutput()" class="btn btn-sm btn-secondary">✖️ Close</button>
+        </div>
+        <pre class="log-content">${escapeHtml(content)}</pre>
+    `;
+    
+    logOutput.classList.remove('hidden');
+    logOutput.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideLogOutput() {
+    const logOutput = document.getElementById('logOutput');
+    if (logOutput) {
+        logOutput.classList.add('hidden');
+    }
+}
+
+function downloadLog(logName) {
+    window.open(`/logs/${logName}`, '_blank');
+}
+
+// Utility Functions
+function showStatus(message, type = 'info') {
+    const status = document.getElementById('status');
+    if (!status) return;
+    
+    status.className = `alert alert-${type}`;
+    status.textContent = message;
+    status.classList.remove('hidden');
+    
+    // Auto hide after 5 seconds for non-error messages
+    if (type !== 'error') {
+        setTimeout(() => hideStatus(), 5000);
+    }
+}
+
+function hideStatus() {
+    const status = document.getElementById('status');
+    if (status) {
+        status.classList.add('hidden');
+    }
+}
+
+function hideHealthStatus() {
+    const healthStatus = document.getElementById('healthStatus');
+    if (healthStatus) {
+        healthStatus.classList.add('hidden');
+    }
+}
+
+function showSpinner() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) {
+        spinner.classList.remove('hidden');
+    }
+}
+
+function hideSpinner() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) {
+        spinner.classList.add('hidden');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // ESC to cancel health check
+    if (e.key === 'Escape' && isHealthCheckVisible) {
+        cancelHealthCheck();
+    }
+    
+    // Enter to execute health check
+    if (e.key === 'Enter' && isHealthCheckVisible) {
+        executeHealthCheck();
+    }
 });

@@ -1,0 +1,40 @@
+/* Test CSS file */
+body { 
+    font-family: Arial, sans-serif; 
+    background: #f0f0f0; 
+    margin: 0; 
+    padding: 20px; 
+}
+
+.container { 
+    max-width: 800px; 
+    margin: 0 auto; 
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+}
+
+.header { 
+    text-align: center; 
+    color: #333; 
+    border-bottom: 2px solid #007bff; 
+    padding-bottom: 20px; 
+    margin-bottom: 20px; 
+}
+
+.btn { 
+    display: inline-block; 
+    padding: 10px 20px; 
+    background: #007bff; 
+    color: white; 
+    text-decoration: none; 
+    border-radius: 4px; 
+    margin: 5px; 
+    border: none; 
+    cursor: pointer; 
+}
+
+.btn:hover { 
+    background: #0056b3; 
+}

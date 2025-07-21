@@ -12,6 +12,8 @@ from src.utils.helpers import (
     send_email_notification, cleanup_old_logs
 )
 from src.models.config import config
+from src.utils.deployment_history import deployment_history
+from src.models.entities import Deployment
 
 
 deploy_bp = Blueprint('deploy', __name__)
@@ -43,6 +45,22 @@ def trigger_deploy():
 
         # Generate deployment ID
         deployment_id = generate_deployment_id()
+        
+        # Create deployment record
+        deployment_record = Deployment(
+            deployment_id=deployment_id,
+            server_name=server_name,
+            server_ip=server_ip,
+            started_at=datetime.now(),
+            completed_at=None,
+            status="started",
+            duration=None,
+            client_ip=request.remote_addr,
+            log_file=log_file
+        )
+        
+        # Add to deployment history
+        deployment_history.add_deployment(deployment_record)
         
         # Prepare log file
         log_file = f"trigger-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"

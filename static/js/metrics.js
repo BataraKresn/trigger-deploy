@@ -2,381 +2,326 @@
 // Metrics Dashboard JavaScript
 // =================================
 
-class MetricsDashboard {
-    constructor() {
-        this.currentPage = 1;
-        this.itemsPerPage = 3;
-        this.deployments = [];
-        this.expandedRows = new Set();
-        this.init();
-        this.loadMetrics();
+// Global variables
+let metricsInterval = null;
+let deploymentHistory = [];
+let systemStats = {};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Metrics page loaded');
+    loadInitialMetrics();
+    setupEventListeners();
+    startAutoRefresh();
+});
+
+function setupEventListeners() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadInitialMetrics);
+    }
+    
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    if (autoRefreshToggle) {
+        autoRefreshToggle.addEventListener('change', toggleAutoRefresh);
+    }
+}
+
+function loadInitialMetrics() {
+    showSpinner();
+    
+    Promise.all([
+        loadDeploymentHistory(),
+        loadSystemStats(),
+        loadServerMetrics()
+    ])
+    .then(() => {
+        hideSpinner();
+        updateLastRefresh();
+    })
+    .catch(error => {
+        hideSpinner();
+        showStatus(`❌ Error loading metrics: ${error.message}`, 'error');
+        console.error('Metrics loading error:', error);
+    });
+}
+
+function loadDeploymentHistory() {
+    return fetch('/api/metrics/history')
+    .then(response => response.json())
+    .then(data => {
+        deploymentHistory = data || [];
+        displayDeploymentHistory(deploymentHistory);
+        updateDeploymentStats(deploymentHistory);
+    });
+}
+
+function loadSystemStats() {
+    return fetch('/api/metrics/system')
+    .then(response => response.json())
+    .then(data => {
+        systemStats = data;
+        displaySystemStats(data);
+    });
+}
+
+function loadServerMetrics() {
+    return fetch('/api/metrics/servers')
+    .then(response => response.json())
+    .then(data => {
+        displayServerMetrics(data);
+    });
+}
+
+function displayDeploymentHistory(history) {
+    const historyContainer = document.getElementById('deploymentHistory');
+    if (!historyContainer) return;
+    
+    if (history.length === 0) {
+        historyContainer.innerHTML = '<p class="text-muted">No deployment history available.</p>';
+        return;
+    }
+    
+    const historyItems = history.slice(0, 10).map(deployment => {
+        const statusIcon = getDeploymentStatusIcon(deployment.status);
+        const statusClass = getDeploymentStatusClass(deployment.status);
+        const duration = deployment.duration ? `${deployment.duration.toFixed(1)}s` : 'N/A';
+        const startTime = new Date(deployment.started_at).toLocaleString();
         
-        // Auto-refresh every 30 seconds
-        setInterval(() => this.loadMetrics(), 30000);
-    }
-    
-    init() {
-        console.log('Metrics Dashboard initialized');
-    }
-    
-    async loadMetrics() {
-        try {
-            // Load all metrics in parallel
-            const [stats, history, serverStats, systemInfo] = await Promise.all([
-                fetch('/api/metrics/stats').catch(() => ({ ok: false })),
-                fetch('/api/metrics/history').catch(() => ({ ok: false })),
-                fetch('/api/metrics/servers').catch(() => ({ ok: false })),
-                fetch('/api/metrics/system').catch(() => ({ ok: false }))
-            ]);
-            
-            if (stats.ok) {
-                const statsData = await stats.json();
-                this.updateStatsCards(statsData);
-            }
-            
-            if (history.ok) {
-                const historyData = await history.json();
-                this.updateDeploymentHistory(historyData);
-            }
-            
-            if (serverStats.ok) {
-                const serverData = await serverStats.json();
-                this.updateServerStats(serverData);
-            }
-            
-            if (systemInfo.ok) {
-                const systemData = await systemInfo.json();
-                this.updateSystemInfo(systemData);
-            }
-            
-        } catch (error) {
-            console.error('Error loading metrics:', error);
-            // Don't show error to user for background refresh
-        }
-    }
-    
-    updateStatsCards(stats) {
-        document.getElementById('totalDeployments').textContent = stats.total || 0;
-        document.getElementById('successfulDeployments').textContent = stats.success || 0;
-        document.getElementById('failedDeployments').textContent = stats.failed || 0;
-        document.getElementById('successRate').textContent = `${stats.success_rate || 0}%`;
-        document.getElementById('inProgressDeployments').textContent = stats.in_progress || 0;
-        document.getElementById('uptime').textContent = this.formatUptime(stats.uptime || 0);
-    }
-    
-    updateDeploymentHistory(history) {
-        const container = document.getElementById('deploymentHistory');
-        
-        if (!history.deployments || history.deployments.length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-info">
-                    📝 No deployment history available yet.
+        return `
+            <div class="deployment-item ${statusClass}">
+                <div class="deployment-header">
+                    <span class="deployment-status">${statusIcon} ${deployment.status}</span>
+                    <span class="deployment-time">${startTime}</span>
                 </div>
-            `;
-            return;
-        }
-        
-        // Store deployments for pagination
-        this.deployments = history.deployments;
-        this.renderDeploymentTable();
-    }
-    
-    renderDeploymentTable() {
-        const container = document.getElementById('deploymentHistory');
-        const totalPages = Math.ceil(this.deployments.length / this.itemsPerPage);
-        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-        const endIndex = startIndex + this.itemsPerPage;
-        const currentDeployments = this.deployments.slice(startIndex, endIndex);
-        
-        const tableHtml = `
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th>Server</th>
-                        <th>Status</th>
-                        <th>Started</th>
-                        <th>Duration</th>
-                        <th>Client IP</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${currentDeployments.map((deployment, index) => {
-                        const globalIndex = startIndex + index;
-                        const isExpanded = this.expandedRows.has(globalIndex);
-                        return `
-                            <tr>
-                                <td><strong>${deployment.server_name}</strong><br>
-                                    <small class="text-muted">${deployment.server_ip}</small>
-                                </td>
-                                <td>
-                                    <span class="status-badge ${this.getStatusClass(deployment)}">
-                                        ${this.getStatusText(deployment)}
-                                    </span>
-                                </td>
-                                <td>${this.formatDateTime(deployment.started_at)}</td>
-                                <td>${this.formatDuration(deployment.duration)}</td>
-                                <td><code>${deployment.client_ip}</code></td>
-                                <td>
-                                    ${deployment.log_file ? 
-                                        `<button onclick="metricsDashboard.toggleLog(${globalIndex})" class="btn btn-small btn-secondary">
-                                            📄 ${isExpanded ? 'Hide' : 'View'} Log
-                                        </button>` : 
-                                        '-'
-                                    }
-                                </td>
-                            </tr>
-                            ${isExpanded ? `
-                                <tr class="log-row">
-                                    <td colspan="6">
-                                        <div class="log-content" id="log-${globalIndex}">
-                                            <div class="log-header">
-                                                📄 Log: ${deployment.log_file}
-                                                <button onclick="metricsDashboard.toggleLog(${globalIndex})" class="btn btn-small btn-secondary float-right">✕ Close</button>
-                                            </div>
-                                            <div class="log-body">Loading log...</div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ` : ''}
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-            
-            ${totalPages > 1 ? this.renderPagination(totalPages) : ''}
+                <div class="deployment-details">
+                    <p><strong>Server:</strong> ${deployment.server_name} (${deployment.server_ip})</p>
+                    <p><strong>Duration:</strong> ${duration}</p>
+                    <p><strong>Client:</strong> ${deployment.client_ip}</p>
+                    ${deployment.log_file ? `<p><strong>Log:</strong> <a href="/logs/${deployment.log_file}" target="_blank">${deployment.log_file}</a></p>` : ''}
+                </div>
+                <div class="deployment-id">
+                    <small>ID: ${deployment.deployment_id}</small>
+                </div>
+            </div>
         `;
-        
-        container.innerHTML = tableHtml;
-        
-        // Load logs for expanded rows
-        this.expandedRows.forEach(index => {
-            const deployment = this.deployments[index];
-            if (deployment && deployment.log_file) {
-                this.loadLogContent(index, deployment.log_file);
-            }
-        });
+    }).join('');
+    
+    historyContainer.innerHTML = historyItems;
+}
+
+function updateDeploymentStats(history) {
+    const totalDeployments = history.length;
+    const successfulDeployments = history.filter(d => d.status === 'success').length;
+    const failedDeployments = history.filter(d => d.status === 'failed').length;
+    const successRate = totalDeployments > 0 ? ((successfulDeployments / totalDeployments) * 100).toFixed(1) : 0;
+    
+    // Update stats cards
+    updateStatCard('totalDeployments', totalDeployments);
+    updateStatCard('successfulDeployments', successfulDeployments);
+    updateStatCard('failedDeployments', failedDeployments);
+    updateStatCard('successRate', `${successRate}%`);
+}
+
+function displaySystemStats(stats) {
+    updateStatCard('cpuUsage', `${stats.cpu_percent}%`);
+    updateStatCard('memoryUsage', `${stats.memory_percent}%`);
+    updateStatCard('diskUsage', `${stats.disk_percent}%`);
+    updateStatCard('uptime', formatUptime(stats.uptime));
+    
+    // Update system info
+    const systemInfo = document.getElementById('systemInfo');
+    if (systemInfo) {
+        systemInfo.innerHTML = `
+            <div class="system-info-grid">
+                <div class="info-item">
+                    <strong>Platform:</strong> ${stats.platform}
+                </div>
+                <div class="info-item">
+                    <strong>Architecture:</strong> ${stats.architecture}
+                </div>
+                <div class="info-item">
+                    <strong>Hostname:</strong> ${stats.hostname}
+                </div>
+                <div class="info-item">
+                    <strong>CPU Cores:</strong> ${stats.cpu_count}
+                </div>
+                <div class="info-item">
+                    <strong>Memory:</strong> ${formatBytes(stats.memory_total)}
+                </div>
+                <div class="info-item">
+                    <strong>Disk:</strong> ${formatBytes(stats.disk_total)}
+                </div>
+            </div>
+        `;
+    }
+}
+
+function displayServerMetrics(servers) {
+    const serverMetrics = document.getElementById('serverMetrics');
+    if (!serverMetrics) return;
+    
+    if (!servers || servers.length === 0) {
+        serverMetrics.innerHTML = '<p class="text-muted">No server metrics available.</p>';
+        return;
     }
     
-    renderPagination(totalPages) {
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const serverCards = servers.map(server => {
+        const statusClass = getStatusClass(server.status);
+        const statusIcon = getStatusIcon(server.status);
         
-        if (endPage - startPage + 1 < maxVisiblePages) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-        
-        let paginationHtml = '<div class="pagination">';
-        
-        // First page and previous
-        if (this.currentPage > 1) {
-            paginationHtml += `
-                <button onclick="metricsDashboard.goToPage(1)" class="pagination-btn" title="First page">&laquo;</button>
-                <button onclick="metricsDashboard.goToPage(${this.currentPage - 1})" class="pagination-btn" title="Previous page">&lsaquo;</button>
-            `;
-        }
-        
-        // Page numbers
-        if (startPage > 1) {
-            paginationHtml += `<button onclick="metricsDashboard.goToPage(1)" class="pagination-btn">1</button>`;
-            if (startPage > 2) {
-                paginationHtml += `<span class="pagination-ellipsis">...</span>`;
-            }
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            paginationHtml += `
-                <button onclick="metricsDashboard.goToPage(${i})" 
-                        class="pagination-btn ${i === this.currentPage ? 'active' : ''}">${i}</button>
-            `;
-        }
-        
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                paginationHtml += `<span class="pagination-ellipsis">...</span>`;
-            }
-            paginationHtml += `<button onclick="metricsDashboard.goToPage(${totalPages})" class="pagination-btn">${totalPages}</button>`;
-        }
-        
-        // Next and last page
-        if (this.currentPage < totalPages) {
-            paginationHtml += `
-                <button onclick="metricsDashboard.goToPage(${this.currentPage + 1})" class="pagination-btn" title="Next page">&rsaquo;</button>
-                <button onclick="metricsDashboard.goToPage(${totalPages})" class="pagination-btn" title="Last page">&raquo;</button>
-            `;
-        }
-        
-        paginationHtml += '</div>';
-        return paginationHtml;
-    }
+        return `
+            <div class="server-metric-card ${statusClass}">
+                <div class="server-metric-header">
+                    <h4>${server.name}</h4>
+                    <span class="server-status">${statusIcon} ${server.status}</span>
+                </div>
+                <div class="server-metric-details">
+                    <p><strong>IP:</strong> ${server.ip}</p>
+                    <p><strong>Type:</strong> ${server.type}</p>
+                    <p><strong>Last Check:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
     
-    goToPage(page) {
-        this.currentPage = page;
-        this.renderDeploymentTable();
+    serverMetrics.innerHTML = serverCards;
+}
+
+function updateStatCard(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
     }
-    
-    async toggleLog(index) {
-        if (this.expandedRows.has(index)) {
-            this.expandedRows.delete(index);
+}
+
+function getDeploymentStatusIcon(status) {
+    switch(status) {
+        case 'success': return '✅';
+        case 'failed': return '❌';
+        case 'running': return '🔄';
+        case 'started': return '🚀';
+        default: return '❓';
+    }
+}
+
+function getDeploymentStatusClass(status) {
+    switch(status) {
+        case 'success': return 'deployment-success';
+        case 'failed': return 'deployment-failed';
+        case 'running': return 'deployment-running';
+        case 'started': return 'deployment-started';
+        default: return 'deployment-unknown';
+    }
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'online': return 'status-online';
+        case 'offline': return 'status-offline';
+        default: return 'status-unknown';
+    }
+}
+
+function getStatusIcon(status) {
+    switch(status) {
+        case 'online': return '🟢';
+        case 'offline': return '🔴';
+        default: return '🟡';
+    }
+}
+
+function formatUptime(uptimeString) {
+    try {
+        const uptime = new Date(uptimeString);
+        const now = new Date();
+        const diffMs = now - uptime;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        if (diffDays > 0) {
+            return `${diffDays}d ${diffHours}h`;
+        } else if (diffHours > 0) {
+            return `${diffHours}h`;
         } else {
-            this.expandedRows.add(index);
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            return `${diffMinutes}m`;
         }
-        this.renderDeploymentTable();
-    }
-    
-    async loadLogContent(index, logFile) {
-        const logBody = document.querySelector(`#log-${index} .log-body`);
-        if (!logBody) return;
-        
-        try {
-            const response = await fetch(`/logs/${logFile}`);
-            if (response.ok) {
-                const logContent = await response.text();
-                logBody.innerHTML = `<pre class="log-output">${this.escapeHtml(logContent)}</pre>`;
-            } else {
-                logBody.innerHTML = `<div class="alert alert-error">Failed to load log: ${response.statusText}</div>`;
-            }
-        } catch (error) {
-            logBody.innerHTML = `<div class="alert alert-error">Error loading log: ${error.message}</div>`;
-        }
-    }
-    
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    updateServerStats(serverStats) {
-        const container = document.getElementById('serverStats');
-        
-        if (!serverStats.servers || Object.keys(serverStats.servers).length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-info">
-                    📝 No server statistics available yet.
-                </div>
-            `;
-            return;
-        }
-        
-        const serversHtml = Object.entries(serverStats.servers).map(([serverName, stats]) => `
-            <div class="server-stat-card" style="border: 1px solid #dee2e6; padding: 1rem; margin-bottom: 1rem; border-radius: 8px;">
-                <h4>🖥️ ${serverName}</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
-                    <div>
-                        <strong>Total:</strong> ${stats.total}
-                    </div>
-                    <div>
-                        <strong>Success:</strong> <span class="text-success">${stats.success}</span>
-                    </div>
-                    <div>
-                        <strong>Failed:</strong> <span class="text-danger">${stats.failed}</span>
-                    </div>
-                    <div>
-                        <strong>Last Deploy:</strong><br>
-                        <small>${stats.last_deployment ? this.formatDateTime(stats.last_deployment) : 'Never'}</small>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
-        container.innerHTML = serversHtml;
-    }
-    
-    updateSystemInfo(systemInfo) {
-        const container = document.getElementById('systemInfo');
-        
-        const infoHtml = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                <div>
-                    <h5>🐍 Python Version</h5>
-                    <p>${systemInfo.python_version || 'Unknown'}</p>
-                </div>
-                <div>
-                    <h5>🌐 Flask Version</h5>
-                    <p>${systemInfo.flask_version || 'Unknown'}</p>
-                </div>
-                <div>
-                    <h5>💾 Memory Usage</h5>
-                    <p>${systemInfo.memory_usage || 'Unknown'}</p>
-                </div>
-                <div>
-                    <h5>💽 Disk Usage</h5>
-                    <p>${systemInfo.disk_usage || 'Unknown'}</p>
-                </div>
-                <div>
-                    <h5>⚡ CPU Usage</h5>
-                    <p>${systemInfo.cpu_usage || 'Unknown'}</p>
-                </div>
-                <div>
-                    <h5>🕐 Server Time</h5>
-                    <p>${new Date().toLocaleString()}</p>
-                </div>
-            </div>
-        `;
-        
-        container.innerHTML = infoHtml;
-    }
-    
-    getStatusClass(deployment) {
-        if (deployment.success === true) return 'status-success';
-        if (deployment.success === false) return 'status-failed';
-        return 'status-running';
-    }
-    
-    getStatusText(deployment) {
-        if (deployment.success === true) return '✅ Success';
-        if (deployment.success === false) return '❌ Failed';
-        return '🔄 Running';
-    }
-    
-    formatDateTime(isoString) {
-        if (!isoString) return '-';
-        return new Date(isoString).toLocaleString();
-    }
-    
-    formatDuration(seconds) {
-        if (!seconds) return '-';
-        
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        
-        if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
-        if (mins > 0) return `${mins}m ${secs}s`;
-        return `${secs}s`;
-    }
-    
-    formatUptime(seconds) {
-        if (!seconds) return '-';
-        
-        const days = Math.floor(seconds / 86400);
-        const hours = Math.floor((seconds % 86400) / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        
-        if (days > 0) return `${days}d ${hours}h`;
-        if (hours > 0) return `${hours}h ${minutes}m`;
-        return `${minutes}m`;
-    }
-    
-    showError(message) {
-        // You can implement error display here
-        console.error(message);
+    } catch (e) {
+        return 'N/A';
     }
 }
 
-// Global functions
-function refreshMetrics() {
-    if (window.metricsDashboard) {
-        window.metricsDashboard.loadMetrics();
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function startAutoRefresh() {
+    const interval = 30000; // 30 seconds
+    
+    metricsInterval = setInterval(() => {
+        const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+        if (autoRefreshToggle && autoRefreshToggle.checked) {
+            loadInitialMetrics();
+        }
+    }, interval);
+}
+
+function toggleAutoRefresh(e) {
+    const isEnabled = e.target.checked;
+    const status = isEnabled ? 'enabled' : 'disabled';
+    showStatus(`🔄 Auto-refresh ${status}`, 'info');
+}
+
+function updateLastRefresh() {
+    const lastRefreshElement = document.getElementById('lastRefresh');
+    if (lastRefreshElement) {
+        lastRefreshElement.textContent = `Last updated: ${new Date().toLocaleString()}`;
     }
 }
 
-// Initialize when DOM is loaded
-let metricsDashboard;
+// Utility Functions
+function showStatus(message, type = 'info') {
+    const status = document.getElementById('status');
+    if (!status) return;
+    
+    status.className = `alert alert-${type}`;
+    status.textContent = message;
+    status.classList.remove('hidden');
+    
+    setTimeout(() => hideStatus(), 3000);
+}
 
-document.addEventListener('DOMContentLoaded', () => {
-    metricsDashboard = new MetricsDashboard();
-    window.metricsDashboard = metricsDashboard;
+function hideStatus() {
+    const status = document.getElementById('status');
+    if (status) {
+        status.classList.add('hidden');
+    }
+}
+
+function showSpinner() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) {
+        spinner.classList.remove('hidden');
+    }
+}
+
+function hideSpinner() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) {
+        spinner.classList.add('hidden');
+    }
+}
+
+// Cleanup interval on page unload
+window.addEventListener('beforeunload', function() {
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+    }
 });

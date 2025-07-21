@@ -164,6 +164,52 @@ class ServiceMonitor:
         
         return ", ".join(port_list)
 
+    def check_all_local_services(self) -> List[Dict]:
+        """Check all local Docker services"""
+        local_services = []
+        if self.docker_client:
+            try:
+                containers = self.docker_client.containers.list(all=True)
+                for container in containers:
+                    service_info = self.check_docker_service(container.name)
+                    if service_info.get('found'):
+                        local_services.append(service_info)
+            except Exception as e:
+                logger.error(f"Error checking local services: {e}")
+        return local_services
+
+    def check_all_remote_services(self) -> List[Dict]:
+        """Check all remote HTTP services"""
+        remote_services = []
+        for service in self.services:
+            if service.get('type') == 'http' or 'url' in service:
+                status = self.check_http_service(service.get('url', ''))
+                status['name'] = service.get('name', 'Unknown')
+                status['description'] = service.get('description', '')
+                status['critical'] = service.get('critical', False)
+                remote_services.append(status)
+        return remote_services
+
+    def get_services_summary(self) -> Dict:
+        """Get summary of all services"""
+        local = self.check_all_local_services()
+        remote = self.check_all_remote_services()
+        
+        total_services = len(local) + len(remote)
+        healthy_count = sum(1 for s in local + remote if s.get('status') == 'healthy')
+        unhealthy_count = total_services - healthy_count
+        critical_down = sum(1 for s in local + remote 
+                          if s.get('critical', False) and s.get('status') != 'healthy')
+        
+        return {
+            'total_services': total_services,
+            'healthy_services': healthy_count,
+            'unhealthy_services': unhealthy_count,
+            'critical_down': critical_down,
+            'local_services_count': len(local),
+            'remote_services_count': len(remote)
+        }
+
 
 # Global service monitor instance
 service_monitor = ServiceMonitor()
