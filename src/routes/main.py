@@ -43,41 +43,31 @@ def login():
     if is_authenticated():
         return redirect(url_for('main.dashboard'))
     return render_template('login.html')
-    """Home page (dashboard)"""
-    return render_template('home.html')
-
-
-@main_bp.route('/dashboard')
-def dashboard():
-    """Dashboard page (same as home but with explicit route)"""
-    return render_template('home.html')
-
-
-@main_bp.route('/login')
-def login():
-    """Login page"""
-    return render_template('login.html')
 
 
 @main_bp.route('/users')
+@require_auth
 def users():
     """User management page"""
     return render_template('user_management.html')
 
 
 @main_bp.route('/deploy-servers')
+@require_auth
 def deploy_servers():
     """Deploy servers page"""
     return render_template('deploy_servers.html')
 
 
 @main_bp.route('/metrics')
+@require_auth
 def metrics():
     """Metrics dashboard page"""
     return render_template('metrics.html')
 
 
 @main_bp.route('/services-monitor')
+@require_auth
 def services_monitor():
     """Services monitor page"""
     return render_template('services_monitor.html')
