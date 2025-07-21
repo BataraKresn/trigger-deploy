@@ -1,38 +1,127 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: trigger-deploy-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-trigger_deploy}
+      - POSTGRES_USER=${POSTGRES_USER:-trigger_deploy_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secure_password_123}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - TZ=Asia/Jakarta
+      - PGTZ=Asia/Jakarta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      - ./logs:/var/log/postgresql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - dev-trigger-network
+    restart: unless-stopped
+    command: >
+      postgres
+      -c log_statement=all
+      -c log_destination=stderr
+      -c log_min_duration_statement=1000
+      -c shared_preload_libraries=pg_stat_statements
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trigger_deploy_user} -d ${POSTGRES_DB:-trigger_deploy} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Main Application
   dev-trigger-deploy:
-    build: .
-    image: dev-trigger-deploy
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: dev-trigger-deploy:latest
     container_name: dev-trigger-deploy
     ports:
-      - "3111:5000"
-    restart: always
+      - "${APP_PORT:-3111}:5000"
+    restart: unless-stopped
     environment:
       - TZ=Asia/Jakarta
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=${FLASK_ENV:-production}
       - DEPLOY_TOKEN=${DEPLOY_TOKEN:-SATindonesia2026}
+      - LOGIN_PASSWORD=${LOGIN_PASSWORD:-admin123}
+      - JWT_SECRET=${JWT_SECRET:-ff4ad765ebb762ab6f220b5cb5191a99bd87a8ea}
       - LOG_DIR=${LOG_DIR:-trigger-logs}
       - SERVERS_FILE=${SERVERS_FILE:-config/servers.json}
       - SERVICES_FILE=${SERVICES_FILE:-config/services.json}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
       - DOCKER_ENABLED=${DOCKER_ENABLED:-true}
       - SHOW_DEMO_CREDENTIALS=${SHOW_DEMO_CREDENTIALS:-false}
+      # PostgreSQL Configuration
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-trigger_deploy_user}:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/${POSTGRES_DB:-trigger_deploy}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-trigger_deploy}
+      - POSTGRES_USER=${POSTGRES_USER:-trigger_deploy_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secure_password_123}
+      # Security
+      - SECURE_HEADERS=${SECURE_HEADERS:-true}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-true}
+      - SESSION_COOKIE_HTTPONLY=${SESSION_COOKIE_HTTPONLY:-true}
     env_file:
       - .env
     volumes:
+      # SSH keys for deployment
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
+      # Application data
       - ./trigger-logs:/app/trigger-logs
       - ./logs:/app/logs
       - ./config:/app/config
+      # Development volumes (comment out in production)
       - ./templates:/app/templates
       - ./static:/app/static
       - ./src:/app/src
       - ./scripts:/app/scripts
-      # Mount Docker socket for service monitoring
+      # Docker socket for service monitoring
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - dev-trigger-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
 
 networks:
   dev-trigger-network:
-    external: true
+    driver: bridge
     name: dev-trigger-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

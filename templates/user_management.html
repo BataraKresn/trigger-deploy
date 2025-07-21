@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👥 User Management - Trigger Deploy Server</title>
+  <link rel="icon" type="image/svg+xml" href="/static/images/favicon/home.svg">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/css/user-management.css">
+</head>
+<body>
+  <!-- Navigation Header -->
+  <nav class="dashboard-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h2>🚀 Trigger Deploy</h2>
+      </div>
+      <div class="nav-menu">
+        <a href="/dashboard" class="nav-item">🏠 Dashboard</a>
+        <a href="/deploy-servers" class="nav-item">🔐 Deploy</a>
+        <a href="/users" class="nav-item active">👥 Users</a>
+        <a href="/metrics" class="nav-item">📊 Metrics</a>
+        <a href="/services-monitor" class="nav-item">🐳 Services</a>
+        <a href="/docs" class="nav-item">📚 Docs</a>
+      </div>
+      <div class="nav-user">
+        <div class="user-info">
+          <span class="user-name" id="userName">User</span>
+          <span class="user-role" id="userRole">admin</span>
+        </div>
+        <div class="user-actions">
+          <button onclick="showUserMenu()" class="user-menu-btn">⚙️</button>
+          <button onclick="logout()" class="logout-btn">🚪</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1>👥 User Management</h1>
+        <p>Manage system users, roles, and permissions</p>
+      </div>
+      <div class="header-actions">
+        <button onclick="showCreateUserModal()" class="btn btn-primary" id="addUserBtn">
+          ➕ Add User
+        </button>
+        <button onclick="refreshUserList()" class="btn btn-secondary">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="status" class="alert hidden"></div>
+
+    <!-- User Statistics -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="totalUsers">-</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👑</div>
+        <div class="stat-info">
+          <div class="stat-value" id="superAdmins">-</div>
+          <div class="stat-label">Super Admins</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-info">
+          <div class="stat-value" id="regularUsers">-</div>
+          <div class="stat-label">Regular Users</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🟢</div>
+        <div class="stat-info">
+          <div class="stat-value" id="activeUsers">-</div>
+          <div class="stat-label">Active Users</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User List -->
+    <div class="users-container">
+      <div class="users-header">
+        <h3>👥 User List</h3>
+        <div class="users-search">
+          <input type="text" id="userSearch" placeholder="🔍 Search users..." onkeyup="filterUsers()">
+        </div>
+      </div>
+      
+      <div class="users-table-container">
+        <table class="users-table" id="usersTable">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Email</th>
+              <th>Last Login</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <!-- Users will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit User Modal -->
+  <div id="userModal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="modalTitle">👤 Add New User</h3>
+        <button type="button" class="modal-close" onclick="closeUserModal()">✖️</button>
+      </div>
+      <div class="modal-body">
+        <form id="userForm" class="user-form">
+          <input type="hidden" id="userId" name="userId">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="fullName">👤 Full Name *</label>
+              <input type="text" id="fullName" name="fullName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="username">🔑 Username *</label>
+              <input type="text" id="username" name="username" class="form-control" required>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">📧 Email *</label>
+              <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="role">👑 Role *</label>
+              <select id="role" name="role" class="form-control" required>
+                <option value="user">👤 User</option>
+                <option value="superadmin">👑 Super Admin</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row" id="passwordSection">
+            <div class="form-group">
+              <label for="password">🔐 Password *</label>
+              <div class="password-input-wrapper">
+                <input type="password" id="password" name="password" class="form-control">
+                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">👁️</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">🔐 Confirm Password *</label>
+              <div class="password-input-wrapper">
+                <input type="password" id="confirmPassword" name="confirmPassword" class="form-control">
+                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirmPassword')">👁️</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeUserModal()" class="btn btn-secondary">Cancel</button>
+        <button type="button" onclick="saveUser()" class="btn btn-primary" id="saveUserBtn">💾 Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="passwordModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔐 Change Password</h3>
+        <button type="button" class="modal-close" onclick="closePasswordModal()">✖️</button>
+      </div>
+      <div class="modal-body">
+        <form id="passwordForm" class="password-form">
+          <input type="hidden" id="passwordUserId" name="passwordUserId">
+          
+          <div class="form-group" id="currentPasswordGroup">
+            <label for="currentPassword">🔑 Current Password *</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="currentPassword" name="currentPassword" class="form-control" required>
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('currentPassword')">👁️</button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="newPassword">🔐 New Password *</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="newPassword" name="newPassword" class="form-control" required>
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('newPassword')">👁️</button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirmNewPassword">🔐 Confirm New Password *</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="confirmNewPassword" name="confirmNewPassword" class="form-control" required>
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirmNewPassword')">👁️</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closePasswordModal()" class="btn btn-secondary">Cancel</button>
+        <button type="button" onclick="changePassword()" class="btn btn-primary">🔐 Change Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🗑️ Delete User</h3>
+        <button type="button" class="modal-close" onclick="closeDeleteModal()">✖️</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this user?</p>
+        <div class="user-delete-info">
+          <strong id="deleteUserName"></strong><br>
+          <span id="deleteUserEmail"></span>
+        </div>
+        <p class="warning-text">⚠️ This action cannot be undone.</p>
+        <input type="hidden" id="deleteUserId">
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+        <button type="button" onclick="confirmDeleteUser()" class="btn btn-danger">🗑️ Delete User</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/user-management.js"></script>
+</body>
+</html>

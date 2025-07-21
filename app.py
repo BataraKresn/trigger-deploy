@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # =================================
-# Trigger Deploy Server - Clean Architecture
+# Trigger Deploy Server - Clean Architecture with PostgreSQL
 # =================================
 
 import os
 import sys
 import logging
+import asyncio
+import atexit
 from flask import Flask
 from flask_cors import CORS
 
@@ -16,6 +18,20 @@ from src.models.config import config
 from src.routes.main import main_bp
 from src.routes.api import api_bp
 from src.routes.deploy import deploy_bp
+
+# Import PostgreSQL routes instead of file-based user routes
+try:
+    from src.routes.user_postgres import user_bp
+    USING_POSTGRES = True
+    logging.info("Using PostgreSQL user management")
+except ImportError:
+    from src.routes.user import user_bp
+    USING_POSTGRES = False
+    logging.warning("PostgreSQL not available, falling back to file-based user management")
+
+# Database initialization
+if USING_POSTGRES:
+    from src.models.database import init_database, close_database
 
 
 # Configure logging
@@ -42,10 +58,34 @@ def create_app():
     app.config['SECRET_KEY'] = config.TOKEN
     app.config['MAX_CONTENT_LENGTH'] = config.MAX_LOG_SIZE
     
+    # Initialize PostgreSQL database if available
+    if USING_POSTGRES:
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(init_database())
+            logger.info("PostgreSQL database initialized successfully")
+            
+            # Register cleanup function
+            def cleanup_db():
+                try:
+                    loop.run_until_complete(close_database())
+                    logger.info("PostgreSQL database connection closed")
+                except Exception as e:
+                    logger.error(f"Error closing database: {e}")
+            
+            atexit.register(cleanup_db)
+        except Exception as e:
+            logger.error(f"Failed to initialize PostgreSQL database: {e}")
+            logger.info("Falling back to file-based user management")
+            global USING_POSTGRES
+            USING_POSTGRES = False
+    
     # Register blueprints
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(deploy_bp)
+    app.register_blueprint(user_bp)
     
     # Health check endpoint
     @app.route('/health')

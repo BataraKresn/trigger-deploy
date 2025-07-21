@@ -1,5 +1,5 @@
 # =================================
-# API Routes
+# API Routes with PostgreSQL Support
 # =================================
 
 from flask import Blueprint, jsonify, request
@@ -8,6 +8,7 @@ import json
 import os
 import jwt
 import hashlib
+import asyncio
 from src.utils.helpers import (
     load_servers, load_services, ping_check, 
     dns_resolve_check, http_check
@@ -16,6 +17,14 @@ from src.models.entities import Server, Service
 from src.models.config import config
 from src.utils.deployment_history import deployment_history
 from src.utils.service_monitor import service_monitor
+
+# Import appropriate user manager
+try:
+    from src.models.database import get_db_manager
+    USING_POSTGRES = True
+except ImportError:
+    from src.models.user import user_manager
+    USING_POSTGRES = False
 
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -40,13 +49,52 @@ def login():
         if not password:
             return jsonify({'success': False, 'error': 'Password is required'}), 400
         
-        # Authenticate using login password (separate from deployment token)
-        if password == config.LOGIN_PASSWORD:
-            # Generate JWT token using separate JWT secret
+        # Try user authentication first
+        user = None
+        if USING_POSTGRES:
+            try:
+                db = get_db_manager()
+                user = asyncio.run(db.authenticate_user(username, password))
+            except Exception as e:
+                print(f"PostgreSQL authentication error: {e}")
+                user = None
+        else:
+            user = user_manager.authenticate_user(username, password)
+            
+        if user:
+            # Generate JWT token using user data
+            payload = {
+                'user_id': str(user.id) if USING_POSTGRES else user.id,
+                'username': user.username,
+                'role': user.role,
+                'auth_type': 'user_password',
+                'exp': datetime.utcnow() + timedelta(hours=24)
+            }
+            
+            try:
+                token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+                return jsonify({
+                    'success': True,
+                    'token': token,
+                    'user': {
+                        'id': user.id,
+                        'name': user.full_name,
+                        'username': user.username,
+                        'email': user.email,
+                        'role': user.role
+                    },
+                    'message': f'Welcome back, {user.full_name}!'
+                })
+            except Exception as e:
+                return jsonify({'success': False, 'error': 'Token generation failed. Please try again.'}), 500
+        
+        # Fallback to legacy LOGIN_PASSWORD authentication
+        elif password == config.LOGIN_PASSWORD:
+            # Generate JWT token using legacy method
             payload = {
                 'username': username,
                 'role': 'admin',
-                'auth_type': 'password',
+                'auth_type': 'legacy_password',
                 'exp': datetime.utcnow() + timedelta(hours=24)
             }
             
@@ -57,17 +105,18 @@ def login():
                     'token': token,
                     'user': {
                         'name': username,
+                        'username': username,
                         'role': 'admin'
                     },
-                    'message': f'Welcome back, {username}!'
+                    'message': f'Welcome back, {username}! (Legacy Authentication)'
                 })
             except Exception as e:
                 return jsonify({'success': False, 'error': 'Token generation failed. Please try again.'}), 500
         else:
-            # Password doesn't match
+            # Authentication failed
             return jsonify({
                 'success': False, 
-                'error': 'Invalid password. Please check your credentials and try again.'
+                'error': 'Invalid username or password. Please check your credentials and try again.'
             }), 401
             
     except Exception as e:

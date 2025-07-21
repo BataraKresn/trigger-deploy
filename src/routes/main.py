@@ -30,6 +30,12 @@ def dashboard():
     return render_template('home.html')
 
 
+@main_bp.route('/users')
+def users():
+    """User management page"""
+    return render_template('user_management.html')
+
+
 @main_bp.route('/deploy-servers')
 def deploy_servers():
     """Deploy servers page"""
