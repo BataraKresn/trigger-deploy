@@ -112,10 +112,12 @@ body {
 
 /* Help Grid */
 .help-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
     padding-bottom: 3rem;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 /* Help Cards */
@@ -473,7 +475,8 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
     .help-grid {
-        grid-template-columns: 1fr;
+        max-width: 100%;
+        padding: 0 1rem;
     }
     
     .header-content h1 {

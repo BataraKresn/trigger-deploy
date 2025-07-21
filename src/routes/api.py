@@ -17,6 +17,7 @@ from src.models.entities import Server, Service
 from src.models.config import config
 from src.utils.deployment_history import deployment_history
 from src.utils.service_monitor import service_monitor
+from src.utils.analytics import DeploymentAnalytics
 
 # Import appropriate user manager
 try:
@@ -53,10 +54,11 @@ def login():
         user = None
         if USING_POSTGRES:
             try:
-                db = get_db_manager()
-                user = asyncio.run(db.authenticate_user(username, password))
+                # For now, use simple file-based auth to avoid async issues
+                # PostgreSQL auth can be implemented later with proper async setup
+                user = user_manager.authenticate_user(username, password)
             except Exception as e:
-                print(f"PostgreSQL authentication error: {e}")
+                print(f"Authentication error: {e}")
                 user = None
         else:
             user = user_manager.authenticate_user(username, password)

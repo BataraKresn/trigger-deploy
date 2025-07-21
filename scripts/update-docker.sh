@@ -67,7 +67,7 @@ echo "🔄 [$start_fmt] Rebuilding Docker image with no cache..."
 docker compose build --no-cache
 
 echo "🚀 Restarting container..."
-docker compose up -d
+docker compose up -d --remove-orphans
 
 end_time=$(date +%s)
 end_fmt=$(date "+%Y-%m-%d %H:%M:%S")
