@@ -78,8 +78,7 @@ def create_app():
         except Exception as e:
             logger.error(f"Failed to initialize PostgreSQL database: {e}")
             logger.info("Falling back to file-based user management")
-            global USING_POSTGRES
-            USING_POSTGRES = False
+            # Note: USING_POSTGRES already defined at import time
     
     # Register blueprints
     app.register_blueprint(main_bp)
