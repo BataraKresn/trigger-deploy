@@ -110,40 +110,22 @@ class PostgreSQLManager:
             await self.pool.close()
             logger.info("PostgreSQL connection pool closed")
 
-
-# Global database manager instance
-db_manager = None
-
-async def init_database():
-    """Initialize database connection"""
-    global db_manager
-    from .config import config as app_config
-    
-    # Create PostgreSQL manager with config
-    postgres_config = app_config.get_postgres_config()
-    db_manager = PostgreSQLManager(config=postgres_config)
-    await db_manager.initialize()
-    return db_manager
-
-async def close_database():
-    """Close database connection"""
-    global db_manager
-    if db_manager:
-        await db_manager.close()
-        db_manager = None
-
-def get_db_manager() -> PostgreSQLManager:
-    """Get database manager instance"""
-    global db_manager
-    if not db_manager:
-        raise RuntimeError("Database not initialized. Call init_database() first.")
-    return db_manager
-
     async def _create_tables(self):
         """Create database tables"""
         conn = None
         try:
             conn = await self.pool.acquire()
+            
+            # Create update_updated_at function for triggers
+            await conn.execute('''
+                CREATE OR REPLACE FUNCTION update_updated_at_column()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    NEW.updated_at = CURRENT_TIMESTAMP;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            ''')
             
             # Users table
             await conn.execute('''
@@ -191,6 +173,20 @@ def get_db_manager() -> PostgreSQLManager:
                 )
             ''')
             
+            # Audit logs table
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    action VARCHAR(100) NOT NULL,
+                    resource VARCHAR(255) NOT NULL,
+                    details JSONB DEFAULT '{}'::jsonb,
+                    ip_address INET,
+                    user_agent TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             # Indexes for performance
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
@@ -198,6 +194,9 @@ def get_db_manager() -> PostgreSQLManager:
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_server ON deployment_history(server_name)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_user ON deployment_history(user_id)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_created ON deployment_history(created_at)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)')
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at)')
             
             logger.info("Database tables created successfully")
             
@@ -365,3 +364,75 @@ def get_db_manager() -> PostgreSQLManager:
         finally:
             if conn:
                 await self.pool.release(conn)
+
+    async def update_last_login(self, user_id: str) -> bool:
+        """Update user's last login timestamp"""
+        conn = None
+        try:
+            conn = await self.pool.acquire()
+            await conn.execute(
+                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+                user_id
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update last login: {e}")
+            return False
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def log_audit(self, user_id: str, action: str, resource: str, 
+                       details: dict = None, ip_address: str = None, 
+                       user_agent: str = None) -> bool:
+        """Log audit event"""
+        conn = None
+        try:
+            conn = await self.pool.acquire()
+            await conn.execute('''
+                INSERT INTO audit_logs (user_id, action, resource, details, ip_address, user_agent)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''', user_id, action, resource, json.dumps(details or {}), ip_address, user_agent)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to log audit event: {e}")
+            return False
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+
+# Global database manager instance
+db_manager = None
+
+async def init_database():
+    """Initialize database connection"""
+    global db_manager
+    from .config import config as app_config
+    
+    # Create PostgreSQL manager with config
+    postgres_config = app_config.get_postgres_config()
+    db_manager = PostgreSQLManager(config=postgres_config)
+    await db_manager.initialize()
+    return db_manager
+
+async def close_database():
+    """Close database connection"""
+    global db_manager
+    if db_manager:
+        await db_manager.close()
+        db_manager = None
+
+def get_db_manager() -> PostgreSQLManager:
+    """Get database manager instance with lazy initialization"""
+    global db_manager
+    if db_manager is None:
+        try:
+            from .config import config as app_config
+            db_manager = PostgreSQLManager(config=app_config.get_postgres_config())
+            logger.info(f"Database manager created with config from .env")
+        except Exception as e:
+            logger.warning(f"Database manager initialization deferred: {e}")
+            # Return None instead of placeholder to avoid further errors
+            return None
+    return db_manager

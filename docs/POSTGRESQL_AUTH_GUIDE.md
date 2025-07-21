@@ -56,9 +56,9 @@ Request → Check PostgreSQL User → Fallback to Legacy → Reject
 
 ## 🚀 Quick Setup
 
-### Option 1: Automated Fix (Recommended)
+### Option 1: Automated Update (Recommended)
 ```bash
-./fix-auth.sh
+./update-docker.sh
 ```
 
 ### Option 2: Manual Setup
@@ -270,9 +270,9 @@ services:
    AUTO_CREATE_ADMIN=true
    ```
 
-3. **Run migration script**:
+3. **Run update script**:
    ```bash
-   ./fix-auth.sh
+   ./update-docker.sh
    ```
 
 4. **Verify migration**:

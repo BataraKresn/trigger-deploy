@@ -10,6 +10,14 @@ import jwt
 import hashlib
 import asyncio
 import logging
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 from pathlib import Path
 from src.utils.helpers import (
     load_servers, load_services, ping_check, 
@@ -21,7 +29,7 @@ from src.utils.deployment_history import deployment_history
 from src.utils.service_monitor import service_monitor
 from src.utils.analytics import DeploymentAnalytics
 from src.utils.notifications import notification_service
-from src.utils.health_monitor import health_monitor
+from src.utils.health_monitor import get_health_monitor
 from src.utils.config_manager import config_manager
 
 # Import appropriate user manager
@@ -1002,7 +1010,7 @@ def get_server_health(server_name):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(health_monitor.get_system_metrics(server_name))
+                return loop.run_until_complete(get_health_monitor().get_system_metrics(server_name))
             finally:
                 loop.close()
         
@@ -1039,7 +1047,7 @@ def get_health_summary():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(health_monitor.get_health_summary())
+                return loop.run_until_complete(get_health_monitor().get_health_summary())
             finally:
                 loop.close()
         
@@ -1065,7 +1073,7 @@ def get_health_alerts():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(health_monitor.get_recent_alerts(hours, severity))
+                return loop.run_until_complete(get_health_monitor().get_recent_alerts(hours, severity))
             finally:
                 loop.close()
         
@@ -1118,8 +1126,8 @@ def manage_health_thresholds():
             return jsonify({
                 'success': True,
                 'data': {
-                    'thresholds': health_monitor.health_thresholds,
-                    'check_interval': health_monitor.check_interval
+                    'thresholds': get_health_monitor().health_thresholds,
+                    'check_interval': get_health_monitor().check_interval
                 }
             })
         
@@ -1128,17 +1136,17 @@ def manage_health_thresholds():
             
             # Update thresholds
             if 'thresholds' in data:
-                health_monitor.health_thresholds.update(data['thresholds'])
+                get_health_monitor().health_thresholds.update(data['thresholds'])
             
             if 'check_interval' in data:
-                health_monitor.check_interval = data['check_interval']
+                get_health_monitor().check_interval = data['check_interval']
             
             return jsonify({
                 'success': True,
                 'message': 'Health monitoring thresholds updated',
                 'data': {
-                    'thresholds': health_monitor.health_thresholds,
-                    'check_interval': health_monitor.check_interval
+                    'thresholds': get_health_monitor().health_thresholds,
+                    'check_interval': get_health_monitor().check_interval
                 }
             })
         
@@ -1161,7 +1169,7 @@ def start_health_monitoring():
             'message': f'Health monitoring started for {len(servers)} servers',
             'data': {
                 'servers': servers,
-                'check_interval': health_monitor.check_interval,
+                'check_interval': get_health_monitor().check_interval,
                 'monitoring_active': True
             }
         })
@@ -1174,7 +1182,7 @@ def start_health_monitoring():
 def stop_health_monitoring():
     """Stop health monitoring"""
     try:
-        health_monitor.stop_monitoring()
+        get_health_monitor().stop_monitoring()
         
         return jsonify({
             'success': True,

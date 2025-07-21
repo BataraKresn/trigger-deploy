@@ -6,3 +6,7 @@ __pycache__/
 .venv
 *.env
 *.DS_Store
+data/
+data/postgres/
+logs/*.log
+*.tmp

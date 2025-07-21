@@ -42,14 +42,15 @@ class ConfigurationManager:
     
     def __init__(self):
         self.db_manager = get_db_manager()
-        self.config_dir = Path('/workspaces/trigger-deploy/config')
-        self.backup_dir = Path('/workspaces/trigger-deploy/config/backups')
-        self.schema_dir = Path('/workspaces/trigger-deploy/config/schemas')
+        # Use relative paths that work in container
+        self.config_dir = Path('config')
+        self.backup_dir = Path('config/backups')
+        self.schema_dir = Path('config/schemas')
         
         # Ensure directories exist
         self.config_dir.mkdir(exist_ok=True)
-        self.backup_dir.mkdir(exist_ok=True)
-        self.schema_dir.mkdir(exist_ok=True)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.schema_dir.mkdir(parents=True, exist_ok=True)
         
         # Configuration schemas for validation
         self.config_schemas = {

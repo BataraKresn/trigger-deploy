@@ -5,6 +5,14 @@
 import os
 from dataclasses import dataclass
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, continue without it
+    pass
+
 
 @dataclass
 class Config:
@@ -101,3 +109,8 @@ class Config:
 
 # Global config instance
 config = Config()
+
+
+def get_config() -> Config:
+    """Get global config instance"""
+    return config

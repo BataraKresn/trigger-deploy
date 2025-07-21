@@ -15,6 +15,62 @@ logger = logging.getLogger(__name__)
 
 user_bp = Blueprint('user', __name__, url_prefix='/api')
 
+@user_bp.route('/login', methods=['POST'])
+def login():
+    """User login with PostgreSQL"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'message': 'Username and password are required'}), 400
+        
+        db = get_db_manager()
+        user = run_async(db.authenticate_user(username, password))
+        
+        if not user:
+            return jsonify({'message': 'Invalid credentials'}), 401
+        
+        if not user.is_active:
+            return jsonify({'message': 'Account is disabled'}), 401
+        
+        # Update last login
+        run_async(db.update_last_login(user.id))
+        
+        # Generate JWT token
+        from ..models.config import config
+        import jwt
+        from datetime import datetime, timedelta
+        
+        payload = {
+            'user_id': user.id,
+            'username': user.username,
+            'role': user.role,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }
+        
+        token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+        
+        # Log audit event
+        run_async(db.log_audit(
+            user_id=user.id,
+            action='LOGIN',
+            resource='auth',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        ))
+        
+        return jsonify({
+            'token': token,
+            'user': user.to_safe_dict(),
+            'message': 'Login successful'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during login: {e}")
+        return jsonify({'message': 'Login failed'}), 500
+
 def require_auth(f):
     """Decorator to require authentication"""
     @wraps(f)
@@ -31,9 +87,8 @@ def require_auth(f):
         
         try:
             # Decode JWT token
-            from ..models.config import get_config
-            config = get_config()
-            payload = jwt.decode(token, config.jwt_secret, algorithms=['HS256'])
+            from ..models.config import config
+            payload = jwt.decode(token, config.JWT_SECRET, algorithms=['HS256'])
             request.current_user = payload
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired'}), 401
@@ -65,11 +120,11 @@ async def run_async(coro):
 @require_auth
 @require_superadmin
 def list_users():
-    """List all users"""
+    """List all users - superadmin only"""
     try:
         db = get_db_manager()
-        users = asyncio.run(db.list_users())
-        stats = asyncio.run(db.get_user_stats())
+        users = run_async(db.list_users())
+        stats = run_async(db.get_user_stats())
         
         return jsonify({
             'users': [user.to_safe_dict() for user in users],
@@ -104,11 +159,10 @@ def create_user():
             return jsonify({'message': 'Invalid email format'}), 400
         
         db = get_db_manager()
-        user = asyncio.run(db.create_user(data))
-        
-        # Log audit event
-        asyncio.run(db.log_audit(
-            user_id=request.current_user['user_id'],
+        user = run_async(db.create_user(data))
+
+        # Log audit
+        run_async(db.log_audit(            user_id=request.current_user['user_id'],
             action='CREATE_USER',
             resource=f'user:{user.username}',
             details={'created_user_id': str(user.id)},
@@ -138,7 +192,7 @@ def get_user(user_id):
             return jsonify({'message': 'Access denied'}), 403
         
         db = get_db_manager()
-        user = asyncio.run(db.get_user_by_id(user_id))
+        user = run_async(db.get_user_by_id(user_id))
         
         if not user:
             return jsonify({'message': 'User not found'}), 404
@@ -173,10 +227,10 @@ def update_user(user_id):
                 return jsonify({'message': 'Invalid email format'}), 400
         
         db = get_db_manager()
-        user = asyncio.run(db.update_user(user_id, data))
+        user = run_async(db.update_user(user_id, data))
         
         # Log audit event
-        asyncio.run(db.log_audit(
+        run_async(db.log_audit(
             user_id=request.current_user['user_id'],
             action='UPDATE_USER',
             resource=f'user:{user.username}',
@@ -216,13 +270,13 @@ def update_user_password(user_id):
             return jsonify({'message': 'Password must be at least 6 characters long'}), 400
         
         db = get_db_manager()
-        success = asyncio.run(db.update_user_password(user_id, new_password))
+        success = run_async(db.update_user_password(user_id, new_password))
         
         if not success:
             return jsonify({'message': 'User not found'}), 404
         
         # Log audit event
-        asyncio.run(db.log_audit(
+        run_async(db.log_audit(
             user_id=request.current_user['user_id'],
             action='CHANGE_PASSWORD',
             resource=f'user:{user_id}',
@@ -249,17 +303,17 @@ def delete_user(user_id):
         db = get_db_manager()
         
         # Get user info for audit log
-        user = asyncio.run(db.get_user_by_id(user_id))
+        user = run_async(db.get_user_by_id(user_id))
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
-        success = asyncio.run(db.delete_user(user_id))
+        success = run_async(db.delete_user(user_id))
         
         if not success:
             return jsonify({'message': 'User not found'}), 404
         
         # Log audit event
-        asyncio.run(db.log_audit(
+        run_async(db.log_audit(
             user_id=request.current_user['user_id'],
             action='DELETE_USER',
             resource=f'user:{user.username}',
@@ -281,7 +335,7 @@ def get_user_stats():
     """Get user statistics"""
     try:
         db = get_db_manager()
-        stats = asyncio.run(db.get_user_stats())
+        stats = run_async(db.get_user_stats())
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")

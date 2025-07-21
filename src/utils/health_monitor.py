@@ -50,7 +50,7 @@ class ServerHealthMonitor:
     """Advanced server health monitoring system"""
     
     def __init__(self):
-        self.db_manager = get_db_manager()
+        self.db_manager = None  # Lazy initialization
         self.monitoring_active = False
         self.check_interval = 30  # seconds
         self.health_thresholds = {
@@ -63,10 +63,26 @@ class ServerHealthMonitor:
             'response_time_warning': 2000,  # ms
             'response_time_critical': 5000  # ms
         }
+    
+    def _ensure_db_manager(self):
+        """Lazy initialization of database manager"""
+        if self.db_manager is None:
+            try:
+                self.db_manager = get_db_manager()
+            except Exception as e:
+                logger.warning(f"Database manager not available: {e}")
+                self.db_manager = None
+        return self.db_manager
         
     async def initialize_monitoring_tables(self):
         """Initialize database tables for health monitoring"""
         try:
+            if not self._ensure_db_manager():
+                logger.warning("Database not available, skipping table initialization")
+                return
+                
+            if not self._ensure_db_manager():
+                return
             conn = await self.db_manager.get_connection()
             
             # Server health metrics table
@@ -239,6 +255,8 @@ class ServerHealthMonitor:
     async def store_health_metrics(self, health: ServerHealth):
         """Store health metrics in database"""
         try:
+            if not self._ensure_db_manager():
+                return
             conn = await self.db_manager.get_connection()
             
             # Store individual metrics
@@ -310,6 +328,8 @@ class ServerHealthMonitor:
     async def check_and_create_alerts(self, health: ServerHealth):
         """Check metrics and create alerts if needed"""
         try:
+            if not self._ensure_db_manager():
+                return
             conn = await self.db_manager.get_connection()
             
             alerts_to_create = []
@@ -413,6 +433,8 @@ class ServerHealthMonitor:
     async def get_health_summary(self, server_name: str = None) -> Dict[str, Any]:
         """Get health summary for servers"""
         try:
+            if not self._ensure_db_manager():
+                return
             conn = await self.db_manager.get_connection()
             
             if server_name:
@@ -440,6 +462,8 @@ class ServerHealthMonitor:
     async def get_recent_alerts(self, hours: int = 24, severity: str = None) -> List[Dict[str, Any]]:
         """Get recent health alerts"""
         try:
+            if not self._ensure_db_manager():
+                return
             conn = await self.db_manager.get_connection()
             
             base_query = """
@@ -498,5 +522,12 @@ class ServerHealthMonitor:
         self.monitoring_active = False
         logger.info("Health monitoring stopped")
 
-# Global instance
-health_monitor = ServerHealthMonitor()
+# Global instance - lazy initialization
+health_monitor = None
+
+def get_health_monitor():
+    """Get health monitor instance with lazy initialization"""
+    global health_monitor
+    if health_monitor is None:
+        health_monitor = ServerHealthMonitor()
+    return health_monitor
