@@ -1,16 +1,11 @@
-<!DOC  <title>🔍 Services Monitor - Trigger Deploy</title>
-  <link rel="icon" type="image/x-icon" href="/static/images/favicon/monitor.ico">
-  <link rel="stylesheet" href="/static/css/styles.css">E html>
-<html lang="en">
-<head>
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🔍 Services Monitor - Trigger Deploy</title>
-  <link rel="icon" type="image/x-icon" href="/static/images/favicon/monitor.ico">
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/styles.css">
   <style>
     .service-grid {
       display: grid;
@@ -69,6 +64,40 @@
       background: #f8f9fa;
       color: #6c757d;
     }
+    
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .summary-value {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+    
+    .last-update {
+      font-size: 0.9rem;
+      color: #666;
+      margin-left: auto;
+    }
   </style>
 </head>
 <body>
@@ -91,29 +120,8 @@
         <button onclick="showConfig()" class="btn btn-info">
           ⚙️ Configure Services
         </button>
-      </div>
-
-      <!-- Status Information -->
-      <div class="status-info">
-        <div class="last-update-section">
-          <h4>📊 System Status</h4>
-          <div id="lastUpdate" class="status-text">
-            Last updated: Never
-          </div>
-          <div class="status-details">
-            <div class="status-item">
-              <span class="status-label">Monitor Status:</span>
-              <span id="monitorStatus" class="status-value">Active</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Check Interval:</span>
-              <span id="checkInterval" class="status-value">Loading...</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Next Check:</span>
-              <span id="nextCheck" class="status-value">In 45 seconds</span>
-            </div>
-          </div>
+        <div class="last-update" id="lastUpdate">
+          Last updated: -
         </div>
       </div>
 
@@ -167,13 +175,13 @@
 
   <!-- Configuration Modal -->
   <div id="configModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 90vw; width: auto; min-width: 500px; max-height: 90vh;">
       <h2>⚙️ Services Configuration</h2>
       <p class="text-muted mb-3">Configure which services to monitor</p>
       
-      <div class="form-group">
-        <label for="configJson">Configuration JSON:</label>
-        <textarea id="configJson" class="form-control" placeholder="Loading configuration..."></textarea>
+      <div class="form-group" style="flex: 1; overflow: hidden;">
+        <label>Configuration JSON:</label>
+        <textarea id="configJson" class="form-control" rows="20" style="font-family: monospace; font-size: 0.9rem; height: 60vh; resize: vertical;"></textarea>
       </div>
       
       <div class="buttons">
@@ -195,6 +203,6 @@
     </div>
   </div>
 
-  <script src="/static/js/services-monitor.js"></script>
+  <script src="/static/services-monitor.js"></script>
 </body>
 </html>
