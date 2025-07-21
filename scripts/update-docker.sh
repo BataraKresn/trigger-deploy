@@ -54,6 +54,13 @@ if ! docker network ls | grep -q 'dev-trigger-network'; then
     docker network create --driver bridge --subnet 172.20.0.0/16 --gateway 172.20.0.1 dev-trigger-network
 else
     echo "✅ Network 'dev-trigger-network' already exists"
+    # Check if network has compose labels, if yes remove it to avoid conflicts
+    if docker network inspect dev-trigger-network --format '{{.Labels}}' | grep -q 'com.docker.compose'; then
+        echo "🔄 Removing compose labels from existing network..."
+        docker network rm dev-trigger-network 2>/dev/null || true
+        echo "🌐 Recreating Docker network: dev-trigger-network"
+        docker network create --driver bridge --subnet 172.20.0.0/16 --gateway 172.20.0.1 dev-trigger-network
+    fi
 fi
 
 echo "🔄 [$start_fmt] Rebuilding Docker image with no cache..."
