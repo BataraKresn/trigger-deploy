@@ -5,384 +5,569 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📞 Contact Us - Trigger Deploy</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/css/help.css">
-    <!-- Preload critical fonts -->
+    <!-- Load external resources -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    
     <style>
-        /* Contact Page Styling - Force Dark Text on Light Background */
-        body {
+        :root {
+            --primary-color: #667eea;
+            --primary-hover: #5a67d8;
+            --secondary-color: #764ba2;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-hover: #f8fafc;
+            
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333333;
-            background: #f8fafc;
+            color: var(--text-primary);
+            background: var(--bg-primary);
             min-height: 100vh;
         }
-        
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Header Styles */
         .contact-hero {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4rem 0;
+            padding: 4rem 0 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><path d="M10,10 Q30,5 50,10 T90,10" stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none"/></svg>');
+            animation: wave 15s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(100px); }
+        }
+
+        .hero-content {
             text-align: center;
-            min-height: 200px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-actions {
+            margin-top: 2rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Contact Form Section */
+        .contact-form-section {
+            padding: 5rem 0;
+            background: var(--bg-primary);
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+
+        .contact-info {
+            background: var(--bg-secondary);
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border-color);
+        }
+
+        .contact-info h2 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .contact-info p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .contact-methods {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .contact-method {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: calc(var(--border-radius) - 4px);
+            transition: var(--transition);
+        }
+
+        .contact-method:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .contact-method-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        
-        .contact-hero h1 {
-            font-size: 3rem;
-            margin: 0;
-            font-weight: 800;
-            color: white;
-        }
-        
-        .contact-hero p {
             font-size: 1.25rem;
-            margin: 1rem 0 0 0;
-            opacity: 0.9;
-            color: white;
         }
-        
-        .contact-form-container {
-            max-width: 800px;
-            margin: 3rem auto;
-            padding: 0 2rem;
+
+        .contact-method-info h4 {
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
         }
-        
+
+        .contact-method-info p {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        /* Contact Form */
         .contact-form {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: var(--bg-secondary);
             padding: 3rem;
-            margin-bottom: 3rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border-color);
         }
-        
+
         .contact-form h2 {
-            color: #333333;
-            margin-bottom: 1rem;
             font-size: 2rem;
-        }
-        
-        .contact-form p {
-            color: #666666;
-            margin-bottom: 2rem;
-        }
-        
-        .form-group label {
-            display: block;
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333333;
         }
-        
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            color: #333333;
-            background: white;
+
+        .contact-form > p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
         }
-        
-        .contact-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem 3rem;
-        }
-        
-        .contact-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 2rem;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-        
-        .contact-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .contact-card h3 {
-            color: #333333;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-        
-        .contact-card p {
-            color: #666666;
+
+        .form-group {
             margin-bottom: 1.5rem;
         }
-        
-        .contact-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: #667eea;
-        }
-        
+
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-        
-        /* Home Button Styles */
-        .btn.btn-secondary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: calc(var(--border-radius) - 4px);
+            font-size: 1rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: var(--transition);
+            outline: none;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            transition: all 0.3s ease;
             border: none;
+            border-radius: calc(var(--border-radius) - 4px);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
-        
-        .btn.btn-secondary:hover {
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-            color: white;
-            text-decoration: none;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
         }
-        
-        .btn.btn-secondary i {
-            font-size: 1.2rem;
+
+        /* Success/Error Messages */
+        .message {
+            padding: 1rem;
+            border-radius: calc(var(--border-radius) - 4px);
+            margin-bottom: 1rem;
+            display: none;
         }
-        
+
+        .message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
             .form-row {
                 grid-template-columns: 1fr;
+            }
+
+            .contact-form, .contact-info {
+                padding: 2rem;
             }
         }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <div class="contact-hero">
+    <section class="contact-hero">
         <div class="container">
-            <h1>📞 Contact Us</h1>
-            <p>Get in touch with our team for support, questions, or feedback</p>
+            <div class="hero-content">
+                <h1>📞 Contact Us</h1>
+                <p>Get in touch with our team for support, questions, or feedback about Trigger Deploy</p>
+                <div class="hero-actions">
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-home"></i>
+                        Back to Home
+                    </a>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Contact Form -->
-    <div class="contact-form-container">
-        <div class="contact-form">
-            <h2>💬 Send us a Message</h2>
-            <p>Fill out the form below and we'll get back to you as soon as possible.</p>
-            
-            <form id="contactForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="firstName">First Name *</label>
-                        <input type="text" id="firstName" name="firstName" required>
+    <!-- Contact Form Section -->
+    <section class="contact-form-section">
+        <div class="container">
+            <div class="contact-grid">
+                <!-- Contact Information -->
+                <div class="contact-info">
+                    <h2>💬 Get in Touch</h2>
+                    <p>We're here to help you with any questions about deployment automation, server management, or technical support.</p>
+                    
+                    <div class="contact-methods">
+                        <div class="contact-method">
+                            <div class="contact-method-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="contact-method-info">
+                                <h4>Email Support</h4>
+                                <p>support@triggerdeployserver.com</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="contact-method-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="contact-method-info">
+                                <h4>Response Time</h4>
+                                <p>We typically respond within 24 hours</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="contact-method-icon">
+                                <i class="fas fa-life-ring"></i>
+                            </div>
+                            <div class="contact-method-info">
+                                <h4>Support Hours</h4>
+                                <p>Monday - Friday, 9 AM - 6 PM UTC</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="contact-method-icon">
+                                <i class="fab fa-github"></i>
+                            </div>
+                            <div class="contact-method-info">
+                                <h4>GitHub Issues</h4>
+                                <p>Report bugs and feature requests</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="lastName">Last Name *</label>
-                        <input type="text" id="lastName" name="lastName" required>
-                    </div>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="email">Email Address *</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="company">Company/Organization</label>
-                        <input type="text" id="company" name="company">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="subject">Subject *</label>
-                    <select id="subject" name="subject" required>
-                        <option value="">Select a subject</option>
-                        <option value="technical-support">Technical Support</option>
-                        <option value="general-inquiry">General Inquiry</option>
-                        <option value="feature-request">Feature Request</option>
-                        <option value="bug-report">Bug Report</option>
-                        <option value="partnership">Partnership</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="message">Message *</label>
-                    <textarea id="message" name="message" rows="6" required placeholder="Please describe your inquiry in detail..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="newsletter" name="newsletter">
-                        <span>Subscribe to our newsletter for updates and tips</span>
-                    </label>
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-large">
-                    <i class="fas fa-paper-plane"></i>
-                    Send Message
-                </button>
-            </form>
-        </div>
-    </div>
 
-    <!-- Contact Methods -->
-    <div class="contact-grid">
-        <div class="contact-card">
-            <div class="contact-icon">
-                <i class="fas fa-envelope"></i>
+                <!-- Contact Form -->
+                <div class="contact-form">
+                    <h2>💌 Send us a Message</h2>
+                    <p>Fill out the form below and we'll get back to you as soon as possible.</p>
+                    
+                    <div id="message" class="message"></div>
+                    
+                    <form id="contactForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name *</label>
+                                <input type="text" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name *</label>
+                                <input type="text" id="lastName" name="lastName" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email Address *</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="company">Company/Organization</label>
+                                <input type="text" id="company" name="company">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="subject">Subject *</label>
+                            <select id="subject" name="subject" required>
+                                <option value="">Select a subject</option>
+                                <option value="technical-support">Technical Support</option>
+                                <option value="feature-request">Feature Request</option>
+                                <option value="bug-report">Bug Report</option>
+                                <option value="general-inquiry">General Inquiry</option>
+                                <option value="partnership">Partnership</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <textarea id="messageText" name="message" placeholder="Please describe your inquiry in detail..." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn">
+                            <i class="fas fa-paper-plane"></i>
+                            Send Message
+                        </button>
+                    </form>
+                </div>
             </div>
-            <h3>Email Support</h3>
-            <p>For technical support and general inquiries</p>
-            <a href="mailto:sysadmin.app@sateknologi.id" class="btn btn-outline">
-                sysadmin.app@sateknologi.id
-            </a>
         </div>
-        
-        <div class="contact-card">
-            <div class="contact-icon">
-                <i class="fas fa-comments"></i>
-            </div>
-            <h3>Live Chat</h3>
-            <p>Real-time support during business hours</p>
-            <button onclick="openLiveChat()" class="btn btn-primary">
-                Start Chat
-            </button>
-        </div>
-        
-        <div class="contact-card">
-            <div class="contact-icon">
-                <i class="fas fa-book"></i>
-            </div>
-            <h3>Documentation</h3>
-            <p>Browse our comprehensive help center</p>
-            <a href="/help" class="btn btn-outline">
-                Visit Help Center
-            </a>
-        </div>
-        
-        <div class="contact-card">
-            <div class="contact-icon">
-                <i class="fas fa-bug"></i>
-            </div>
-            <h3>Bug Reports</h3>
-            <p>Report issues and technical problems</p>
-            <a href="/help#issues" class="btn btn-outline">
-                Report Bug
-            </a>
-        </div>
-    </div>
-
-    <!-- Back to Home -->
-    <div class="container" style="text-align: center; padding: 3rem 0;">
-        <a href="/" class="btn btn-secondary">
-            <i class="fas fa-home"></i>
-            Home
-        </a>
-    </div>
+    </section>
 
     <script>
-        // Ensure content is visible immediately
-        document.documentElement.style.visibility = 'visible';
-        document.body.style.opacity = '1';
-        
-        // Fast loading contact form functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Contact page loaded successfully');
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // Contact form submission
-            const contactForm = document.getElementById('contactForm');
-            if (contactForm) {
-                contactForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // Get form data
-                    const formData = new FormData(this);
-                    const data = Object.fromEntries(formData);
-                    
-                    // Simulate form submission
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    const originalText = submitBtn.innerHTML;
-                    
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-                    submitBtn.disabled = true;
-                    
-                    setTimeout(() => {
-                        showMessage('Thank you for your message! We\'ll get back to you within 24 hours.', 'success');
-                        this.reset();
-                        submitBtn.innerHTML = originalText;
-                        submitBtn.disabled = false;
-                    }, 1000);
-                });
-            }
-        });
-        
-        // Live chat function
-        function openLiveChat() {
-            showMessage('Live chat is currently offline. Please use email or the contact form for support.', 'info');
-        }
-        
-        // Message display function
-        function showMessage(message, type = 'info') {
-            const messageDiv = document.createElement('div');
-            messageDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 15px 20px;
-                border-radius: 8px;
-                color: white;
-                font-weight: 500;
-                z-index: 1000;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                max-width: 300px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            `;
+            const formData = new FormData(this);
+            const messageDiv = document.getElementById('message');
+            const submitBtn = this.querySelector('.submit-btn');
             
-            switch(type) {
-                case 'success':
-                    messageDiv.style.backgroundColor = '#10b981';
-                    break;
-                case 'warning':
-                    messageDiv.style.backgroundColor = '#f59e0b';
-                    break;
-                case 'error':
-                    messageDiv.style.backgroundColor = '#ef4444';
-                    break;
-                default:
-                    messageDiv.style.backgroundColor = '#3b82f6';
-            }
+            // Show loading state
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            submitBtn.disabled = true;
             
-            messageDiv.textContent = message;
-            document.body.appendChild(messageDiv);
-            
-            // Animate in
-            setTimeout(() => messageDiv.style.opacity = '1', 100);
-            
-            // Remove after 4 seconds
+            // Simulate form submission (replace with actual API call)
             setTimeout(() => {
-                messageDiv.style.opacity = '0';
-                setTimeout(() => messageDiv.remove(), 300);
-            }, 4000);
+                // Show success message
+                messageDiv.className = 'message success';
+                messageDiv.textContent = 'Thank you for your message! We\'ll get back to you within 24 hours.';
+                messageDiv.style.display = 'block';
+                
+                // Reset form
+                this.reset();
+                
+                // Reset button
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
+                submitBtn.disabled = false;
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+            }, 1500);
+        });
+
+        // Form validation
+        const inputs = document.querySelectorAll('input[required], textarea[required], select[required]');
+        inputs.forEach(input => {
+            input.addEventListener('blur', validateField);
+            input.addEventListener('input', clearValidation);
+        });
+
+        function validateField(e) {
+            const field = e.target;
+            if (!field.value.trim()) {
+                field.style.borderColor = 'var(--error-color)';
+            } else if (field.type === 'email' && !isValidEmail(field.value)) {
+                field.style.borderColor = 'var(--error-color)';
+            } else {
+                field.style.borderColor = 'var(--success-color)';
+            }
         }
+
+        function clearValidation(e) {
+            e.target.style.borderColor = 'var(--border-color)';
+        }
+
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // Add some interactive animations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate contact methods on scroll
+            const contactMethods = document.querySelectorAll('.contact-method');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, index) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }, index * 100);
+                    }
+                });
+            });
+
+            contactMethods.forEach(method => {
+                method.style.opacity = '0';
+                method.style.transform = 'translateY(20px)';
+                method.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(method);
+            });
+        });
     </script>
 </body>
 </html>
