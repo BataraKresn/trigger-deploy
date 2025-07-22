@@ -1,22 +1,3 @@
-# Build stage for Tailwind CSS
-FROM node:18-alpine AS tailwind-builder
-
-WORKDIR /build
-
-# Copy files needed for CSS build
-COPY templates/ ./templates/
-COPY static/ ./static/
-COPY tailwind.config.js ./
-COPY static/css/input.css ./
-
-# Download Tailwind CSS standalone binary
-RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.0/tailwindcss-linux-x64 \
-    && mv tailwindcss-linux-x64 tailwindcss \
-    && chmod +x tailwindcss
-
-# Build Tailwind CSS
-RUN ./tailwindcss -i input.css -o output.css --minify
-
 # Main application stage
 FROM python:3.10-slim
 
@@ -35,10 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy built Tailwind CSS from build stage
-COPY --from=tailwind-builder /build/output.css ./static/css/tailwind.css
-
-# Copy application structure
+# Copy application structure (includes pre-built tailwind.css)
 COPY src/ ./src/
 COPY config/ ./config/
 COPY templates/ ./templates/
