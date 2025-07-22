@@ -210,12 +210,28 @@ function submitForm(form) {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     submitBtn.disabled = true;
     
-    // Simulate form submission (replace with actual API call)
-    // In a real implementation, you would send this to your backend
-    setTimeout(() => {
-        try {
-            // Simulate successful submission
-            showMessage('Thank you for your message! We\'ll get back to you within 24 hours.', 'success');
+    // Prepare data for submission
+    const data = {
+        firstName: formData.get('firstName'),
+        lastName: formData.get('lastName'),
+        email: formData.get('email'),
+        company: formData.get('company'),
+        subject: formData.get('subject'),
+        message: formData.get('message')
+    };
+    
+    // Send to backend
+    fetch('/contact', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showMessage(result.message, 'success');
             
             // Reset form
             form.reset();
@@ -239,15 +255,19 @@ function submitForm(form) {
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
             
-        } catch (error) {
-            showMessage('Sorry, there was an error sending your message. Please try again.', 'error');
-        } finally {
-            // Reset button
-            submitBtn.innerHTML = originalBtnContent;
-            submitBtn.disabled = false;
+        } else {
+            showMessage(result.message, 'error');
         }
-        
-    }, 1500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Sorry, there was an error sending your message. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Reset button
+        submitBtn.innerHTML = originalBtnContent;
+        submitBtn.disabled = false;
+    });
 }
 
 function showMessage(text, type) {
