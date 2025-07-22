@@ -12,6 +12,7 @@ werkzeug>=2.3.0
 # Database
 asyncpg>=0.29.0
 psycopg2-binary>=2.9.7
+sqlalchemy>=2.0.0
 
 # System and Process Management
 psutil>=5.9.0
