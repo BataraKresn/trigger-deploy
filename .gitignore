@@ -1,4 +1,5 @@
 trigger-logs/
+logs/deployment_history.json
 .env
 __pycache__/
 *.pyc

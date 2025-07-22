@@ -1,0 +1,81 @@
+/* Additional CSS fixes for text visibility */
+
+/* Help page specific fixes */
+.help-container * {
+    color: #ffffff !important;
+}
+
+.help-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+
+.help-card-header {
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.help-card-header h3 {
+    color: #ffffff !important;
+}
+
+.help-card-content,
+.help-card-content * {
+    color: #e2e8f0 !important;
+}
+
+.search-input {
+    background: #334155 !important;
+    color: #ffffff !important;
+    border: 1px solid #475569 !important;
+}
+
+.search-input::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Contact page specific fixes */
+.contact-form {
+    background: white !important;
+}
+
+.contact-form h2,
+.contact-form h3,
+.contact-form label {
+    color: #333 !important;
+}
+
+.contact-form p {
+    color: #555 !important;
+}
+
+.contact-card {
+    background: white !important;
+}
+
+.contact-card h3 {
+    color: #333 !important;
+}
+
+.contact-card p {
+    color: #666 !important;
+}
+
+/* Form inputs */
+input[type="text"],
+input[type="email"],
+textarea,
+select {
+    color: #333 !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+}
+
+/* Button improvements */
+.btn {
+    font-weight: 600 !important;
+    text-decoration: none !important;
+}
+
+.btn:hover {
+    text-decoration: none !important;
+}

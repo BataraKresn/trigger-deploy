@@ -46,10 +46,40 @@
 body {
     font-family: var(--font-family);
     line-height: 1.6;
-    color: var(--text-bright);
-    background: var(--bg-primary);
+    color: var(--text-bright) !important;
+    background: var(--bg-primary) !important;
     min-height: 100vh;
     font-weight: 400;
+}
+
+/* Force text visibility */
+.help-container,
+.help-content,
+.help-grid,
+.help-card,
+.help-card-header,
+.help-card-content {
+    color: var(--text-bright) !important;
+}
+
+.help-card-header h3 {
+    color: var(--text-bright) !important;
+}
+
+.help-card p,
+.help-card-content p {
+    color: var(--text-secondary) !important;
+}
+
+/* Search input visibility */
+.search-input {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-bright) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted) !important;
 }
 
 .container {
@@ -171,9 +201,9 @@ body {
     outline: none;
     font-size: 1rem;
     border-radius: var(--border-radius);
-    background: var(--bg-tertiary);
-    color: var(--text-bright);
-    border: 1px solid transparent;
+    background: var(--bg-tertiary) !important;
+    color: var(--text-bright) !important;
+    border: 1px solid var(--border-color) !important;
     transition: all 0.2s ease;
 }
 
@@ -183,7 +213,7 @@ body {
 }
 
 .search-input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-muted) !important;
 }
 
 .search-btn {
