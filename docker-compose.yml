@@ -73,7 +73,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_SSL_MODE=${POSTGRES_SSL_MODE:-prefer}
+      - POSTGRES_SSL_MODE=${POSTGRES_SSL_MODE:-disable}
       - POSTGRES_HEALTH_CHECK_ENABLED=${POSTGRES_HEALTH_CHECK_ENABLED:-true}
       # Security
       - SECURE_HEADERS=${SECURE_HEADERS:-true}
@@ -96,11 +96,12 @@ services:
       - ./scripts:/app/scripts
       # Docker socket for service monitoring
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - dev-trigger-network
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # Use host network for external database access
+    network_mode: host
+    # Comment out depends_on for external database
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health", "||", "exit", "1"]
       interval: 30s
