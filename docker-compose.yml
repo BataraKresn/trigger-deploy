@@ -96,8 +96,6 @@ services:
       - ./scripts:/app/scripts
       # Docker socket for service monitoring
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # Use host network for external database access
-    network_mode: host
     # Comment out depends_on for external database
     # depends_on:
     #   postgres:
@@ -113,7 +111,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
+    networks:
+      - dev-trigger-network
+      
 volumes:
   postgres_data:
     driver: local
