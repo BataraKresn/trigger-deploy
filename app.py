@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Trigger Deploy Server - Clean Architecture with PostgreSQL
 # =================================
 
