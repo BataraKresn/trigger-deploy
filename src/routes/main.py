@@ -42,7 +42,9 @@ def login():
     # If user is already authenticated, redirect to dashboard
     if is_authenticated():
         return redirect(url_for('main.dashboard'))
-    return render_template('login.html')
+    
+    # Pass configuration to template
+    return render_template('login.html', show_demo_credentials=config.SHOW_DEMO_CREDENTIALS)
 
 
 @main_bp.route('/users')

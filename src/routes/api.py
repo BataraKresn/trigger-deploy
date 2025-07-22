@@ -36,9 +36,11 @@ from src.utils.config_manager import config_manager
 try:
     from src.models.database import get_db_manager
     USING_POSTGRES = True
+    user_manager = None  # Set to None when using PostgreSQL
 except ImportError:
     from src.models.user import user_manager
     USING_POSTGRES = False
+    get_db_manager = None  # Set to None when using file-based auth
 
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -68,12 +70,26 @@ def login():
         if USING_POSTGRES:
             try:
                 # Use PostgreSQL database manager
+                if get_db_manager is None:
+                    raise Exception("PostgreSQL database manager not available")
                 db_manager = get_db_manager()
                 user = asyncio.run(db_manager.authenticate_user(username, password))
             except Exception as e:
                 print(f"PostgreSQL authentication error: {e}")
-                user = None
+                # Fallback to legacy authentication if PostgreSQL fails
+                if password == config.LOGIN_PASSWORD:
+                    user = type('User', (), {
+                        'id': 'admin',
+                        'username': username,
+                        'full_name': f'{username} (Legacy)',
+                        'email': f'{username}@localhost',
+                        'role': 'admin'
+                    })()
+                else:
+                    user = None
         else:
+            if user_manager is None:
+                return jsonify({'success': False, 'error': 'Authentication system not available'}), 500
             user = user_manager.authenticate_user(username, password)
             
         if user:

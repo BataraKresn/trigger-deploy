@@ -76,7 +76,8 @@
             <a href="/" class="btn btn-outline">🏠 Back to Home</a>
           </div>
           
-          <!-- Demo Information -->
+          <!-- Demo Information (only show if enabled) -->
+          {% if show_demo_credentials %}
           <div class="demo-info">
             <h4>🧪 Demo Credentials</h4>
             <div class="demo-credentials">
@@ -88,6 +89,7 @@
               🔧 Periksa file .env atau .env.example untuk melihat nilai yang benar
             </small>
           </div>
+          {% endif %}
         </div>
       </div>
       
