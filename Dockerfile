@@ -3,19 +3,14 @@ FROM node:18-alpine AS tailwind-builder
 
 WORKDIR /build
 
-# Install Tailwind CSS CLI
-RUN npm install -g tailwindcss
-
-# Copy template files to analyze for CSS classes
+# Copy files needed for CSS build
 COPY templates/ ./templates/
 COPY static/ ./static/
 COPY tailwind.config.js ./
-
-# Create input CSS file
 COPY static/css/input.css ./
 
-# Build optimized CSS
-RUN tailwindcss -i input.css -o output.css --minify
+# Install and build Tailwind CSS
+RUN npm install tailwindcss && ./node_modules/.bin/tailwindcss -i input.css -o output.css --minify
 
 # Main application stage
 FROM python:3.10-slim
