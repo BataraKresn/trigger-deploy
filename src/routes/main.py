@@ -6,12 +6,13 @@ from flask import Blueprint, render_template, request, jsonify, send_from_direct
 import os
 import json
 import re
+import logging
 from datetime import datetime
 from src.utils.helpers import load_servers, validate_token, is_valid_server
 from src.models.config import config
 from src.utils.auth import require_auth, is_authenticated
 
-
+logger = logging.getLogger(__name__)
 main_bp = Blueprint('main', __name__)
 
 
@@ -35,6 +36,9 @@ def home():
 @require_auth
 def dashboard():
     """Dashboard page (same as home but with explicit route)"""
+    # Ensure we don't have redirect loops by checking the request
+    if request.endpoint == 'main.dashboard' and request.path == '/dashboard':
+        return render_template('home.html')
     return render_template('home.html')
 
 
@@ -45,8 +49,36 @@ def login():
     if is_authenticated():
         return redirect(url_for('main.dashboard'))
     
+    # Get any messages from URL params
+    message = request.args.get('message', '')
+    error = request.args.get('error', '')
+    
     # Pass configuration to template
-    return render_template('login.html', show_demo_credentials=config.SHOW_DEMO_CREDENTIALS)
+    return render_template('login.html', 
+                         show_demo_credentials=config.SHOW_DEMO_CREDENTIALS,
+                         message=message,
+                         error=error)
+
+
+@main_bp.route('/logout')
+def logout_get():
+    """Logout page (GET request) - redirects to proper logout"""
+    return redirect(url_for('main.logout_post'))
+
+
+@main_bp.route('/logout', methods=['POST'])
+def logout_post():
+    """Logout POST handler"""
+    try:
+        from ..utils.auth import logout_user, is_authenticated
+        
+        if is_authenticated():
+            logout_user()
+        
+        return redirect(url_for('main.login', message='Successfully logged out'))
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        return redirect(url_for('main.login', error='Logout failed'))
 
 
 @main_bp.route('/users')

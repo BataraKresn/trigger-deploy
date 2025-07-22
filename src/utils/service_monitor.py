@@ -48,8 +48,32 @@ class ServiceMonitor:
     def load_services(self) -> List[Dict]:
         """Load services from configuration"""
         try:
+            if not os.path.exists(config.SERVICES_FILE):
+                logger.warning(f"Services file not found: {config.SERVICES_FILE}")
+                return []
+                
             with open(config.SERVICES_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                
+            # Handle both old format (list) and new format (dict with local/remote)
+            if isinstance(data, list):
+                logger.info("Converting old services format to new format")
+                return data
+            elif isinstance(data, dict):
+                # Combine local and remote services
+                services = []
+                if 'local_services' in data:
+                    services.extend(data['local_services'])
+                if 'remote_services' in data:
+                    services.extend(data['remote_services'])
+                return services
+            else:
+                logger.error("Invalid services file format")
+                return []
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in services file: {e}")
+            return []
         except Exception as e:
             logger.error(f"Failed to load services: {e}")
             return []
@@ -207,15 +231,31 @@ class ServiceMonitor:
     def check_all_local_services(self) -> List[Dict]:
         """Check all local Docker services"""
         local_services = []
+        
+        # First check services from config file
+        for service in self.services:
+            if service.get('type') == 'docker' and service.get('container_name'):
+                service_info = self.check_docker_service(service.get('container_name'))
+                service_info['name'] = service.get('name', service.get('container_name'))
+                service_info['description'] = service.get('description', '')
+                service_info['critical'] = service.get('critical', False)
+                service_info['port'] = service.get('port')
+                local_services.append(service_info)
+        
+        # Then check all running Docker containers if client is available
         if self.docker_client:
             try:
                 containers = self.docker_client.containers.list(all=True)
+                existing_names = [s.get('name') for s in local_services]
+                
                 for container in containers:
-                    service_info = self.check_docker_service(container.name)
-                    if service_info.get('found'):
-                        local_services.append(service_info)
+                    if container.name not in existing_names:
+                        service_info = self.check_docker_service(container.name)
+                        if service_info.get('status') != 'error':
+                            local_services.append(service_info)
             except Exception as e:
                 logger.error(f"Error checking local services: {e}")
+        
         return local_services
 
     def check_all_remote_services(self) -> List[Dict]:
@@ -223,11 +263,22 @@ class ServiceMonitor:
         remote_services = []
         for service in self.services:
             if service.get('type') == 'http' or 'url' in service:
-                status = self.check_http_service(service.get('url', ''))
-                status['name'] = service.get('name', 'Unknown')
-                status['description'] = service.get('description', '')
-                status['critical'] = service.get('critical', False)
-                remote_services.append(status)
+                try:
+                    status = self.check_http_service(service.get('url', ''))
+                    status['name'] = service.get('name', 'Unknown')
+                    status['description'] = service.get('description', '')
+                    status['critical'] = service.get('critical', False)
+                    remote_services.append(status)
+                except Exception as e:
+                    logger.error(f"Error checking remote service {service.get('name')}: {e}")
+                    remote_services.append({
+                        'name': service.get('name', 'Unknown'),
+                        'status': 'error',
+                        'message': str(e),
+                        'description': service.get('description', ''),
+                        'critical': service.get('critical', False),
+                        'timestamp': datetime.now().isoformat()
+                    })
         return remote_services
 
     def get_services_summary(self) -> Dict:

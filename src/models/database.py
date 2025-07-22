@@ -142,10 +142,61 @@ def get_session() -> Session:
     return SessionLocal()
 
 
+def check_table_exists(table_name: str) -> bool:
+    """
+    Check if a specific table exists in the database.
+    
+    Args:
+        table_name: Name of the table to check
+        
+    Returns:
+        bool: True if table exists, False otherwise
+    """
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            # Use information_schema to check table existence
+            result = conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = :table_name
+                )
+            """), {'table_name': table_name})
+            return result.scalar()
+    except Exception as e:
+        logger.warning(f"Error checking if table '{table_name}' exists: {e}")
+        return False
+
+
+def check_schema_exists() -> bool:
+    """
+    Check if the main application tables exist in the database.
+    
+    Returns:
+        bool: True if schema exists, False otherwise
+    """
+    try:
+        # Check for key tables that should exist
+        key_tables = ['users']  # Add other critical tables here
+        
+        for table_name in key_tables:
+            if not check_table_exists(table_name):
+                logger.debug(f"Table '{table_name}' does not exist")
+                return False
+        
+        logger.debug("All key tables exist in the database")
+        return True
+        
+    except Exception as e:
+        logger.warning(f"Error checking schema existence: {e}")
+        return False
+
+
 def init_db() -> bool:
     """
     Initialize database schema by creating all tables.
-    This operation is safe and won't overwrite existing tables.
+    This operation is idempotent and safe for existing databases.
     
     Returns:
         bool: True if successful, False otherwise
@@ -153,8 +204,30 @@ def init_db() -> bool:
     try:
         engine = get_engine()
         
-        # Create all tables defined in models (safe operation)
-        Base.metadata.create_all(bind=engine)
+        # Check if schema already exists and is complete
+        if check_schema_exists() and validate_database_integrity():
+            logger.info("Database schema already exists and is complete, skipping table creation")
+            # Still fix sequences if needed
+            fix_sequence_issues()
+            return True
+        
+        logger.info("Creating or repairing database schema...")
+        
+        # Import all models to ensure they are registered with Base
+        from .user import User
+        
+        # Create all tables defined in models (safe operation with checkfirst=True)
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        
+        # Fix any sequence issues after table creation
+        fix_sequence_issues()
+        
+        # Validate that everything was created correctly
+        if not validate_database_integrity():
+            logger.warning("Database schema creation completed but integrity check failed, attempting recovery...")
+            if not safe_database_recovery():
+                logger.error("Database schema initialization and recovery both failed")
+                return False
         
         logger.info("Database schema initialization completed successfully")
         return True
@@ -164,6 +237,116 @@ def init_db() -> bool:
         return False
     except Exception as e:
         logger.error(f"Unexpected error during schema initialization: {e}")
+        return False
+
+
+def validate_database_integrity() -> bool:
+    """
+    Validate that the database schema is complete and consistent.
+    
+    Returns:
+        bool: True if database is in good state, False otherwise
+    """
+    try:
+        engine = get_engine()
+        
+        with engine.connect() as conn:
+            # Check if users table exists and has expected structure
+            result = conn.execute(text("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = 'users'
+                ORDER BY ordinal_position
+            """))
+            
+            columns = result.fetchall()
+            if not columns:
+                logger.warning("Users table does not exist or has no columns")
+                return False
+            
+            # Check for required columns
+            column_names = [col[0] for col in columns]
+            required_columns = ['id', 'username', 'email', 'password_hash', 'role']
+            
+            missing_columns = [col for col in required_columns if col not in column_names]
+            if missing_columns:
+                logger.warning(f"Users table missing required columns: {missing_columns}")
+                return False
+            
+            logger.debug(f"Database integrity check passed - found {len(columns)} columns in users table")
+            return True
+            
+    except Exception as e:
+        logger.warning(f"Database integrity check failed: {e}")
+        return False
+
+
+def fix_sequence_issues():
+    """
+    Fix sequence issues that might occur when tables already exist.
+    This helps resolve duplicate key violations on sequences.
+    """
+    try:
+        engine = get_engine()
+        
+        with engine.connect() as conn:
+            # Check if users table exists
+            if not check_table_exists('users'):
+                logger.debug("Users table doesn't exist, skipping sequence fix")
+                return True
+            
+            # Fix users table sequence
+            logger.info("Checking and fixing database sequences...")
+            
+            # Get the current maximum ID from users table
+            result = conn.execute(text("SELECT COALESCE(MAX(id), 0) FROM users"))
+            max_id = result.scalar()
+            
+            # Reset the sequence to be higher than the current max ID
+            if max_id > 0:
+                new_seq_value = max_id + 1
+                conn.execute(text(f"SELECT setval('users_id_seq', {new_seq_value}, false)"))
+                logger.info(f"Reset users_id_seq to {new_seq_value}")
+            
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        logger.warning(f"Could not fix sequence issues: {e}")
+        return False
+
+
+def safe_database_recovery() -> bool:
+    """
+    Attempt to recover from partial database initialization.
+    This is called when integrity checks fail.
+    
+    Returns:
+        bool: True if recovery successful, False otherwise
+    """
+    try:
+        logger.info("Attempting database recovery...")
+        
+        # Try to create missing tables only
+        engine = get_engine()
+        
+        # Import User model to ensure it's registered
+        from .user import User
+        
+        # Create only missing tables
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        
+        # Re-validate integrity
+        if validate_database_integrity():
+            logger.info("Database recovery successful")
+            return True
+        else:
+            logger.error("Database recovery failed - integrity check still failing")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Database recovery failed: {e}")
         return False
 
 
@@ -197,6 +380,7 @@ def init_database() -> bool:
     """
     Initialize the database module and establish connections.
     This function should be called once during application startup.
+    Includes idempotent schema and admin user creation.
     
     Returns:
         bool: True if initialization successful, False otherwise
@@ -222,28 +406,80 @@ def init_database() -> bool:
             logger.error("Database connection test failed during initialization")
             return False
         
-        # Initialize schema
+        logger.info("Database connection established successfully")
+        
+        # Log current database status
+        log_database_status()
+        
+        # Initialize schema (idempotent operation)
+        logger.info("Checking and initializing database schema...")
         if not init_db():
             logger.error("Database schema initialization failed")
             return False
         
         logger.info("Database initialization completed successfully")
         
-        # Ensure admin user exists (after schema is created)
+        # Ensure admin user exists (idempotent operation)
+        logger.info("Checking and creating admin user if needed...")
         try:
             db_manager = DatabaseManager()
             if db_manager.ensure_admin_exists():
-                logger.info("Admin user verification completed")
+                logger.info("Admin user verification/creation completed successfully")
             else:
-                logger.warning("Admin user verification failed")
+                logger.warning("Admin user verification/creation failed - continuing anyway")
         except Exception as e:
-            logger.warning(f"Admin user verification error: {e}")
+            logger.warning(f"Admin user verification error (non-critical): {e}")
+        
+        # Final status log
+        log_database_status()
         
         return True
         
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         return False
+
+
+def log_database_status():
+    """
+    Log current database status for debugging purposes.
+    """
+    try:
+        engine = get_engine()
+        
+        with engine.connect() as conn:
+            # Check database version
+            result = conn.execute(text("SELECT version()"))
+            pg_version = result.scalar()
+            logger.info(f"PostgreSQL version: {pg_version}")
+            
+            # Check existing tables
+            result = conn.execute(text("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                ORDER BY table_name
+            """))
+            
+            tables = [row[0] for row in result.fetchall()]
+            if tables:
+                logger.info(f"Existing tables: {', '.join(tables)}")
+            else:
+                logger.info("No tables found in database")
+            
+            # Check user count if users table exists
+            if 'users' in tables:
+                result = conn.execute(text("SELECT COUNT(*) FROM users"))
+                user_count = result.scalar()
+                logger.info(f"Current user count: {user_count}")
+                
+                # Check admin users
+                result = conn.execute(text("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'superadmin')"))
+                admin_count = result.scalar()
+                logger.info(f"Current admin count: {admin_count}")
+            
+    except Exception as e:
+        logger.warning(f"Could not log database status: {e}")
 
 
 def close_database() -> None:
@@ -658,30 +894,43 @@ class DatabaseManager:
         """
         Create default admin user if none exists.
         Uses environment variables for default credentials.
+        This function is idempotent and safe to call multiple times.
         
         Returns:
             bool: True if created or already exists, False if failed
         """
         session = self.get_session()
         if not session:
+            logger.error("Failed to get database session for admin creation")
             return False
         
         try:
             from .user import User
             
-            # Check if any admin users exist
+            # Get admin credentials from environment
+            admin_username = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
+            admin_password = os.getenv('DEFAULT_ADMIN_PASSWORD', 'admin123')
+            admin_email = os.getenv('DEFAULT_ADMIN_EMAIL', 'admin@example.com')
+            
+            # Check if the specific admin user already exists
+            existing_admin = session.query(User).filter(
+                (User.username == admin_username) | (User.email == admin_email)
+            ).first()
+            
+            if existing_admin:
+                logger.info(f"Admin user already exists: {existing_admin.username} ({existing_admin.email})")
+                return True
+            
+            # Check if any admin users exist at all
             admin_count = session.query(User).filter(
                 User.role.in_(['admin', 'superadmin'])
             ).count()
             
             if admin_count > 0:
-                logger.debug("Admin users already exist, skipping default admin creation")
+                logger.info(f"Found {admin_count} existing admin user(s), skipping default admin creation")
                 return True
             
-            # Get admin credentials from environment
-            admin_username = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
-            admin_password = os.getenv('DEFAULT_ADMIN_PASSWORD', 'admin123')
-            admin_email = os.getenv('DEFAULT_ADMIN_EMAIL', 'admin@example.com')
+            logger.info("No admin users found, creating default admin user...")
             
             # Create default admin user
             admin_user = User(
@@ -694,8 +943,9 @@ class DatabaseManager:
             
             session.add(admin_user)
             session.commit()
+            session.refresh(admin_user)
             
-            logger.info(f"Default admin user created: {admin_username}")
+            logger.info(f"Default admin user created successfully: {admin_username} (ID: {admin_user.id})")
             return True
             
         except Exception as e:
