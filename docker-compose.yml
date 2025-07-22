@@ -51,7 +51,7 @@ services:
     image: dev-trigger-deploy:latest
     container_name: dev-trigger-deploy
     ports:
-      - "${APP_PORT:-3111}:5000"
+      - "${APP_PORT:-3111}:8000"
     restart: unless-stopped
     environment:
       - TZ=Asia/Jakarta
@@ -103,7 +103,7 @@ services:
     #   postgres:
     #     condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3
