@@ -32,7 +32,7 @@ except ImportError:
 
 # Database initialization
 if USING_POSTGRES:
-    from src.models.database import init_database, close_database
+    from src.models.database import init_db_manager_sync, close_database
 
 
 # Configure logging
@@ -67,19 +67,8 @@ def create_app():
         
         while retry_count < max_retries:
             try:
-                # Create a new event loop for database initialization
-                loop = None
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_closed():
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                # Initialize database
-                loop.run_until_complete(init_database())
+                # Initialize database manager synchronously
+                init_db_manager_sync()
                 logger.info("PostgreSQL database initialized successfully")
                 
                 # Register cleanup function

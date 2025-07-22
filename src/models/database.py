@@ -166,6 +166,17 @@ class PostgreSQLManager:
             return await self.pool.acquire()
         return None
 
+    async def reconnect(self):
+        """Reconnect to database by reinitializing the connection pool"""
+        try:
+            logger.info("Attempting to reconnect to PostgreSQL database")
+            await self.close()
+            await self.initialize()
+            logger.info("Successfully reconnected to PostgreSQL database")
+        except Exception as e:
+            logger.error(f"Failed to reconnect to database: {e}")
+            raise
+
     async def _create_tables(self):
         """Create database tables"""
         conn = None
@@ -228,7 +239,373 @@ class PostgreSQLManager:
 
     async def _create_default_admin(self):
         """Create default admin user if not exists"""
-        pass
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return
+            
+            # Check if admin user already exists
+            admin_exists = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE username = $1",
+                'admin'
+            )
+            
+            if admin_exists == 0:
+                # Create default admin user
+                import hashlib
+                import secrets
+                
+                password = 'admin123'  # Default password - should be changed
+                salt = secrets.token_hex(16)
+                password_hash = hashlib.pbkdf2_hmac('sha256', 
+                                                  password.encode('utf-8'), 
+                                                  salt.encode('utf-8'), 
+                                                  100000).hex()
+                
+                await conn.execute('''
+                    INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                ''', 'Administrator', 'admin', 'admin@trigger-deploy.local', password_hash, salt, 'admin')
+                
+                logger.info("Default admin user created (username: admin, password: admin123)")
+            
+        except Exception as e:
+            logger.error(f"Failed to create default admin user: {e}")
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    # User management methods
+    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+        """Authenticate user with username and password"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return None
+            
+            # Get user by username
+            user_row = await conn.fetchrow(
+                "SELECT * FROM users WHERE username = $1 AND is_active = TRUE",
+                username
+            )
+            
+            if not user_row:
+                return None
+            
+            # Verify password
+            import hashlib
+            stored_hash = user_row['password_hash']
+            salt = user_row['salt']
+            password_hash = hashlib.pbkdf2_hmac('sha256', 
+                                              password.encode('utf-8'), 
+                                              salt.encode('utf-8'), 
+                                              100000).hex()
+            
+            if password_hash != stored_hash:
+                return None
+            
+            # Return user object
+            return User(
+                id=str(user_row['id']),
+                nama_lengkap=user_row['nama_lengkap'],
+                username=user_row['username'],
+                email=user_row['email'],
+                role=user_row['role'],
+                is_active=user_row['is_active'],
+                created_at=user_row['created_at'],
+                last_login=user_row['last_login']
+            )
+            
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return None
+            
+            user_row = await conn.fetchrow(
+                "SELECT * FROM users WHERE username = $1",
+                username
+            )
+            
+            if not user_row:
+                return None
+            
+            return User(
+                id=str(user_row['id']),
+                nama_lengkap=user_row['nama_lengkap'],
+                username=user_row['username'],
+                email=user_row['email'],
+                role=user_row['role'],
+                is_active=user_row['is_active'],
+                created_at=user_row['created_at'],
+                last_login=user_row['last_login']
+            )
+            
+        except Exception as e:
+            logger.error(f"Error getting user by username: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Get user by ID"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return None
+            
+            user_row = await conn.fetchrow(
+                "SELECT * FROM users WHERE id = $1",
+                user_id
+            )
+            
+            if not user_row:
+                return None
+            
+            return User(
+                id=str(user_row['id']),
+                nama_lengkap=user_row['nama_lengkap'],
+                username=user_row['username'],
+                email=user_row['email'],
+                role=user_row['role'],
+                is_active=user_row['is_active'],
+                created_at=user_row['created_at'],
+                last_login=user_row['last_login']
+            )
+            
+        except Exception as e:
+            logger.error(f"Error getting user by ID: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def update_last_login(self, user_id: str) -> bool:
+        """Update user's last login timestamp"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return False
+            
+            await conn.execute(
+                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+                user_id
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating last login: {e}")
+            return False
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def list_users(self) -> List[User]:
+        """List all users"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return []
+            
+            user_rows = await conn.fetch(
+                "SELECT * FROM users ORDER BY created_at DESC"
+            )
+            
+            users = []
+            for row in user_rows:
+                users.append(User(
+                    id=str(row['id']),
+                    nama_lengkap=row['nama_lengkap'],
+                    username=row['username'],
+                    email=row['email'],
+                    role=row['role'],
+                    is_active=row['is_active'],
+                    created_at=row['created_at'],
+                    last_login=row['last_login']
+                ))
+            
+            return users
+            
+        except Exception as e:
+            logger.error(f"Error listing users: {e}")
+            return []
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def get_user_stats(self) -> Dict[str, Any]:
+        """Get user statistics"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return {}
+            
+            total_users = await conn.fetchval("SELECT COUNT(*) FROM users")
+            active_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
+            admin_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+            
+            return {
+                'total_users': total_users or 0,
+                'active_users': active_users or 0,
+                'admin_users': admin_users or 0,
+                'inactive_users': (total_users or 0) - (active_users or 0)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting user stats: {e}")
+            return {}
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def create_user(self, user_data: Dict[str, Any]) -> Optional[User]:
+        """Create a new user"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return None
+            
+            # Check if username or email already exists
+            existing = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2",
+                user_data['username'], user_data['email']
+            )
+            
+            if existing > 0:
+                logger.warning(f"User with username {user_data['username']} or email {user_data['email']} already exists")
+                return None
+            
+            # Hash password
+            import hashlib
+            import secrets
+            
+            password = user_data.get('password', 'temppassword123')
+            salt = secrets.token_hex(16)
+            password_hash = hashlib.pbkdf2_hmac('sha256', 
+                                              password.encode('utf-8'), 
+                                              salt.encode('utf-8'), 
+                                              100000).hex()
+            
+            # Insert user
+            user_id = await conn.fetchval('''
+                INSERT INTO users (nama_lengkap, username, email, password_hash, salt, role, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            ''', 
+            user_data['nama_lengkap'],
+            user_data['username'],
+            user_data['email'],
+            password_hash,
+            salt,
+            user_data.get('role', 'user'),
+            user_data.get('is_active', True))
+            
+            # Return created user
+            return await self.get_user_by_id(str(user_id))
+            
+        except Exception as e:
+            logger.error(f"Error creating user: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def update_user(self, user_id: str, user_data: Dict[str, Any]) -> Optional[User]:
+        """Update user data"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return None
+            
+            # Build update query dynamically
+            updates = []
+            params = []
+            param_count = 1
+            
+            for field in ['nama_lengkap', 'username', 'email', 'role', 'is_active']:
+                if field in user_data:
+                    updates.append(f"{field} = ${param_count}")
+                    params.append(user_data[field])
+                    param_count += 1
+            
+            if not updates:
+                return await self.get_user_by_id(user_id)
+            
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ${param_count}"
+            params.append(user_id)
+            
+            await conn.execute(query, *params)
+            
+            return await self.get_user_by_id(user_id)
+            
+        except Exception as e:
+            logger.error(f"Error updating user: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def update_user_password(self, user_id: str, new_password: str) -> bool:
+        """Update user password"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return False
+            
+            # Hash new password
+            import hashlib
+            import secrets
+            
+            salt = secrets.token_hex(16)
+            password_hash = hashlib.pbkdf2_hmac('sha256', 
+                                              new_password.encode('utf-8'), 
+                                              salt.encode('utf-8'), 
+                                              100000).hex()
+            
+            await conn.execute(
+                "UPDATE users SET password_hash = $1, salt = $2 WHERE id = $3",
+                password_hash, salt, user_id
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating user password: {e}")
+            return False
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def delete_user(self, user_id: str) -> bool:
+        """Delete user"""
+        try:
+            conn = await self.get_connection()
+            if not conn:
+                return False
+            
+            # Soft delete by marking as inactive instead of actual deletion
+            await conn.execute(
+                "UPDATE users SET is_active = FALSE WHERE id = $1",
+                user_id
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error deleting user: {e}")
+            return False
+        finally:
+            if conn:
+                await self.pool.release(conn)
 
 
 class ContactMessageManager:
@@ -337,8 +714,14 @@ db_manager = None
 contact_manager = None
 
 
-async def get_db_manager() -> PostgreSQLManager:
-    """Get database manager instance"""
+def get_db_manager() -> Optional[PostgreSQLManager]:
+    """Get database manager instance (synchronous)"""
+    global db_manager
+    return db_manager
+
+
+async def get_db_manager_async() -> PostgreSQLManager:
+    """Get database manager instance (async initialization)"""
     global db_manager
     if db_manager is None:
         db_manager = PostgreSQLManager()
@@ -346,9 +729,36 @@ async def get_db_manager() -> PostgreSQLManager:
     return db_manager
 
 
+def init_db_manager_sync():
+    """Initialize database manager synchronously"""
+    import asyncio
+    import threading
+    
+    def run_in_thread():
+        """Run initialization in a new thread with its own event loop"""
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(get_db_manager_async())
+        finally:
+            loop.close()
+    
+    global db_manager
+    if db_manager is None:
+        try:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(run_in_thread)
+                db_manager = future.result(timeout=30)
+                logger.info("Database manager initialized synchronously")
+        except Exception as e:
+            logger.error(f"Failed to initialize database manager: {e}")
+            raise
+
+
 async def init_database():
     """Initialize database"""
-    await get_db_manager()
+    await get_db_manager_async()
 
 
 async def close_database():
