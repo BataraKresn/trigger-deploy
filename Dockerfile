@@ -29,7 +29,6 @@ RUN mkdir -p logs trigger-logs
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh
-RUN chmod +x scripts/script_debug/*.sh
 
 # Expose port
 EXPOSE 8000
