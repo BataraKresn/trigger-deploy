@@ -15,6 +15,10 @@ import secrets
 from dataclasses import dataclass, asdict
 from contextlib import contextmanager
 
+# Setup logging first
+import logging
+logger = logging.getLogger(__name__)
+
 # Import sync PostgreSQL adapter instead of async
 try:
     import psycopg2
@@ -22,13 +26,63 @@ try:
     from psycopg2.extras import RealDictCursor
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     SYNC_MODE = True
-except ImportError:
+    logger.debug("psycopg2 imported successfully - using synchronous mode")
+except ImportError as e:
     SYNC_MODE = False
+    logger.warning(f"psycopg2 not available ({e}) - falling back to async mode")
     # Fallback to async if psycopg2 not available
     import asyncio
     import asyncpg
 
-logger = logging.getLogger(__name__)
+
+def _prevent_async_in_sync_mode(operation_name="async operation"):
+    """
+    Prevent async operations when in sync mode
+    This helps debug async/sync mode conflicts
+    """
+    if SYNC_MODE:
+        error_msg = f"Attempted {operation_name} in SYNC_MODE - this should not happen"
+        logger.error(error_msg)
+        logger.error("This indicates a bug in the sync/async mode handling")
+        raise RuntimeError(error_msg)
+
+
+def _get_or_create_event_loop():
+    """
+    Get existing event loop or create a new one safely
+    Handles the 'This operation would block forever' error
+    """
+    try:
+        # Try to get the current event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is running, we can't use run_until_complete
+            # This indicates we're in an async context and shouldn't be here
+            raise RuntimeError("Cannot run async operations in sync mode with running event loop")
+        return loop
+    except RuntimeError:
+        # No event loop in current thread, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
+
+def _safe_run_async(coro):
+    """
+    Safely run an async coroutine, handling event loop conflicts
+    """
+    try:
+        loop = _get_or_create_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            # Don't close the loop if it was already running
+            if not loop.is_running():
+                loop.close()
+    except Exception as e:
+        logger.error(f"Failed to run async operation: {e}")
+        logger.error("This suggests an event loop conflict - async/sync mode mismatch")
+        raise
 
 
 def _get_cursor_value(result, column_index_or_name, default=None):
@@ -373,6 +427,8 @@ class PostgreSQLManager:
                                 logger.error(f"Error returning connection to pool: {putconn_error}")
                 
                 else:
+                    # This should NEVER execute in SYNC_MODE
+                    _prevent_async_in_sync_mode("connection pool initialization")
                     # Fallback to async mode with SSL support
                     import asyncio
                     loop = asyncio.new_event_loop()
@@ -567,6 +623,7 @@ class PostgreSQLManager:
                     if SYNC_MODE:
                         self.pool.closeall()
                     else:
+                        _prevent_async_in_sync_mode("connection pool close")
                         import asyncio
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)

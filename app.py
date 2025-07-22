@@ -4,7 +4,6 @@
 import os
 import sys
 import logging
-import asyncio
 import atexit
 import time
 from flask import Flask
