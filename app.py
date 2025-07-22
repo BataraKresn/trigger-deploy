@@ -70,6 +70,16 @@ def create_app():
                 if init_database():
                     logger.info("PostgreSQL database initialized successfully")
                     
+                    # Initialize default admin user
+                    try:
+                        from src.models.database import get_db_manager
+                        db_manager = get_db_manager()
+                        if db_manager:
+                            db_manager.ensure_admin_user()
+                            logger.info("Default admin user initialization completed")
+                    except Exception as admin_error:
+                        logger.warning(f"Could not initialize default admin user: {admin_error}")
+                    
                     # Register cleanup function
                     def cleanup_db():
                         try:

@@ -216,3 +216,70 @@ class DeploymentAnalytics:
                 'error_patterns': [],
                 'hourly_failure_distribution': []
             }
+
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Synchronous method to get basic deployment statistics
+        """
+        try:
+            # Check if we have a database connection
+            if not self.db or not hasattr(self.db, 'get_connection'):
+                logger.warning("No database connection available for analytics")
+                return self._get_mock_stats()
+            
+            # Try to get a database connection
+            conn = self.db.get_connection()
+            if not conn:
+                logger.warning("Could not get database connection")
+                return self._get_mock_stats()
+            
+            try:
+                cursor = conn.cursor()
+                
+                # Get basic deployment stats
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(CASE WHEN status = 'success' THEN 1 END) as successful,
+                        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+                        AVG(CASE WHEN duration IS NOT NULL THEN duration END) as avg_duration
+                    FROM deployments 
+                    WHERE created_at >= NOW() - INTERVAL '30 days'
+                """)
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    total, successful, failed, avg_duration = result
+                    success_rate = (successful / total * 100) if total > 0 else 0
+                    
+                    return {
+                        'total_deployments': total or 0,
+                        'successful_deployments': successful or 0,
+                        'failed_deployments': failed or 0,
+                        'success_rate': round(success_rate, 2),
+                        'avg_duration': round(float(avg_duration or 0), 2)
+                    }
+                else:
+                    return self._get_mock_stats()
+                    
+            except Exception as db_error:
+                logger.warning(f"Database query failed: {db_error}")
+                return self._get_mock_stats()
+            finally:
+                if conn:
+                    self.db.return_connection(conn)
+                    
+        except Exception as e:
+            logger.warning(f"Could not get deployment stats: {e}")
+            return self._get_mock_stats()
+    
+    def _get_mock_stats(self) -> Dict[str, Any]:
+        """Return mock statistics when database is not available"""
+        return {
+            'total_deployments': 0,
+            'successful_deployments': 0,
+            'failed_deployments': 0,
+            'success_rate': 0,
+            'avg_duration': 0
+        }

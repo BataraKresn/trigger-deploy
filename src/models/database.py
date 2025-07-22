@@ -996,6 +996,69 @@ class DatabaseManager:
         """
         return self.list_users()
     
+    def update_user(self, user_id: int, user_data: Dict) -> Optional[Any]:
+        """
+        Update user information.
+        
+        Args:
+            user_id: User ID to update
+            user_data: Dictionary containing user data to update
+            
+        Returns:
+            Updated user object or None if failed
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            from .user import User
+            user = session.query(User).filter(User.id == user_id).first()
+            if not user:
+                return None
+            
+            # Update user fields if provided
+            if 'username' in user_data:
+                user.username = user_data['username']
+            if 'email' in user_data:
+                user.email = user_data['email']
+            if 'name' in user_data:
+                user.name = user_data['name']
+            if 'role' in user_data:
+                user.role = user_data['role']
+            if 'is_active' in user_data:
+                user.is_active = user_data['is_active']
+            if 'status' in user_data:
+                # Map status to is_active if needed
+                user.is_active = user_data['status'] == 'active'
+            
+            # Update password if provided and not empty
+            if 'password' in user_data and user_data['password']:
+                try:
+                    import bcrypt
+                    user.password_hash = bcrypt.hashpw(
+                        user_data['password'].encode('utf-8'),
+                        bcrypt.gensalt()
+                    ).decode('utf-8')
+                except ImportError:
+                    # Fallback to hashlib if bcrypt not available
+                    import hashlib
+                    user.password_hash = hashlib.sha256(
+                        user_data['password'].encode('utf-8')
+                    ).hexdigest()
+            
+            user.updated_at = datetime.utcnow()
+            
+            session.commit()
+            return user
+            
+        except Exception as e:
+            logger.error(f"Failed to update user {user_id}: {e}")
+            session.rollback()
+            return None
+        finally:
+            session.close()
+    
     def get_user_stats(self) -> Dict:
         """
         Get user statistics.

@@ -1910,6 +1910,15 @@ def get_servers():
         else:
             servers_data = []
         
+        # Add status check to each server
+        for server in servers_data:
+            server['status'] = get_server_status(server)
+            # Add some default fields if missing
+            if 'id' not in server:
+                server['id'] = server.get('name', '').lower().replace(' ', '-')
+            if 'host' not in server:
+                server['host'] = server.get('ip', 'unknown')
+        
         return jsonify({
             'success': True,
             'servers': servers_data
@@ -1918,6 +1927,34 @@ def get_servers():
     except Exception as e:
         logger.error(f"Error fetching servers: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def get_server_status(server):
+    """Check server status via ping"""
+    try:
+        import subprocess
+        import platform
+        
+        # Get server IP or host
+        host = server.get('ip') or server.get('host', '')
+        if not host:
+            return 'unknown'
+        
+        # Ping command based on OS
+        param = '-n' if platform.system().lower() == 'windows' else '-c'
+        command = ['ping', param, '1', '-W', '2000', host] if platform.system().lower() == 'windows' else ['ping', param, '1', '-W', '2', host]
+        
+        # Run ping with timeout
+        result = subprocess.run(command, capture_output=True, timeout=5)
+        
+        if result.returncode == 0:
+            return 'online'
+        else:
+            return 'offline'
+            
+    except Exception as e:
+        logger.warning(f"Could not check status for {server.get('name', 'unknown')}: {e}")
+        return 'unknown'
 
 
 @api_bp.route('/services', methods=['GET'])
@@ -2047,12 +2084,16 @@ def update_user(user_id):
                 if not user:
                     return jsonify({'error': 'User not found'}), 404
                 
-                # Update user (implement this method if needed)
-                # For now, return success with current user data
-                return jsonify({
-                    'success': True,
-                    'user': user.to_safe_dict()
-                })
+                # Update user with provided data
+                updated_user = db_manager.update_user(user_id, data)
+                if updated_user:
+                    return jsonify({
+                        'success': True,
+                        'user': updated_user.to_safe_dict(),
+                        'message': 'User updated successfully'
+                    })
+                else:
+                    return jsonify({'error': 'Failed to update user'}), 500
         
         return jsonify({'error': 'Database not available'}), 500
         

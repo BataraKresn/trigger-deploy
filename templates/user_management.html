@@ -231,6 +231,7 @@
                 <div id="passwordField">
                     <label for="userPassword" class="block text-sm font-medium text-gray-700">Password</label>
                     <input type="password" id="userPassword" name="password" 
+                           autocomplete="new-password"
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     <p class="mt-1 text-sm text-gray-500">Leave blank to keep current password (when editing)</p>
                 </div>
@@ -399,6 +400,9 @@
         renderUserRow(user) {
             const statusBadge = this.getStatusBadge(user.status);
             const roleBadge = this.getRoleBadge(user.role);
+            const userName = user.name || 'Unknown User';
+            const userEmail = user.email || 'no-email@example.com';
+            const initials = userName.split(' ').map(n => n[0] || '').join('').toUpperCase() || 'U';
             
             return `
                 <tr class="hover:bg-gray-50">
@@ -406,12 +410,12 @@
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-10 w-10">
                                 <div class="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
-                                    ${user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    ${initials}
                                 </div>
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">${user.name}</div>
-                                <div class="text-sm text-gray-500">${user.email}</div>
+                                <div class="text-sm font-medium text-gray-900">${userName}</div>
+                                <div class="text-sm text-gray-500">${userEmail}</div>
                             </div>
                         </div>
                     </td>
