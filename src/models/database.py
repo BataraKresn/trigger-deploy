@@ -351,18 +351,38 @@ class PostgreSQLManager:
             if not self._initialized:
                 await self.initialize()
             
-            conn = await self.pool.acquire()
+            # Acquire connection with retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    conn = await asyncio.wait_for(self.pool.acquire(), timeout=10.0)
+                    break
+                except asyncio.TimeoutError:
+                    if attempt == max_retries - 1:
+                        raise
+                    logger.warning(f"Connection acquisition timeout, retrying... (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(1)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    logger.warning(f"Connection acquisition failed, retrying... (attempt {attempt + 1}/{max_retries}): {e}")
+                    await asyncio.sleep(1)
+            
+            if not conn:
+                logger.error("Failed to acquire database connection")
+                return None
             
             # Set connection timeout
             await conn.execute("SET statement_timeout = '10s'")
             
+            # Perform authentication query
             row = await conn.fetchrow(
                 "SELECT * FROM users WHERE username = $1 AND is_active = true",
                 username
             )
             
             if row and self._verify_password(password, row['salt'], row['password_hash']):
-                # Update last login in a separate transaction to avoid blocking
+                # Update last login in a separate non-blocking operation
                 try:
                     await conn.execute(
                         "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
@@ -377,8 +397,13 @@ class PostgreSQLManager:
         except asyncio.TimeoutError:
             logger.error(f"Authentication timeout for user {username}")
             return None
-        except asyncpg.ConnectionDoesNotExistError:
-            logger.error(f"Database connection lost during authentication for user {username}")
+        except asyncpg.ConnectionDoesNotExistError as conn_error:
+            logger.error(f"Database connection lost during authentication for user {username}: {conn_error}")
+            # Try to reconnect
+            try:
+                await self.reconnect()
+            except Exception as reconnect_error:
+                logger.error(f"Failed to reconnect: {reconnect_error}")
             return None
         except Exception as e:
             logger.error(f"Authentication error for user {username}: {e}")
@@ -386,7 +411,10 @@ class PostgreSQLManager:
         finally:
             if conn:
                 try:
-                    await self.pool.release(conn)
+                    # Use asyncio.wait_for to prevent hanging on release
+                    await asyncio.wait_for(self.pool.release(conn), timeout=5.0)
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout while releasing connection")
                 except asyncpg.ConnectionDoesNotExistError:
                     logger.warning("Connection was already closed when trying to release")
                 except Exception as release_error:
@@ -437,6 +465,38 @@ class PostgreSQLManager:
         except Exception as e:
             logger.error(f"Failed to list users: {e}")
             return []
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        conn = None
+        try:
+            conn = await self.pool.acquire()
+            row = await conn.fetchrow("SELECT * FROM users WHERE username = $1", username)
+            if row:
+                return User(**dict(row))
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get user by username: {e}")
+            return None
+        finally:
+            if conn:
+                await self.pool.release(conn)
+
+    async def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Get user by ID"""
+        conn = None
+        try:
+            conn = await self.pool.acquire()
+            row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+            if row:
+                return User(**dict(row))
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get user by ID: {e}")
+            return None
         finally:
             if conn:
                 await self.pool.release(conn)

@@ -5,7 +5,11 @@
 from functools import wraps
 from flask import request, redirect, url_for, session, jsonify
 import jwt
+import logging
+from datetime import datetime
 from src.models.config import config
+
+logger = logging.getLogger(__name__)
 
 
 def require_auth(f):
@@ -75,15 +79,15 @@ def get_current_user():
     return None
 
 
-def login_user(username, remember_me=False):
+def login_user(username, remember_me=False, role='admin'):
     """Login user and create session"""
+    session.permanent = remember_me
     session['authenticated'] = True
     session['username'] = username
-    session['role'] = 'admin'  # For now, all users are admin
+    session['role'] = role
+    session['login_time'] = datetime.now().isoformat()
     
-    if remember_me:
-        session.permanent = True
-        
+    logger.info(f"User {username} logged in successfully with role {role}")
     return True
 
 

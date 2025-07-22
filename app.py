@@ -67,14 +67,36 @@ def create_app():
         
         while retry_count < max_retries:
             try:
-                # Use asyncio.run to properly handle the event loop
-                asyncio.run(init_database())
+                # Create a new event loop for database initialization
+                loop = None
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Initialize database
+                loop.run_until_complete(init_database())
                 logger.info("PostgreSQL database initialized successfully")
                 
                 # Register cleanup function
                 def cleanup_db():
                     try:
-                        asyncio.run(close_database())
+                        # Create new loop for cleanup if needed
+                        cleanup_loop = None
+                        try:
+                            cleanup_loop = asyncio.get_event_loop()
+                            if cleanup_loop.is_closed():
+                                cleanup_loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(cleanup_loop)
+                        except RuntimeError:
+                            cleanup_loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(cleanup_loop)
+                        
+                        cleanup_loop.run_until_complete(close_database())
                         logger.info("PostgreSQL database connection closed")
                     except Exception as e:
                         logger.error(f"Error closing database: {e}")

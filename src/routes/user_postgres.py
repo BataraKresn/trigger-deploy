@@ -22,19 +22,32 @@ def login():
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
+        remember_me = data.get('remember_me', False)
         
         if not username or not password:
             return jsonify({'message': 'Username and password are required'}), 400
         
         db = get_db_manager()
+        if not db:
+            logger.error("Database manager not available")
+            return jsonify({'message': 'Database connection unavailable'}), 500
         
         # Check database health before authentication
-        is_healthy = run_async(db.health_check())
-        if not is_healthy:
-            logger.warning("Database connection unhealthy, attempting reconnect")
-            run_async(db.reconnect())
+        try:
+            is_healthy = run_async(db.health_check())
+            if not is_healthy:
+                logger.warning("Database connection unhealthy, attempting reconnect")
+                run_async(db.reconnect())
+        except Exception as health_error:
+            logger.error(f"Database health check failed: {health_error}")
+            return jsonify({'message': 'Database connection error'}), 500
         
-        user = run_async(db.authenticate_user(username, password))
+        # Authenticate user
+        try:
+            user = run_async(db.authenticate_user(username, password))
+        except Exception as auth_error:
+            logger.error(f"Authentication error: {auth_error}")
+            return jsonify({'message': 'Authentication failed'}), 500
         
         if not user:
             return jsonify({'message': 'Invalid credentials'}), 401
@@ -47,6 +60,10 @@ def login():
             run_async(db.update_last_login(user.id))
         except Exception as e:
             logger.warning(f"Failed to update last login: {e}")
+        
+        # Create Flask session
+        from ..utils.auth import login_user
+        login_user(user.username, remember_me, user.role)
         
         # Generate JWT token
         from ..models.config import config
@@ -79,8 +96,10 @@ def login():
             logger.warning(f"Failed to log audit: {audit_error}")
         
         response_data = {
+            'success': True,
             'user': user.to_safe_dict(),
-            'message': 'Login successful'
+            'message': 'Login successful',
+            'redirect': '/dashboard'  # Add explicit redirect URL
         }
         
         if token:
@@ -91,6 +110,43 @@ def login():
     except Exception as e:
         logger.error(f"Error during login: {e}")
         return jsonify({'message': 'Login failed'}), 500
+
+
+@user_bp.route('/logout', methods=['POST'])
+def logout():
+    """User logout"""
+    try:
+        # Clear Flask session
+        from ..utils.auth import logout_user
+        logout_user()
+        
+        # Log audit event if user was authenticated
+        if session.get('username'):
+            try:
+                db = get_db_manager()
+                if db:
+                    # Get user ID for audit log
+                    user = run_async(db.get_user_by_username(session.get('username')))
+                    if user:
+                        run_async(db.log_audit(
+                            user_id=user.id,
+                            action='LOGOUT',
+                            resource='auth',
+                            ip_address=request.remote_addr,
+                            user_agent=request.headers.get('User-Agent')
+                        ))
+            except Exception as audit_error:
+                logger.warning(f"Failed to log logout audit: {audit_error}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Logged out successfully',
+            'redirect': '/login'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        return jsonify({'message': 'Logout failed'}), 500
 
 def require_auth(f):
     """Decorator to require authentication"""
@@ -135,28 +191,41 @@ def run_async(coro):
     
     def run_in_thread():
         """Run coroutine in a new thread with its own event loop"""
-        new_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(new_loop)
         try:
-            return new_loop.run_until_complete(coro)
+            # Check if there's already an event loop in this thread
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we need a new thread
+                raise RuntimeError("Event loop is running")
+        except RuntimeError:
+            # No event loop in this thread, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        try:
+            return loop.run_until_complete(coro)
         except Exception as e:
             logger.error(f"Error in async execution: {e}")
             raise
         finally:
             try:
-                # Clean up any pending tasks
-                pending = asyncio.all_tasks(new_loop)
-                if pending:
-                    for task in pending:
-                        task.cancel()
-                    new_loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                # Only close the loop if we created it
+                if not loop.is_running():
+                    # Cancel all pending tasks
+                    pending = asyncio.all_tasks(loop)
+                    if pending:
+                        for task in pending:
+                            task.cancel()
+                        try:
+                            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                        except Exception:
+                            pass
+                    loop.close()
             except Exception as cleanup_error:
                 logger.warning(f"Error during loop cleanup: {cleanup_error}")
-            finally:
-                new_loop.close()
     
     try:
-        # Always use thread-based execution to avoid loop conflicts
+        # Use thread-based execution to avoid loop conflicts
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(run_in_thread)
             return future.result(timeout=30)
