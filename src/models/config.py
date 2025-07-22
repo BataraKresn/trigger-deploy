@@ -25,7 +25,7 @@ class Config:
     
     # PostgreSQL Database Configuration
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", "5432"))
+    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", "5432")) if os.getenv("POSTGRES_PORT", "").isdigit() else 5432
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "trigger_deploy")
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "trigger_deploy_user")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "secure_password_123")
@@ -39,13 +39,13 @@ class Config:
     
     # Connection Health Check Settings
     POSTGRES_HEALTH_CHECK_ENABLED: bool = os.getenv("POSTGRES_HEALTH_CHECK_ENABLED", "true").lower() == "true"
-    POSTGRES_HEALTH_CHECK_INTERVAL: int = int(os.getenv("POSTGRES_HEALTH_CHECK_INTERVAL", "30"))  # seconds
+    POSTGRES_HEALTH_CHECK_INTERVAL: int = int(os.getenv("POSTGRES_HEALTH_CHECK_INTERVAL", "120"))  # seconds - reduced from 30 to 120
     
     # Database Pool Settings
-    POSTGRES_MIN_CONNECTIONS: int = int(os.getenv("POSTGRES_MIN_CONNECTIONS", "1"))
-    POSTGRES_MAX_CONNECTIONS: int = int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20"))
-    POSTGRES_CONNECTION_TIMEOUT: int = int(os.getenv("POSTGRES_CONNECTION_TIMEOUT", "10"))
-    POSTGRES_COMMAND_TIMEOUT: int = int(os.getenv("POSTGRES_COMMAND_TIMEOUT", "5"))
+    POSTGRES_MIN_CONNECTIONS: int = int(os.getenv("POSTGRES_MIN_CONNECTIONS", "1")) if os.getenv("POSTGRES_MIN_CONNECTIONS", "").isdigit() else 1
+    POSTGRES_MAX_CONNECTIONS: int = int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20")) if os.getenv("POSTGRES_MAX_CONNECTIONS", "").isdigit() else 20
+    POSTGRES_CONNECTION_TIMEOUT: int = int(os.getenv("POSTGRES_CONNECTION_TIMEOUT", "10")) if os.getenv("POSTGRES_CONNECTION_TIMEOUT", "").isdigit() else 10
+    POSTGRES_COMMAND_TIMEOUT: int = int(os.getenv("POSTGRES_COMMAND_TIMEOUT", "5")) if os.getenv("POSTGRES_COMMAND_TIMEOUT", "").isdigit() else 5
     
     # Authentication Settings
     POSTGRES_AUTH_ENABLED: bool = os.getenv("POSTGRES_AUTH_ENABLED", "true").lower() == "true"
@@ -190,22 +190,30 @@ class Config:
         """Get PostgreSQL SSL configuration"""
         ssl_config = {}
         
-        # Always set sslmode, even if disabled
-        ssl_mode = self.POSTGRES_SSL_MODE or 'disable'
-        ssl_config['sslmode'] = ssl_mode
-        
-        # Only add SSL cert/key if SSL is enabled and paths are provided
-        if ssl_mode not in ['disable', 'allow']:
-            if self.POSTGRES_SSL_CERT_PATH:
-                ssl_config['sslcert'] = self.POSTGRES_SSL_CERT_PATH
+        try:
+            # Always set sslmode, even if disabled
+            ssl_mode = self.POSTGRES_SSL_MODE or 'disable'
+            ssl_config['sslmode'] = ssl_mode
             
-            if self.POSTGRES_SSL_KEY_PATH:
-                ssl_config['sslkey'] = self.POSTGRES_SSL_KEY_PATH
+            # Only add SSL cert/key if SSL is enabled and paths are provided
+            if ssl_mode not in ['disable', 'allow']:
+                if self.POSTGRES_SSL_CERT_PATH and os.path.exists(self.POSTGRES_SSL_CERT_PATH):
+                    ssl_config['sslcert'] = self.POSTGRES_SSL_CERT_PATH
                 
-            if self.POSTGRES_SSL_CA_PATH:
-                ssl_config['sslrootcert'] = self.POSTGRES_SSL_CA_PATH
-        
-        return ssl_config
+                if self.POSTGRES_SSL_KEY_PATH and os.path.exists(self.POSTGRES_SSL_KEY_PATH):
+                    ssl_config['sslkey'] = self.POSTGRES_SSL_KEY_PATH
+                    
+                if self.POSTGRES_SSL_CA_PATH and os.path.exists(self.POSTGRES_SSL_CA_PATH):
+                    ssl_config['sslrootcert'] = self.POSTGRES_SSL_CA_PATH
+            
+            return ssl_config
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error building SSL config: {e}")
+            # Return safe default
+            return {'sslmode': 'disable'}
         
         return ssl_config
 

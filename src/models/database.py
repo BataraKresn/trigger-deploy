@@ -265,30 +265,77 @@ class PostgreSQLManager:
                     logger.info(f"Connection parameters: {safe_params}")
                     
                     try:
+                        # Validate that all connection parameters are properly set
+                        for param_name, param_value in conn_params.items():
+                            if param_value is None:
+                                raise ValueError(f"Connection parameter '{param_name}' is None")
+                            if param_name in ['host', 'database', 'user', 'password'] and not str(param_value).strip():
+                                raise ValueError(f"Connection parameter '{param_name}' is empty")
+                        
+                        # Ensure port is integer
+                        if not isinstance(conn_params['port'], int):
+                            try:
+                                conn_params['port'] = int(conn_params['port'])
+                            except (ValueError, TypeError) as port_error:
+                                raise ValueError(f"Invalid port value: {conn_params['port']} - {port_error}")
+                        
+                        # Create the pool with explicit error handling
+                        logger.info(f"Creating ThreadedConnectionPool with minconn={self.min_connections}, maxconn={self.max_connections}")
+                        
                         self.pool = psycopg2.pool.ThreadedConnectionPool(
                             minconn=self.min_connections,
                             maxconn=self.max_connections,
                             **conn_params
                         )
+                        
+                        if not self.pool:
+                            raise Exception("ThreadedConnectionPool returned None")
+                            
                     except Exception as pool_error:
                         logger.error(f"Pool creation failed: {pool_error}")
                         logger.error(f"Error type: {type(pool_error).__name__}")
+                        
+                        # Log the specific error details
+                        if hasattr(pool_error, 'args') and pool_error.args:
+                            logger.error(f"Error args: {pool_error.args}")
+                        
+                        # Check if it's a KeyError and log details
+                        if isinstance(pool_error, KeyError):
+                            logger.error(f"KeyError details: Missing key '{pool_error}' in connection parameters")
+                            logger.error(f"Available connection parameters: {list(conn_params.keys())}")
+                        
                         safe_params = {k: v for k, v in conn_params.items() if k != 'password'}
                         logger.error(f"Connection params (excluding password): {safe_params}")
                         raise
                     
                     # Test connection
                     logger.info("Testing database connection...")
-                    conn = self.pool.getconn()
+                    conn = None
                     try:
+                        conn = self.pool.getconn()
+                        if not conn:
+                            raise Exception("Failed to get connection from pool")
+                            
                         cursor = conn.cursor()
                         cursor.execute('SELECT version()')
-                        version = cursor.fetchone()[0]
+                        result = cursor.fetchone()
+                        
+                        if not result or len(result) == 0:
+                            raise Exception("Empty result from version query")
+                            
+                        version = result[0] if result and len(result) > 0 else "Unknown"
                         logger.info(f"Connected to: {version}")
                         cursor.close()
                         logger.info("PostgreSQL connection pool created and validated successfully")
+                    except Exception as test_error:
+                        logger.error(f"Connection test failed: {test_error}")
+                        raise
                     finally:
-                        self.pool.putconn(conn)
+                        if conn:
+                            try:
+                                self.pool.putconn(conn)
+                            except Exception as putconn_error:
+                                logger.error(f"Error returning connection to pool: {putconn_error}")
                 
                 else:
                     # Fallback to async mode with SSL support
@@ -409,24 +456,39 @@ class PostgreSQLManager:
     def get_connection(self) -> Generator:
         """Get database connection from pool with context manager"""
         if not self._initialized or not self.pool:
-            self.initialize()
+            try:
+                self.initialize()
+            except Exception as init_error:
+                logger.error(f"Failed to initialize database on connection request: {init_error}")
+                raise
         
         if SYNC_MODE:
             conn = None
             try:
                 conn = self.pool.getconn()
+                if not conn:
+                    raise Exception("Failed to get connection from pool - pool returned None")
                 if conn.closed:
+                    logger.warning("Got closed connection from pool, requesting new one")
                     self.pool.putconn(conn, close=True)
                     conn = self.pool.getconn()
+                    if not conn:
+                        raise Exception("Failed to get replacement connection from pool")
                 yield conn
             except Exception as e:
                 if conn:
-                    conn.rollback()
+                    try:
+                        conn.rollback()
+                    except Exception as rollback_error:
+                        logger.warning(f"Failed to rollback connection: {rollback_error}")
                 logger.error(f"Database connection error: {e}")
                 raise
             finally:
                 if conn:
-                    self.pool.putconn(conn)
+                    try:
+                        self.pool.putconn(conn)
+                    except Exception as putconn_error:
+                        logger.error(f"Failed to return connection to pool: {putconn_error}")
         else:
             # Fallback to async mode
             import asyncio
@@ -492,7 +554,14 @@ class PostgreSQLManager:
                     # Test basic query
                     cursor.execute('SELECT 1 as test')
                     result = cursor.fetchone()
-                    if not result or result[0] != 1:
+                    
+                    if not result or len(result) == 0:
+                        logger.error("Health check: Empty result from test query")
+                        return False
+                        
+                    test_value = result[0] if result and len(result) > 0 else None
+                    if test_value != 1:
+                        logger.error(f"Health check: Unexpected test value: {test_value}")
                         return False
                     
                     # Test database metadata for external connection verification
@@ -502,12 +571,16 @@ class PostgreSQLManager:
                     """)
                     info = cursor.fetchone()
                     
+                    if not info or len(info) < 3:
+                        logger.error("Health check: Incomplete metadata result")
+                        return False
+                    
                     logger.info(f"Database health check passed:")
-                    logger.info(f"  Database: {info[0]}")
-                    logger.info(f"  User: {info[1]}")
-                    logger.info(f"  Server: {info[2][:50] if info[2] else 'Local'}...")
-                    logger.info(f"  Server IP: {info[3] if info[3] else 'N/A'}")
-                    logger.info(f"  Server Port: {info[4] if info[4] else 'N/A'}")
+                    logger.info(f"  Database: {info[0] if len(info) > 0 else 'Unknown'}")
+                    logger.info(f"  User: {info[1] if len(info) > 1 else 'Unknown'}")
+                    logger.info(f"  Server: {info[2][:50] if len(info) > 2 and info[2] else 'Unknown'}...")
+                    logger.info(f"  Server IP: {info[3] if len(info) > 3 and info[3] else 'N/A'}")
+                    logger.info(f"  Server Port: {info[4] if len(info) > 4 and info[4] else 'N/A'}")
                     
                     return True
             else:
@@ -522,6 +595,7 @@ class PostgreSQLManager:
                         loop.close()
         except Exception as e:
             logger.warning(f"Database health check failed: {e}")
+            logger.warning(f"Error type: {type(e).__name__}")
             return False
 
     def _create_tables(self):
@@ -535,7 +609,14 @@ class PostgreSQLManager:
                         WHERE table_schema = 'public' AND table_name IN ('users', 'contact_messages', 'deployment_history')
                     """)
                     
-                    if cursor.fetchone()[0] >= 3:
+                    result = cursor.fetchone()
+                    if not result or len(result) == 0:
+                        logger.warning("Could not check existing tables, proceeding with creation")
+                        table_count = 0
+                    else:
+                        table_count = result[0] if result and len(result) > 0 else 0
+                    
+                    if table_count >= 3:
                         logger.info("Database tables already exist, skipping creation")
                         return
                     
@@ -615,8 +696,15 @@ class PostgreSQLManager:
                 with self.get_cursor() as cursor:
                     # Check if admin user already exists
                     cursor.execute("SELECT COUNT(*) FROM users WHERE username = %s", ('admin',))
+                    result = cursor.fetchone()
                     
-                    if cursor.fetchone()[0] == 0:
+                    if not result or len(result) == 0:
+                        logger.warning("Could not check existing admin user, proceeding with creation")
+                        admin_exists = False
+                    else:
+                        admin_exists = (result[0] if result and len(result) > 0 else 0) > 0
+                    
+                    if not admin_exists:
                         # Create default admin user
                         password = 'admin123'
                         salt = secrets.token_hex(16)

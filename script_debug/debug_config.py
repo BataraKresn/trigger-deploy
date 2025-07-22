@@ -70,9 +70,9 @@ def check_config_loading():
     
     try:
         # Add src to path
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src/models'))
         
-        from models.config import config
+        from config import config
         logger.info("✅ Configuration loaded successfully")
         
         # Check important config values
@@ -155,7 +155,8 @@ def validate_database_url(config=None):
 
 def test_database_manager_creation():
     """Test creating database manager"""
-    logger.info("\n🔍 Testing Database Manager Creation")
+    logger.info("
+🔍 Testing Database Manager Creation")
     logger.info("=" * 50)
     
     try:
@@ -165,9 +166,22 @@ def test_database_manager_creation():
         from models.database import PostgreSQLManager
         
         logger.info("Creating PostgreSQLManager instance...")
-        manager = PostgreSQLManager()
+        
+        # Test with explicit error handling for KeyError
+        try:
+            manager = PostgreSQLManager()
+        except KeyError as ke:
+            logger.error(f"KeyError during PostgreSQLManager creation: {ke}")
+            logger.error("This indicates a missing configuration key or environment variable")
+            
+            # Check what might be missing
+            postgres_env_vars = {k: v for k, v in os.environ.items() if k.startswith('POSTGRES_')}
+            logger.error(f"Available POSTGRES_* environment variables: {list(postgres_env_vars.keys())}")
+            
+            return False
         
         logger.info("✅ PostgreSQLManager created successfully")
+        logger.info(f"  Manager: {manager}")
         logger.info(f"  Host: {getattr(manager, 'host', 'Not set')}")
         logger.info(f"  Port: {getattr(manager, 'port', 'Not set')}")
         logger.info(f"  Database: {getattr(manager, 'database', 'Not set')}")
@@ -175,7 +189,19 @@ def test_database_manager_creation():
         logger.info(f"  Min Connections: {getattr(manager, 'min_connections', 'Not set')}")
         logger.info(f"  Max Connections: {getattr(manager, 'max_connections', 'Not set')}")
         
-        return True
+        # Test initialization separately
+        logger.info("Testing manager initialization...")
+        try:
+            manager.initialize()
+            logger.info("✅ Manager initialization successful")
+            return True
+        except KeyError as ke:
+            logger.error(f"KeyError during initialization: {ke}")
+            return False
+        except Exception as init_error:
+            logger.error(f"Initialization failed: {init_error}")
+            logger.error(f"Error type: {type(init_error).__name__}")
+            return False
         
     except Exception as e:
         logger.error(f"❌ Failed to create PostgreSQLManager: {e}")

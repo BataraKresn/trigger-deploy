@@ -90,13 +90,26 @@ def test_manual_connection():
             'application_name': 'trigger_deploy_test'
         }
         
-        # Add SSL config
-        ssl_config = config.get_postgres_ssl_config()
-        conn_params.update(ssl_config)
+        # Add SSL config with error handling
+        try:
+            ssl_config = config.get_postgres_ssl_config()
+            conn_params.update(ssl_config)
+        except Exception as ssl_error:
+            logger.warning(f"SSL config error: {ssl_error}, using defaults")
+            conn_params['sslmode'] = 'disable'
         
         logger.info(f"Connection parameters:")
         safe_params = {k: v for k, v in conn_params.items() if k != 'password'}
         logger.info(f"  {safe_params}")
+        
+        # Validate parameters before connection
+        for param_name, param_value in conn_params.items():
+            if param_value is None:
+                logger.error(f"Parameter '{param_name}' is None")
+                return False
+            if param_name in ['host', 'database', 'user', 'password'] and not str(param_value).strip():
+                logger.error(f"Parameter '{param_name}' is empty")
+                return False
         
         # Test single connection
         logger.info("Testing single connection...")
@@ -104,7 +117,13 @@ def test_manual_connection():
         
         cursor = conn.cursor()
         cursor.execute('SELECT version()')
-        version = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        
+        if not result or len(result) == 0:
+            logger.error("Empty result from version query")
+            return False
+            
+        version = result[0] if result and len(result) > 0 else "Unknown"
         logger.info(f"✅ Single connection successful")
         logger.info(f"  Version: {version[:80]}...")
         
@@ -115,30 +134,69 @@ def test_manual_connection():
         logger.info("Testing connection pool...")
         from psycopg2 import pool
         
-        test_pool = pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=5,
-            **conn_params
-        )
+        # Create pool with explicit error handling
+        try:
+            test_pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=5,
+                **conn_params
+            )
+            
+            if not test_pool:
+                logger.error("ThreadedConnectionPool returned None")
+                return False
+                
+        except KeyError as ke:
+            logger.error(f"KeyError creating pool: {ke}")
+            logger.error(f"Missing connection parameter: {ke}")
+            logger.error(f"Available parameters: {list(conn_params.keys())}")
+            return False
+        except Exception as pool_error:
+            logger.error(f"Pool creation error: {pool_error}")
+            logger.error(f"Error type: {type(pool_error).__name__}")
+            if hasattr(pool_error, 'args'):
+                logger.error(f"Error args: {pool_error.args}")
+            return False
         
         logger.info("✅ Connection pool created successfully")
         
         # Test getting connection from pool
-        pool_conn = test_pool.getconn()
-        cursor = pool_conn.cursor()
-        cursor.execute('SELECT current_database()')
-        db_name = cursor.fetchone()[0]
-        logger.info(f"✅ Pool connection successful, database: {db_name}")
-        
-        cursor.close()
-        test_pool.putconn(pool_conn)
-        test_pool.closeall()
+        try:
+            pool_conn = test_pool.getconn()
+            if not pool_conn:
+                logger.error("Failed to get connection from pool")
+                return False
+                
+            cursor = pool_conn.cursor()
+            cursor.execute('SELECT current_database()')
+            result = cursor.fetchone()
+            
+            if not result or len(result) == 0:
+                logger.error("Empty result from database query")
+                return False
+                
+            db_name = result[0] if result and len(result) > 0 else "Unknown"
+            logger.info(f"✅ Pool connection successful, database: {db_name}")
+            
+            cursor.close()
+            test_pool.putconn(pool_conn)
+            test_pool.closeall()
+            
+        except Exception as pool_test_error:
+            logger.error(f"Pool test error: {pool_test_error}")
+            try:
+                test_pool.closeall()
+            except:
+                pass
+            return False
         
         return True
         
     except Exception as e:
         logger.error(f"❌ Manual connection failed: {e}")
         logger.error(f"Error type: {type(e).__name__}")
+        if hasattr(e, 'args'):
+            logger.error(f"Error args: {e.args}")
         return False
 
 def main():
