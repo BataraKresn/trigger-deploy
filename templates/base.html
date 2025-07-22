@@ -87,6 +87,7 @@
                     {% endblock %}
                     
                     <!-- User Menu -->
+                    {% if authenticated %}
                     <div class="relative">
                         <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition duration-200">
                             <i class="fas fa-user-circle text-lg"></i>
@@ -107,6 +108,16 @@
                             </button>
                         </div>
                     </div>
+                    {% else %}
+                    <div class="flex items-center space-x-3">
+                        <a href="/login" class="text-sm text-gray-600 hover:text-blue-600 transition duration-200">
+                            <i class="fas fa-sign-in-alt mr-1"></i>Sign In
+                        </a>
+                        <a href="/" class="text-sm text-gray-600 hover:text-blue-600 transition duration-200">
+                            <i class="fas fa-home mr-1"></i>Home
+                        </a>
+                    </div>
+                    {% endif %}
                     
                     <!-- Mobile menu button -->
                     <div class="md:hidden">

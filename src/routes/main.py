@@ -32,7 +32,8 @@ def home():
 @require_auth
 def dashboard():
     """Dashboard page - requires authentication"""
-    return render_template('home.html')
+    authenticated = is_authenticated()
+    return render_template('home.html', authenticated=authenticated)
 
 
 @main_bp.route('/login')
@@ -49,32 +50,35 @@ def login():
     return render_template('login.html', message=message, error=error)
 
 
-@main_bp.route('/logout')
-def logout():
-    """Logout endpoint"""
-    logout_user()
-    return redirect(url_for('main.login', message='Successfully logged out'))
-
-
 @main_bp.route('/deploy-servers')
 @require_auth
 def deploy_servers():
-    """Deploy servers page - requires authentication"""
-    return render_template('deploy_servers.html')
+    """Deploy servers page"""
+    authenticated = is_authenticated()
+    return render_template('deploy_servers.html', authenticated=authenticated)
 
 
-@main_bp.route('/logout')
-def logout_get():
-    """Logout page (GET request) - redirects to proper logout"""
-    return redirect(url_for('main.logout_post'))
+@main_bp.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.1.0"
+    })
 
 
-@main_bp.route('/logout', methods=['POST'])
-def logout_post():
-    """Logout POST handler"""
+@main_bp.route('/help')
+def help_page():
+    """Help page"""
+    return render_template('help.html')
+
+
+@main_bp.route('/auth/logout', methods=['POST'])
+def logout():
+    """Handle logout"""
     try:
-        from ..utils.auth import logout_user, is_authenticated
-        
+        # Clear session if authenticated
         if is_authenticated():
             logout_user()
         
@@ -88,27 +92,31 @@ def logout_post():
 @require_auth
 def users():
     """User management page - requires authentication"""
-    return render_template('user_management.html')
+    authenticated = is_authenticated()
+    return render_template('user_management.html', authenticated=authenticated)
 
 
 @main_bp.route('/metrics')
 @require_auth
 def metrics():
     """Metrics dashboard page - requires authentication"""
-    return render_template('metrics.html')
+    authenticated = is_authenticated()
+    return render_template('metrics.html', authenticated=authenticated)
 
 
 @main_bp.route('/services-monitor')
 @require_auth
 def services_monitor():
-    """Services monitor page - requires authentication"""
-    return render_template('services_monitor.html')
+    """Services monitoring page - requires authentication"""
+    authenticated = is_authenticated()
+    return render_template('services_monitor.html', authenticated=authenticated)
 
 
 @main_bp.route('/docs')
 def docs():
     """API documentation page"""
-    return render_template('docs.html')
+    authenticated = is_authenticated()
+    return render_template('docs.html', authenticated=authenticated)
 
 
 @main_bp.route('/api/docs')
@@ -125,178 +133,86 @@ def api_docs_slash():
 
 @main_bp.route('/help')
 def help_center():
-    """Help Center page"""
+    """Help center page"""
     return render_template('help.html')
 
 
-@main_bp.route('/contact', methods=['GET', 'POST'])
+@main_bp.route('/analytics')
+@require_auth
+def analytics():
+    """Analytics dashboard - requires authentication"""
+    return render_template('analytics.html')
+
+
+@main_bp.route('/contact')
 def contact():
-    """Contact Us page"""
-    if request.method == 'POST':
-        import asyncio
-        from src.models.contact_manager import get_contact_manager
-        
-        try:
-            # Get form data
-            data = request.get_json() if request.is_json else request.form
-            
-            first_name = data.get('firstName', '').strip()
-            last_name = data.get('lastName', '').strip()
-            email = data.get('email', '').strip()
-            company = data.get('company', '').strip()
-            subject = data.get('subject', '').strip()
-            message = data.get('message', '').strip()
-            
-            # Basic validation
-            if not all([first_name, last_name, email, subject, message]):
-                return jsonify({
-                    'success': False,
-                    'message': 'All required fields must be filled'
-                }), 400
-            
-            # Email validation (basic)
-            email_pattern = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
-            if not re.match(email_pattern, email):
-                return jsonify({
-                    'success': False,
-                    'message': 'Please enter a valid email address'
-                }), 400
-            
-            # Prepare contact message data
-            contact_data = {
-                'first_name': first_name,
-                'last_name': last_name,
-                'email': email,
-                'company': company,
-                'subject': subject,
-                'message': message
-            }
-            
-            # Save to database
-            async def save_contact_message():
-                try:
-                    contact_manager = get_contact_manager()
-                    if contact_manager:
-                        return await contact_manager.create_message(contact_data)
-                    return False
-                except Exception as e:
-                    print(f"Database save error: {e}")
-                    return False
-            
-            # Run async function
-            success = asyncio.run(save_contact_message())
-            
-            if success:
-                # Send email notification
-                try:
-                    from src.utils.email_notifications import send_contact_notification_email
-                    
-                    async def send_notification():
-                        return await send_contact_notification_email(contact_data)
-                    
-                    asyncio.run(send_notification())
-                except Exception as email_error:
-                    print(f"Email notification failed: {email_error}")
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'Thank you for your message! We\'ll get back to you within 24 hours.'
-                })
-            else:
-                # Fallback to log file if database fails
-                log_dir = 'logs'
-                if not os.path.exists(log_dir):
-                    os.makedirs(log_dir)
-                
-                contact_log_file = os.path.join(log_dir, 'contact_messages.log')
-                with open(contact_log_file, 'a', encoding='utf-8') as f:
-                    f.write(f"{datetime.now().isoformat()} - Contact Form Submission:\n")
-                    f.write(f"Name: {first_name} {last_name}\n")
-                    f.write(f"Email: {email}\n")
-                    f.write(f"Company: {company}\n")
-                    f.write(f"Subject: {subject}\n")
-                    f.write(f"Message: {message}\n")
-                    f.write("-" * 50 + "\n")
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'Thank you for your message! We\'ll get back to you within 24 hours.'
-                })
-            
-        except Exception as e:
-            print(f"Contact form error: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': 'Sorry, there was an error sending your message. Please try again.'
-            }), 500
-    
-    # GET request - show contact page
+    """Contact page"""
     return render_template('contact.html')
 
 
-@main_bp.route('/admin/contact-messages')
+@main_bp.route('/contact-messages')
 @require_auth
 def contact_messages():
-    """View contact messages (admin only)"""
-    import asyncio
-    from src.models.contact_manager import get_contact_manager
-    
+    """View contact messages - requires authentication"""
     try:
+        import asyncio
+        from src.models.contact_manager import get_contact_manager
+        
         async def get_messages():
             contact_manager = get_contact_manager()
             if contact_manager:
-                messages = await contact_manager.get_all_messages(limit=50)
-                unread_count = await contact_manager.get_unread_count()
-                return messages, unread_count
-            return [], 0
+                return await contact_manager.get_all_messages()
+            return []
         
-        messages, unread_count = asyncio.run(get_messages())
-        
+        messages = asyncio.run(get_messages())
         return render_template('contact_messages.html', 
-                             messages=messages, 
-                             unread_count=unread_count)
+                             contact_messages=messages,
+                             current_page='contact')
         
     except Exception as e:
-        print(f"Error fetching contact messages: {e}")
-        # Fallback to log file
-        try:
-            contact_log_file = os.path.join('logs', 'contact_messages.log')
-            if os.path.exists(contact_log_file):
-                with open(contact_log_file, 'r', encoding='utf-8') as f:
-                    messages = f.read()
-                return f"<pre style='white-space: pre-wrap; font-family: monospace; padding: 20px;'>{messages}</pre>"
-            else:
-                return "<p>No contact messages found.</p>"
-        except Exception as fallback_error:
-            return f"<p>Error reading contact messages: {str(fallback_error)}</p>"
+        logger.error(f"Error loading contact messages: {e}")
+        return render_template('contact_messages.html', 
+                             contact_messages=[],
+                             current_page='contact',
+                             error="Could not load messages")
 
 
-@main_bp.route('/api/contact-messages/mark-read/<message_id>', methods=['POST'])
-@require_auth
-def mark_contact_read(message_id):
-    """Mark contact message as read"""
-    import asyncio
-    from src.models.contact_manager import get_contact_manager
-    
+@main_bp.route('/api/contact', methods=['POST'])
+def submit_contact():
+    """Handle contact form submission via API"""
     try:
-        async def mark_read():
+        data = request.get_json()
+        
+        if not data or not all(k in data for k in ['name', 'email', 'message']):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+        import asyncio
+        from src.models.contact_manager import get_contact_manager
+        
+        async def save_message():
             contact_manager = get_contact_manager()
             if contact_manager:
-                return await contact_manager.mark_as_read(message_id)
+                return await contact_manager.add_message(
+                    name=data['name'],
+                    email=data['email'],
+                    subject=data.get('subject', 'Contact Form'),
+                    message=data['message']
+                )
             return False
         
-        success = asyncio.run(mark_read())
+        success = asyncio.run(save_message())
         
         if success:
-            return jsonify({'success': True, 'message': 'Message marked as read'})
+            return jsonify({'success': True, 'message': 'Message sent successfully'})
         else:
-            return jsonify({'success': False, 'message': 'Failed to mark message as read'}), 500
+            return jsonify({'success': False, 'message': 'Failed to save message'}), 500
             
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+        logger.error(f"Contact submission error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
 
 
-@main_bp.route('/api/contact-messages/unread-count')
+@main_bp.route('/api/contact/count', methods=['GET'])
 @require_auth  
 def get_unread_contact_count():
     """Get unread contact messages count"""
@@ -321,6 +237,13 @@ def get_unread_contact_count():
 def api_redirect():
     """Redirect /api to Swagger UI docs"""
     return redirect(url_for('main.docs'))
+
+
+@main_bp.route('/docs/swagger')
+def swagger_ui():
+    """Swagger UI for API documentation"""
+    authenticated = is_authenticated()
+    return render_template('swagger_ui.html', authenticated=authenticated)
 
 
 @main_bp.route('/openapi.json')

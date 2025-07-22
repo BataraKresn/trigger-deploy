@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Swagger UI - Trigger Deploy API{% endblock %}
+{% block description %}Interactive API documentation with authentication support{% endblock %}
+
+{% set current_page = "swagger" %}
+{% set show_nav = true %}
+{% set show_footer = true %}
+
+{% block nav_controls %}
+<a href="/docs" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
+    <i class="fas fa-arrow-left mr-1"></i>Back to Docs
+</a>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+<style>
+    .swagger-ui .topbar {
+        background-color: #3b82f6;
+    }
+    
+    .swagger-ui .topbar .download-url-wrapper input[type=text] {
+        border: 2px solid #3b82f6;
+    }
+    
+    #swagger-ui {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* Hide default swagger topbar since we have nav */
+    .swagger-ui .topbar {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-8 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold flex items-center">
+                        <i class="fas fa-rocket mr-3"></i>
+                        Swagger UI
+                    </h1>
+                    <p class="text-blue-100 mt-2">Interactive API documentation with authentication support</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="bg-white/20 rounded-lg p-4">
+                        <i class="fas fa-code text-4xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Swagger UI Container -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div id="swagger-ui"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Swagger UI Bundle -->
+<script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+
+<script>
+    window.onload = function() {
+        const ui = SwaggerUIBundle({
+            url: '/openapi.json',
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout",
+            requestInterceptor: function(req) {
+                // Add authorization header if token exists
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (token) {
+                    req.headers['Authorization'] = 'Bearer ' + token;
+                }
+                return req;
+            },
+            onComplete: function(swaggerApi, swaggerUi) {
+                console.log("Swagger UI loaded successfully");
+                
+                // Check if user is authenticated and show notification
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (token) {
+                    console.log("User authenticated - API calls will include token");
+                    showNotification('Authentication token found - API calls will be authenticated', 'success');
+                } else {
+                    console.log("No authentication token found - some endpoints may require login");
+                    showNotification('No authentication found - please login to access protected endpoints', 'warning');
+                }
+            },
+            tryItOutEnabled: true,
+            persistAuthorization: true,
+            displayOperationId: true,
+            displayRequestDuration: true
+        });
+    };
+</script>
