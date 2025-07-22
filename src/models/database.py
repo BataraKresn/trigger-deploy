@@ -187,16 +187,27 @@ class PostgreSQLManager:
                 )
             ''')
             
-            # Indexes for performance
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_server ON deployment_history(server_name)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_user ON deployment_history(user_id)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_deployment_history_created ON deployment_history(created_at)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)')
-            await conn.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at)')
+            # Indexes for performance - with individual error handling
+            indexes = [
+                ('idx_users_username', 'users(username)'),
+                ('idx_users_email', 'users(email)'),
+                ('idx_users_active', 'users(is_active)'),
+                ('idx_deployment_history_server', 'deployment_history(server_name)'),
+                ('idx_deployment_history_user', 'deployment_history(user_id)'),
+                ('idx_deployment_history_created', 'deployment_history(created_at)'),
+                ('idx_audit_logs_user', 'audit_logs(user_id)'),
+                ('idx_audit_logs_action', 'audit_logs(action)'),
+                ('idx_audit_logs_created', 'audit_logs(created_at)')
+            ]
+            
+            for idx_name, idx_columns in indexes:
+                try:
+                    await conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {idx_columns}')
+                except Exception as e:
+                    if "already exists" in str(e).lower():
+                        logger.debug(f"Index {idx_name} already exists, skipping")
+                    else:
+                        logger.warning(f"Failed to create index {idx_name}: {e}")
             
             logger.info("Database tables created successfully")
             

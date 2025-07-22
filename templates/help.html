@@ -37,6 +37,80 @@
                     </div>
                 </div>
 
+                <!-- System Health Section -->
+                <div class="help-card">
+                    <div class="help-card-header">
+                        <div class="help-icon">💚</div>
+                        <h3>System Health Monitor</h3>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div id="system-health" class="help-content-section active">
+                        <div class="system-health">
+                            <h3>Real-time Server Status</h3>
+                            <div class="health-grid">
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>💻 CPU Usage</span>
+                                        <span class="health-value" id="cpu-value">Loading...</span>
+                                    </div>
+                                    <div class="health-bar">
+                                        <div class="health-progress cpu" id="cpu-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>🧠 Memory Usage</span>
+                                        <span class="health-value" id="memory-value">Loading...</span>
+                                    </div>
+                                    <div class="health-bar">
+                                        <div class="health-progress memory" id="memory-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>💾 Disk Usage</span>
+                                        <span class="health-value" id="disk-value">Loading...</span>
+                                    </div>
+                                    <div class="health-bar">
+                                        <div class="health-progress disk" id="disk-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>🌐 Server Status</span>
+                                        <span class="health-value" id="server-status">Checking...</span>
+                                    </div>
+                                    <div class="server-status">
+                                        <div class="status-indicator" id="status-indicator"></div>
+                                        <span id="status-text">Checking server connectivity...</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>⏱️ Uptime</span>
+                                        <span class="health-value" id="uptime-value">Loading...</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="health-item">
+                                    <div class="health-label">
+                                        <span>🔄 Last Updated</span>
+                                        <span class="health-value" id="last-updated">Never</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 1.5rem; text-align: center;">
+                                <button id="refresh-health" class="btn btn-primary">🔄 Refresh Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Help Categories -->
                 <div class="help-grid">
                     <!-- FAQ Section -->

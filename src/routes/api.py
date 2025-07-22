@@ -10,6 +10,13 @@ import jwt
 import hashlib
 import asyncio
 import logging
+import psutil
+import platform
+import socket
+import subprocess
+import time
+import concurrent.futures
+import threading
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -73,7 +80,24 @@ def login():
                 if get_db_manager is None:
                     raise Exception("PostgreSQL database manager not available")
                 db_manager = get_db_manager()
-                user = asyncio.run(db_manager.authenticate_user(username, password))
+                
+                # Create a new event loop in thread to avoid conflicts
+                import concurrent.futures
+                import threading
+                
+                def run_auth_in_thread():
+                    # Create new event loop for this thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(db_manager.authenticate_user(username, password))
+                    finally:
+                        new_loop.close()
+                
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_auth_in_thread)
+                    user = future.result(timeout=10)
+                        
             except Exception as e:
                 print(f"PostgreSQL authentication error: {e}")
                 # Fallback to legacy authentication if PostgreSQL fails
@@ -377,6 +401,91 @@ def system_health():
             'timestamp': datetime.now().isoformat(),
             'error': str(e),
             'version': '2.1.0'
+        }), 500
+
+
+@api_bp.route('/health/realtime', methods=['GET'])
+def get_realtime_health():
+    """Get real-time system health data"""
+    try:
+        # CPU Information
+        cpu_percent = psutil.cpu_percent(interval=1)
+        cpu_count = psutil.cpu_count()
+        cpu_freq = psutil.cpu_freq()
+        
+        # Memory Information  
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        
+        # Disk Information
+        disk = psutil.disk_usage('/')
+        
+        # Network Information
+        network = psutil.net_io_counters()
+        
+        # System Information
+        boot_time = psutil.boot_time()
+        uptime = time.time() - boot_time
+        
+        # Server connectivity check
+        server_online = True
+        try:
+            socket.create_connection(("8.8.8.8", 53), timeout=3)
+        except OSError:
+            server_online = False
+        
+        # Format uptime
+        uptime_hours = int(uptime // 3600)
+        uptime_minutes = int((uptime % 3600) // 60)
+        uptime_str = f"{uptime_hours}h {uptime_minutes}m"
+        
+        return jsonify({
+            'timestamp': datetime.now().isoformat(),
+            'cpu': {
+                'percentage': round(cpu_percent, 1),
+                'cores': cpu_count,
+                'frequency': round(cpu_freq.current, 2) if cpu_freq else None
+            },
+            'memory': {
+                'percentage': round(memory.percent, 1),
+                'used': round(memory.used / (1024**3), 2),  # GB
+                'total': round(memory.total / (1024**3), 2),  # GB
+                'available': round(memory.available / (1024**3), 2)  # GB
+            },
+            'disk': {
+                'percentage': round(disk.percent, 1),
+                'used': round(disk.used / (1024**3), 2),  # GB
+                'total': round(disk.total / (1024**3), 2),  # GB
+                'free': round(disk.free / (1024**3), 2)  # GB
+            },
+            'network': {
+                'bytes_sent': network.bytes_sent,
+                'bytes_recv': network.bytes_recv,
+                'packets_sent': network.packets_sent,
+                'packets_recv': network.packets_recv
+            },
+            'system': {
+                'platform': platform.system(),
+                'platform_version': platform.release(),
+                'architecture': platform.machine(),
+                'uptime_seconds': int(uptime),
+                'uptime_human': uptime_str,
+                'server_online': server_online
+            },
+            'status': {
+                'overall': 'healthy' if cpu_percent < 80 and memory.percent < 80 and disk.percent < 80 else 'warning',
+                'cpu_status': 'good' if cpu_percent < 70 else 'warning' if cpu_percent < 90 else 'critical',
+                'memory_status': 'good' if memory.percent < 70 else 'warning' if memory.percent < 90 else 'critical',
+                'disk_status': 'good' if disk.percent < 70 else 'warning' if disk.percent < 90 else 'critical'
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'timestamp': datetime.now().isoformat(),
+            'status': {
+                'overall': 'error'
+            }
         }), 500
 
 
