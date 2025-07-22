@@ -139,41 +139,67 @@ class PostgreSQLManager:
                 logger.info("PostgreSQL connection pool already initialized")
                 return
             
+            logger.info(f"Initializing PostgreSQL connection to {self.host}:{self.port}/{self.database}")
+            
+            # Check connectivity first
+            if not self._check_connectivity():
+                raise Exception(f"Cannot reach PostgreSQL server at {self.host}:{self.port}")
+            
             try:
                 if SYNC_MODE:
+                    # Get SSL configuration
+                    from .config import config as app_config
+                    ssl_config = app_config.get_postgres_ssl_config()
+                    
+                    # Build connection parameters
+                    conn_params = {
+                        'host': self.host,
+                        'port': self.port,
+                        'database': self.database,
+                        'user': self.user,
+                        'password': self.password,
+                        'cursor_factory': RealDictCursor,
+                        'connect_timeout': 10,
+                        'application_name': 'trigger_deploy_app'
+                    }
+                    
+                    # Add SSL parameters if configured
+                    conn_params.update(ssl_config)
+                    
                     # Use psycopg2 connection pool
+                    logger.info(f"Creating connection pool (min={self.min_connections}, max={self.max_connections})")
+                    logger.info(f"SSL Mode: {ssl_config.get('sslmode', 'default')}")
+                    
                     self.pool = psycopg2.pool.ThreadedConnectionPool(
                         minconn=self.min_connections,
                         maxconn=self.max_connections,
-                        host=self.host,
-                        port=self.port,
-                        database=self.database,
-                        user=self.user,
-                        password=self.password,
-                        cursor_factory=RealDictCursor,
-                        connect_timeout=10,
-                        application_name='trigger_deploy_app'
+                        **conn_params
                     )
                     
                     # Test connection
+                    logger.info("Testing database connection...")
                     conn = self.pool.getconn()
                     try:
                         cursor = conn.cursor()
-                        cursor.execute('SELECT 1')
-                        cursor.fetchone()
+                        cursor.execute('SELECT version()')
+                        version = cursor.fetchone()[0]
+                        logger.info(f"Connected to: {version}")
                         cursor.close()
                         logger.info("PostgreSQL connection pool created and validated successfully")
                     finally:
                         self.pool.putconn(conn)
                 
                 else:
-                    # Fallback to async mode
+                    # Fallback to async mode with SSL support
                     import asyncio
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     try:
+                        # Build asyncpg connection string with SSL
+                        conn_string = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+                        
                         self.pool = loop.run_until_complete(asyncpg.create_pool(
-                            self.database_url,
+                            conn_string,
                             min_size=self.min_connections,
                             max_size=self.max_connections,
                             command_timeout=30
@@ -183,15 +209,52 @@ class PostgreSQLManager:
                         loop.close()
                 
                 # Create tables and default data
+                logger.info("Creating database tables...")
                 self._create_tables()
+                logger.info("Creating default admin user...")
                 self._create_default_admin()
                 
                 self._initialized = True
+                logger.info("PostgreSQL database manager initialization completed successfully")
                 
+            except psycopg2.OperationalError as e:
+                logger.error(f"PostgreSQL connection failed: {e}")
+                logger.error(f"Check if PostgreSQL is running on {self.host}:{self.port}")
+                logger.error("Verify credentials, network connectivity, and firewall settings")
+                self.pool = None
+                raise
             except Exception as e:
                 logger.error(f"Failed to initialize PostgreSQL connection pool: {e}")
                 self.pool = None
                 raise
+
+    def _check_connectivity(self) -> bool:
+        """Check if PostgreSQL server is reachable"""
+        import socket
+        
+        logger.info(f"Checking connectivity to {self.host}:{self.port}...")
+        
+        try:
+            # Try to establish TCP connection
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)  # 5 second timeout
+            
+            result = sock.connect_ex((self.host, self.port))
+            sock.close()
+            
+            if result == 0:
+                logger.info(f"✅ Successfully connected to {self.host}:{self.port}")
+                return True
+            else:
+                logger.error(f"❌ Cannot connect to {self.host}:{self.port} (error code: {result})")
+                return False
+                
+        except socket.gaierror as e:
+            logger.error(f"❌ DNS resolution failed for {self.host}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Connectivity check failed: {e}")
+            return False
     
     @contextmanager
     def get_connection(self) -> Generator:
@@ -273,12 +336,31 @@ class PostgreSQLManager:
                     logger.error(f"Error closing connection pool: {e}")
     
     def health_check(self) -> bool:
-        """Check database connection health"""
+        """Check database connection health with comprehensive testing"""
         try:
             if SYNC_MODE:
                 with self.get_cursor(commit=False) as cursor:
-                    cursor.execute('SELECT 1')
-                    return cursor.fetchone() is not None
+                    # Test basic query
+                    cursor.execute('SELECT 1 as test')
+                    result = cursor.fetchone()
+                    if not result or result[0] != 1:
+                        return False
+                    
+                    # Test database metadata for external connection verification
+                    cursor.execute("""
+                        SELECT current_database(), current_user, version(), 
+                               inet_server_addr(), inet_server_port()
+                    """)
+                    info = cursor.fetchone()
+                    
+                    logger.info(f"Database health check passed:")
+                    logger.info(f"  Database: {info[0]}")
+                    logger.info(f"  User: {info[1]}")
+                    logger.info(f"  Server: {info[2][:50] if info[2] else 'Local'}...")
+                    logger.info(f"  Server IP: {info[3] if info[3] else 'N/A'}")
+                    logger.info(f"  Server Port: {info[4] if info[4] else 'N/A'}")
+                    
+                    return True
             else:
                 with self.get_connection() as conn:
                     import asyncio
@@ -893,12 +975,19 @@ def get_db_manager() -> Optional[PostgreSQLManager]:
         with _init_lock:
             if db_manager is None:
                 try:
+                    logger.info("Initializing PostgreSQL database manager...")
                     db_manager = PostgreSQLManager()
                     db_manager.initialize()
                     logger.info("Database manager initialized successfully")
                 except Exception as e:
                     logger.error(f"Failed to initialize database manager: {e}")
+                    logger.error("Database features will be unavailable")
                     return None
+    
+    # Verify pool is still healthy
+    if db_manager and not db_manager.pool:
+        logger.warning("Database manager exists but pool is None")
+        return None
     
     return db_manager
 

@@ -14,3 +14,5 @@ logs/*.log
 test_db_fixes.py
 test-integration.sh
 test_auth_fix.py
+scripts/switch-database.sh
+scripts/test-db-connectivity.py

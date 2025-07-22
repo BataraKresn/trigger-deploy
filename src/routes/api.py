@@ -81,8 +81,11 @@ def login():
                     raise Exception("PostgreSQL database manager not available")
                 db_manager = get_db_manager()
                 
-                if db_manager is None or db_manager.pool is None:
-                    raise Exception("Database manager not properly initialized")
+                if db_manager is None:
+                    raise Exception("Database manager initialization failed")
+                
+                if db_manager.pool is None:
+                    raise Exception("Database connection pool not available")
                 
                 # Authenticate user (now sync operation)
                 user = db_manager.authenticate_user(username, password)

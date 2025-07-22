@@ -31,6 +31,16 @@ class Config:
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "secure_password_123")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
+    # SSL/Security Settings for External Database
+    POSTGRES_SSL_MODE: str = os.getenv("POSTGRES_SSL_MODE", "prefer")  # disable, allow, prefer, require, verify-ca, verify-full
+    POSTGRES_SSL_CERT_PATH: str = os.getenv("POSTGRES_SSL_CERT_PATH", "")
+    POSTGRES_SSL_KEY_PATH: str = os.getenv("POSTGRES_SSL_KEY_PATH", "")
+    POSTGRES_SSL_CA_PATH: str = os.getenv("POSTGRES_SSL_CA_PATH", "")
+    
+    # Connection Health Check Settings
+    POSTGRES_HEALTH_CHECK_ENABLED: bool = os.getenv("POSTGRES_HEALTH_CHECK_ENABLED", "true").lower() == "true"
+    POSTGRES_HEALTH_CHECK_INTERVAL: int = int(os.getenv("POSTGRES_HEALTH_CHECK_INTERVAL", "30"))  # seconds
+    
     # Database Pool Settings
     POSTGRES_MIN_CONNECTIONS: int = int(os.getenv("POSTGRES_MIN_CONNECTIONS", "1"))
     POSTGRES_MAX_CONNECTIONS: int = int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20"))
@@ -80,6 +90,9 @@ class Config:
         if not self.JWT_SECRET:
             self.JWT_SECRET = self.TOKEN + "_jwt_secret"
         
+        # Auto-detect environment and adjust database host
+        self._adjust_database_host()
+        
         # Build DATABASE_URL if not provided
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -87,6 +100,56 @@ class Config:
         # Create log directory if it doesn't exist
         if not os.path.exists(self.LOG_DIR):
             os.makedirs(self.LOG_DIR)
+
+    def _adjust_database_host(self):
+        """Auto-detect environment and adjust PostgreSQL host"""
+        import socket
+        
+        # Skip auto-adjustment if using external IP
+        if self.POSTGRES_HOST not in ['postgres', 'localhost', '127.0.0.1']:
+            print(f"Using external PostgreSQL server: {self.POSTGRES_HOST}:{self.POSTGRES_PORT}")
+            return
+        
+        # Auto-detection logic for local/docker environments
+        # If we're running in Docker container, use 'postgres' hostname
+        # If we're running on host, use 'localhost'
+        
+        # Check if we can reach postgres hostname (Docker internal)
+        try:
+            socket.getaddrinfo('postgres', self.POSTGRES_PORT)
+            # We can reach 'postgres' hostname - we're in Docker network
+            if self.POSTGRES_HOST == 'postgres':
+                pass  # Keep as is
+            elif self.DATABASE_URL and 'postgres:' in self.DATABASE_URL:
+                pass  # Keep as is
+        except socket.gaierror:
+            # Cannot reach 'postgres' hostname - we're on host
+            if self.POSTGRES_HOST == 'postgres':
+                print("Detected host environment, adjusting PostgreSQL host from 'postgres' to 'localhost'")
+                self.POSTGRES_HOST = 'localhost'
+            
+            # Also update DATABASE_URL if it uses postgres hostname
+            if self.DATABASE_URL and '@postgres:' in self.DATABASE_URL:
+                print("Updating DATABASE_URL to use localhost instead of postgres")
+                self.DATABASE_URL = self.DATABASE_URL.replace('@postgres:', '@localhost:')
+
+    def get_postgres_ssl_config(self) -> dict:
+        """Get PostgreSQL SSL configuration"""
+        ssl_config = {}
+        
+        if self.POSTGRES_SSL_MODE and self.POSTGRES_SSL_MODE != 'disable':
+            ssl_config['sslmode'] = self.POSTGRES_SSL_MODE
+            
+            if self.POSTGRES_SSL_CERT_PATH:
+                ssl_config['sslcert'] = self.POSTGRES_SSL_CERT_PATH
+            
+            if self.POSTGRES_SSL_KEY_PATH:
+                ssl_config['sslkey'] = self.POSTGRES_SSL_KEY_PATH
+                
+            if self.POSTGRES_SSL_CA_PATH:
+                ssl_config['sslrootcert'] = self.POSTGRES_SSL_CA_PATH
+        
+        return ssl_config
 
     @property
     def database_url(self) -> str:
