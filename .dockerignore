@@ -4,15 +4,35 @@ trigger-logs/
 # File & folder Python yang tidak perlu
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+.env/
+
+# Node.js (untuk build tools)
+node_modules/
+npm-debug.log*
 
 # Git
-.git
+.git/
 .gitignore
 
 # File & direktori development
 *.log
 *.md
+!README.md
 .DS_Store
 .vscode/
 .idea/
 *.swp
+*.swo
+
+# Documentation & development
+docs/
+suggestions/
+script_debug/
+build-tailwind.sh

@@ -44,7 +44,6 @@ COPY config/ ./config/
 COPY templates/ ./templates/
 COPY static/ ./static/
 COPY scripts/ ./scripts/
-COPY script_debug/ ./script_debug/
 COPY app.py wsgi.py ./
 
 # Create required directories

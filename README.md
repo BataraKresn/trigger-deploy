@@ -219,6 +219,49 @@ SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_HTTPONLY=true
 ```
 
+## 🎨 Frontend Development
+
+This project uses **Tailwind CSS** for styling. Instead of CDN (which causes production warnings), we use a build process to generate optimized CSS.
+
+### CSS Build Process
+
+#### For Docker Deployment (Automatic)
+CSS is automatically built during Docker build process using multi-stage build.
+
+#### For Local Development
+
+1. **Install Node.js and Tailwind CSS CLI**:
+   ```bash
+   # Install Node.js first, then:
+   npm install -g tailwindcss
+   ```
+
+2. **Build CSS**:
+   ```bash
+   # Use the build script (with Node.js)
+   ./build-tailwind.sh
+   
+   # Or use Docker-based build (no Node.js required)
+   ./build-tailwind-docker.sh
+   
+   # Or manually:
+   tailwindcss -i static/css/input.css -o static/css/tailwind.css --minify
+   ```
+
+3. **Watch for changes** (development):
+   ```bash
+   tailwindcss -i static/css/input.css -o static/css/tailwind.css --watch
+   ```
+
+### Tailwind Configuration
+
+- **Config file**: `tailwind.config.js`
+- **Input CSS**: `static/css/input.css`
+- **Output CSS**: `static/css/tailwind.css`
+- **Content sources**: Templates, static JS files
+
+The build process scans all HTML templates and generates only the CSS classes that are actually used, resulting in a much smaller file size compared to the full CDN version.
+
 ### Server Configuration (config/servers.json)
 
 ```json
