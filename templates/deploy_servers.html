@@ -220,6 +220,39 @@
             this.init();
         }
 
+        // Utility function for making authenticated requests
+        async authenticatedFetch(url, options = {}) {
+            const defaultOptions = {
+                credentials: 'include', // Include session cookies
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest', // Mark as AJAX request
+                    ...options.headers
+                }
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                
+                // Handle authentication errors
+                if (response.status === 401) {
+                    showNotification('Session expired. Please log in again.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return null;
+                }
+                
+                return response;
+            } catch (error) {
+                console.error('Network error:', error);
+                showNotification('Network error occurred', 'error');
+                return null;
+            }
+        }
+
         async init() {
             await this.loadServers();
             await this.loadServices();
@@ -229,8 +262,8 @@
 
         async loadServers() {
             try {
-                const response = await fetch('/api/servers');
-                if (response.ok) {
+                const response = await this.authenticatedFetch('/api/servers');
+                if (response && response.ok) {
                     const data = await response.json();
                     this.servers = data.servers || [];
                     this.populateServerSelect();
@@ -245,8 +278,8 @@
 
         async loadServices() {
             try {
-                const response = await fetch('/api/services');
-                if (response.ok) {
+                const response = await this.authenticatedFetch('/api/services');
+                if (response && response.ok) {
                     const data = await response.json();
                     this.services = data.services || [];
                     this.populateServiceSelect();
@@ -259,8 +292,8 @@
 
         async loadDeployments() {
             try {
-                const response = await fetch('/api/deployments/recent');
-                if (response.ok) {
+                const response = await this.authenticatedFetch('/api/deployments/recent');
+                if (response && response.ok) {
                     const data = await response.json();
                     this.deployments = data.deployments || [];
                     this.renderDeploymentsTable();
@@ -391,6 +424,7 @@
         renderServerCard(server) {
             const statusColor = this.getStatusColor(server.status);
             const statusIcon = this.getStatusIcon(server.status);
+            const safeStatus = (server.status || 'unknown').toString();
             
             return `
                 <div class="border rounded-lg p-4 hover:shadow-md transition duration-200 ${server.status !== 'online' ? 'opacity-75' : ''}">
@@ -400,12 +434,12 @@
                                 <i class="fas fa-server ${statusColor.text}"></i>
                             </div>
                             <div>
-                                <h3 class="font-semibold text-gray-900">${server.name}</h3>
-                                <p class="text-sm text-gray-500">${server.host}</p>
+                                <h3 class="font-semibold text-gray-900">${server.name || 'Unknown Server'}</h3>
+                                <p class="text-sm text-gray-500">${server.host || server.ip || 'Unknown Host'}</p>
                             </div>
                         </div>
                         <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor.badge}">
-                            <i class="fas ${statusIcon} mr-1"></i>${server.status.toUpperCase()}
+                            <i class="fas ${statusIcon} mr-1"></i>${safeStatus.toUpperCase()}
                         </span>
                     </div>
                     

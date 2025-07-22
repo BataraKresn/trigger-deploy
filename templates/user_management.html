@@ -268,6 +268,39 @@
             this.init();
         }
 
+        // Utility function for making authenticated requests
+        async authenticatedFetch(url, options = {}) {
+            const defaultOptions = {
+                credentials: 'include', // Include session cookies
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest', // Mark as AJAX request
+                    ...options.headers
+                }
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                
+                // Handle authentication errors
+                if (response.status === 401) {
+                    showNotification('Session expired. Please log in again.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return null;
+                }
+                
+                return response;
+            } catch (error) {
+                console.error('Network error:', error);
+                showNotification('Network error occurred', 'error');
+                return null;
+            }
+        }
+
         async init() {
             await this.loadUsers();
             this.setupEventListeners();
@@ -283,7 +316,9 @@
                     status: this.filters.status
                 });
 
-                const response = await fetch(`/api/users?${params}`);
+                const response = await this.authenticatedFetch(`/api/users?${params}`);
+                if (!response) return; // Error already handled in authenticatedFetch
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -553,13 +588,12 @@
                 const url = this.editingUserId ? `/api/users/${this.editingUserId}` : '/api/users';
                 const method = this.editingUserId ? 'PUT' : 'POST';
                 
-                const response = await fetch(url, {
+                const response = await this.authenticatedFetch(url, {
                     method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
                     body: JSON.stringify(userData)
                 });
+                
+                if (!response) return; // Error already handled in authenticatedFetch
                 
                 if (response.ok) {
                     this.closeModal();
@@ -588,9 +622,11 @@
             }
             
             try {
-                const response = await fetch(`/api/users/${userId}`, {
+                const response = await this.authenticatedFetch(`/api/users/${userId}`, {
                     method: 'DELETE'
                 });
+                
+                if (!response) return; // Error already handled in authenticatedFetch
                 
                 if (response.ok) {
                     await this.loadUsers();

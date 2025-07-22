@@ -196,6 +196,39 @@
             this.init();
         }
 
+        // Utility function for making authenticated requests
+        async authenticatedFetch(url, options = {}) {
+            const defaultOptions = {
+                credentials: 'include', // Include session cookies
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest', // Mark as AJAX request
+                    ...options.headers
+                }
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                
+                // Handle authentication errors
+                if (response.status === 401) {
+                    showNotification('Session expired. Please log in again.', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                    return null;
+                }
+                
+                return response;
+            } catch (error) {
+                console.error('Network error:', error);
+                showNotification('Network error occurred', 'error');
+                return null;
+            }
+        }
+
         async init() {
             await this.loadMetrics();
             this.setupCharts();
@@ -205,7 +238,9 @@
 
         async loadMetrics() {
             try {
-                const response = await fetch(`/api/metrics?range=${this.timeRange}`);
+                const response = await this.authenticatedFetch(`/api/metrics?range=${this.timeRange}`);
+                if (!response) return; // Error already handled
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }

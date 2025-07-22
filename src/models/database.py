@@ -987,6 +987,15 @@ class DatabaseManager:
         finally:
             session.close()
     
+    def get_all_users(self) -> List[Any]:
+        """
+        Get list of all users (alias for list_users for API compatibility).
+        
+        Returns:
+            List of user objects
+        """
+        return self.list_users()
+    
     def get_user_stats(self) -> Dict:
         """
         Get user statistics.

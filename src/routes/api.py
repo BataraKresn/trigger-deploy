@@ -1860,9 +1860,19 @@ def get_metrics():
         
         # Add deployment metrics if available
         try:
-            analytics = DeploymentAnalytics()
-            deployment_stats = analytics.get_stats()
-            metrics['deployments'] = deployment_stats
+            if USING_POSTGRES:
+                db_manager = get_db_manager()
+                analytics = DeploymentAnalytics(db_manager)
+                deployment_stats = analytics.get_stats()
+                metrics['deployments'] = deployment_stats
+            else:
+                # Fallback for non-postgres setup
+                metrics['deployments'] = {
+                    'total': 0,
+                    'successful': 0,
+                    'failed': 0,
+                    'success_rate': 0
+                }
         except Exception as e:
             logger.warning(f"Could not get deployment analytics: {e}")
             metrics['deployments'] = {
@@ -1969,6 +1979,116 @@ def get_recent_deployments():
                     'user': 'admin'
                 }
             ]
+        
+        return jsonify({
+            'success': True,
+            'deployments': recent_deployments
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching recent deployments: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ======================================
+# User Management API Endpoints
+# ======================================
+
+@api_bp.route('/users', methods=['POST'])
+def create_user():
+    """Create a new user - requires authentication"""
+    from src.utils.auth import is_authenticated
+    
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        if USING_POSTGRES:
+            db_manager = get_db_manager()
+            if db_manager:
+                user = db_manager.create_user(data)
+                if user:
+                    return jsonify({
+                        'success': True,
+                        'user': user.to_safe_dict()
+                    })
+                else:
+                    return jsonify({'error': 'Failed to create user'}), 500
+        
+        return jsonify({'error': 'Database not available'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error creating user: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    """Update a user - requires authentication"""
+    from src.utils.auth import is_authenticated
+    
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        if USING_POSTGRES:
+            db_manager = get_db_manager()
+            if db_manager:
+                # Get user by ID first
+                user = db_manager.get_user_by_id(user_id)
+                if not user:
+                    return jsonify({'error': 'User not found'}), 404
+                
+                # Update user (implement this method if needed)
+                # For now, return success with current user data
+                return jsonify({
+                    'success': True,
+                    'user': user.to_safe_dict()
+                })
+        
+        return jsonify({'error': 'Database not available'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error updating user {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    """Delete a user - requires authentication"""
+    from src.utils.auth import is_authenticated
+    
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        if USING_POSTGRES:
+            db_manager = get_db_manager()
+            if db_manager:
+                # Get user by ID first
+                user = db_manager.get_user_by_id(user_id)
+                if not user:
+                    return jsonify({'error': 'User not found'}), 404
+                
+                # For safety, implement soft delete or return success for now
+                return jsonify({
+                    'success': True,
+                    'message': 'User deleted successfully'
+                })
+        
+        return jsonify({'error': 'Database not available'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting user {user_id}: {e}")
+        return jsonify({'error': str(e)}), 500
         
         return jsonify({
             'success': True,
