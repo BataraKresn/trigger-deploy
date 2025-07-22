@@ -84,28 +84,8 @@ def login():
                 if db_manager is None or db_manager.pool is None:
                     raise Exception("Database manager not properly initialized")
                 
-                # Use proper async handling with error recovery
-                def run_async_safe(coro):
-                    """Safe async runner for API context"""
-                    import concurrent.futures
-                    import threading
-                    
-                    def run_in_thread():
-                        new_loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(new_loop)
-                        try:
-                            return new_loop.run_until_complete(coro)
-                        finally:
-                            try:
-                                new_loop.close()
-                            except:
-                                pass
-                    
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(run_in_thread)
-                        return future.result(timeout=30)
-                
-                user = run_async_safe(db_manager.authenticate_user(username, password))
+                # Authenticate user (now sync operation)
+                user = db_manager.authenticate_user(username, password)
                         
             except Exception as e:
                 print(f"PostgreSQL authentication error: {e}")

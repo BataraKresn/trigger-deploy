@@ -5,7 +5,6 @@ User Routes with PostgreSQL support
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
 import jwt
-import asyncio
 import logging
 from typing import Optional
 
@@ -32,19 +31,14 @@ def login():
             logger.error("Database manager not available")
             return jsonify({'message': 'Database connection unavailable'}), 500
         
-        # Check database health before authentication
-        try:
-            is_healthy = run_async(db.health_check())
-            if not is_healthy:
-                logger.warning("Database connection unhealthy, attempting reconnect")
-                run_async(db.reconnect())
-        except Exception as health_error:
-            logger.error(f"Database health check failed: {health_error}")
+        # Check database health
+        if not db.health_check():
+            logger.warning("Database connection unhealthy")
             return jsonify({'message': 'Database connection error'}), 500
         
-        # Authenticate user
+        # Authenticate user (now sync operation)
         try:
-            user = run_async(db.authenticate_user(username, password))
+            user = db.authenticate_user(username, password)
         except Exception as auth_error:
             logger.error(f"Authentication error: {auth_error}")
             return jsonify({'message': 'Authentication failed'}), 500
@@ -57,7 +51,7 @@ def login():
         
         # Update last login (non-blocking)
         try:
-            run_async(db.update_last_login(user.id))
+            db.update_last_login(user.id)
         except Exception as e:
             logger.warning(f"Failed to update last login: {e}")
         
@@ -85,13 +79,13 @@ def login():
         
         # Log audit event (non-blocking)
         try:
-            run_async(db.log_audit(
+            db.log_audit(
                 user_id=user.id,
                 action='LOGIN',
                 resource='auth',
                 ip_address=request.remote_addr,
                 user_agent=request.headers.get('User-Agent')
-            ))
+            )
         except Exception as audit_error:
             logger.warning(f"Failed to log audit: {audit_error}")
         
@@ -126,15 +120,15 @@ def logout():
                 db = get_db_manager()
                 if db:
                     # Get user ID for audit log
-                    user = run_async(db.get_user_by_username(session.get('username')))
+                    user = db.get_user_by_username(session.get('username'))
                     if user:
-                        run_async(db.log_audit(
+                        db.log_audit(
                             user_id=user.id,
                             action='LOGOUT',
                             resource='auth',
                             ip_address=request.remote_addr,
                             user_agent=request.headers.get('User-Agent')
-                        ))
+                        )
             except Exception as audit_error:
                 logger.warning(f"Failed to log logout audit: {audit_error}")
         
@@ -184,50 +178,7 @@ def require_superadmin(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def run_async(coro):
-    """Helper to run async functions in sync context with proper error handling"""
-    import concurrent.futures
-    import threading
-    
-    def run_in_thread():
-        """Run coroutine in a new thread with its own event loop"""
-        # Always create a new event loop for database operations
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            result = loop.run_until_complete(coro)
-            return result
-        except Exception as e:
-            logger.error(f"Error in async execution: {e}")
-            raise
-        finally:
-            # Clean shutdown of the event loop
-            try:
-                # Cancel all remaining tasks
-                pending = asyncio.all_tasks(loop)
-                if pending:
-                    for task in pending:
-                        task.cancel()
-                    # Wait for cancellation to complete
-                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-                
-                # Close the loop
-                loop.close()
-            except Exception as cleanup_error:
-                logger.warning(f"Error during loop cleanup: {cleanup_error}")
-    
-    try:
-        # Run in a separate thread to avoid conflicts with any existing event loop
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(run_in_thread)
-            return future.result(timeout=30)
-    except concurrent.futures.TimeoutError:
-        logger.error("Async operation timed out after 30 seconds")
-        raise Exception("Database operation timed out")
-    except Exception as e:
-        logger.error(f"Error in run_async: {e}")
-        raise
+# run_async function removed - now using sync database operations
 
 @user_bp.route('/users', methods=['GET'])
 @require_auth
@@ -236,8 +187,8 @@ def list_users():
     """List all users - superadmin only"""
     try:
         db = get_db_manager()
-        users = run_async(db.list_users())
-        stats = run_async(db.get_user_stats())
+        users = db.list_users()
+        stats = db.get_user_stats()
         
         return jsonify({
             'users': [user.to_safe_dict() for user in users],
@@ -272,16 +223,17 @@ def create_user():
             return jsonify({'message': 'Invalid email format'}), 400
         
         db = get_db_manager()
-        user = run_async(db.create_user(data))
+        user = db.create_user(data)
 
         # Log audit
-        run_async(db.log_audit(            user_id=request.current_user['user_id'],
+        db.log_audit(
+            user_id=request.current_user['user_id'],
             action='CREATE_USER',
             resource=f'user:{user.username}',
             details={'created_user_id': str(user.id)},
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent')
-        ))
+        )
         
         return jsonify({
             'message': 'User created successfully',
@@ -305,7 +257,7 @@ def get_user(user_id):
             return jsonify({'message': 'Access denied'}), 403
         
         db = get_db_manager()
-        user = run_async(db.get_user_by_id(user_id))
+        user = db.get_user_by_id(user_id)
         
         if not user:
             return jsonify({'message': 'User not found'}), 404
@@ -340,17 +292,17 @@ def update_user(user_id):
                 return jsonify({'message': 'Invalid email format'}), 400
         
         db = get_db_manager()
-        user = run_async(db.update_user(user_id, data))
+        user = db.update_user(user_id, data)
         
         # Log audit event
-        run_async(db.log_audit(
+        db.log_audit(
             user_id=request.current_user['user_id'],
             action='UPDATE_USER',
             resource=f'user:{user.username}',
             details={'updated_fields': list(data.keys())},
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent')
-        ))
+        )
         
         return jsonify({
             'message': 'User updated successfully',
@@ -383,19 +335,19 @@ def update_user_password(user_id):
             return jsonify({'message': 'Password must be at least 6 characters long'}), 400
         
         db = get_db_manager()
-        success = run_async(db.update_user_password(user_id, new_password))
+        success = db.update_user_password(user_id, new_password)
         
         if not success:
             return jsonify({'message': 'User not found'}), 404
         
         # Log audit event
-        run_async(db.log_audit(
+        db.log_audit(
             user_id=request.current_user['user_id'],
             action='CHANGE_PASSWORD',
             resource=f'user:{user_id}',
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent')
-        ))
+        )
         
         return jsonify({'message': 'Password updated successfully'})
         
@@ -416,24 +368,24 @@ def delete_user(user_id):
         db = get_db_manager()
         
         # Get user info for audit log
-        user = run_async(db.get_user_by_id(user_id))
+        user = db.get_user_by_id(user_id)
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
-        success = run_async(db.delete_user(user_id))
+        success = db.delete_user(user_id)
         
         if not success:
             return jsonify({'message': 'User not found'}), 404
         
         # Log audit event
-        run_async(db.log_audit(
+        db.log_audit(
             user_id=request.current_user['user_id'],
             action='DELETE_USER',
             resource=f'user:{user.username}',
             details={'deleted_user_id': user_id},
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent')
-        ))
+        )
         
         return jsonify({'message': 'User deleted successfully'})
         
@@ -448,7 +400,7 @@ def get_user_stats():
     """Get user statistics"""
     try:
         db = get_db_manager()
-        stats = run_async(db.get_user_stats())
+        stats = db.get_user_stats()
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error getting user stats: {e}")

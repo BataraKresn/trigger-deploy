@@ -1,5 +1,16 @@
-#!/usr/bin/env python3
-# =================================
+#!/usr/bin/env python3# Import PostgreSQL routes instead of file-based user routes
+try:
+    from src.routes.user_postgres import user_bp
+    USING_POSTGRES = True
+    logging.info("Using PostgreSQL user management (sync version)")
+except ImportError:
+    from src.routes.user import user_bp
+    USING_POSTGRES = False
+    logging.warning("PostgreSQL not available, falling back to file-based user management")
+
+# Database initialization
+if USING_POSTGRES:
+    from src.models.database import init_database, close_database
 # Trigger Deploy Server - Clean Architecture with PostgreSQL
 # =================================
 
@@ -67,31 +78,22 @@ def create_app():
         
         while retry_count < max_retries:
             try:
-                # Initialize database manager synchronously
-                init_db_manager_sync()
-                logger.info("PostgreSQL database initialized successfully")
-                
-                # Register cleanup function
-                def cleanup_db():
-                    try:
-                        # Create new loop for cleanup if needed
-                        cleanup_loop = None
+                # Initialize database manager synchronously (no async/event loops needed)
+                if init_database():
+                    logger.info("PostgreSQL database initialized successfully")
+                    
+                    # Register cleanup function
+                    def cleanup_db():
                         try:
-                            cleanup_loop = asyncio.get_event_loop()
-                            if cleanup_loop.is_closed():
-                                cleanup_loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(cleanup_loop)
-                        except RuntimeError:
-                            cleanup_loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(cleanup_loop)
-                        
-                        cleanup_loop.run_until_complete(close_database())
-                        logger.info("PostgreSQL database connection closed")
-                    except Exception as e:
-                        logger.error(f"Error closing database: {e}")
-                
-                atexit.register(cleanup_db)
-                break  # Success, exit retry loop
+                            close_database()
+                            logger.info("PostgreSQL database connection closed")
+                        except Exception as e:
+                            logger.error(f"Error closing database: {e}")
+                    
+                    atexit.register(cleanup_db)
+                    break  # Success, exit retry loop
+                else:
+                    raise Exception("Database initialization returned False")
                 
             except Exception as e:
                 retry_count += 1
