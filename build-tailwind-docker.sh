@@ -1,46 +1,54 @@
 #!/bin/bash
-# Alternative build script untuk environment tanpa Node.js
-# Menggunakan Docker untuk build Tailwind CSS
+# Build Tailwind CSS via Docker using standalone binary (tidak perlu Node.js lokal)
 
 echo "🎨 Building Tailwind CSS with Docker..."
 
-# Check if Docker available
+# Cek Docker
 if ! command -v docker &> /dev/null; then
-    echo "❌ Docker tidak ditemukan. Install Docker atau gunakan build-tailwind.sh dengan Node.js"
+    echo "❌ Docker tidak ditemukan. Harap install Docker terlebih dahulu."
     exit 1
 fi
 
-# Create temporary Dockerfile for CSS build only
+# Buat Dockerfile sementara
 cat > Dockerfile.tailwind << 'EOF'
-FROM node:18-alpine AS builder
+FROM alpine:3.19
+
 WORKDIR /build
-RUN npm install -g tailwindcss
-COPY templates/ ./templates/
-COPY static/ ./static/
+
+RUN apk add --no-cache curl
+
+# Ambil Tailwind CSS binary
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.0/tailwindcss-linux-x64 \
+    && mv tailwindcss-linux-x64 tailwindcss \
+    && chmod +x tailwindcss
+
+# Salin konfigurasi & input
 COPY tailwind.config.js ./
 COPY static/css/input.css ./
-RUN tailwindcss -i input.css -o output.css --minify
+COPY templates/ ./templates/
+COPY static/ ./static/
 
-FROM scratch
-COPY --from=builder /build/output.css /
+# Build CSS
+RUN ./tailwindcss -i input.css -o output.css --minify
 EOF
 
-# Build CSS using Docker
-echo "🔨 Building CSS with Docker..."
-docker build -f Dockerfile.tailwind -t tailwind-builder .
+# Jalankan build Docker
+echo "🔨 Building..."
+docker build -f Dockerfile.tailwind -t tailwind-css-builder .
 
-# Extract CSS from container
-echo "📦 Extracting built CSS..."
-docker run --rm tailwind-builder cat /output.css > static/css/tailwind.css
+# Ekstrak hasil
+echo "📦 Extracting built Tailwind CSS..."
+docker run --rm tailwind-css-builder cat /build/output.css > static/css/tailwind.css
 
 # Cleanup
 rm Dockerfile.tailwind
 
-if [ $? -eq 0 ]; then
-    echo "✅ Tailwind CSS berhasil di-build dengan Docker!"
-    echo "📄 Output: static/css/tailwind.css"
-    echo "📊 File size: $(du -h static/css/tailwind.css | cut -f1)"
+# Verifikasi hasil
+if [ $? -eq 0 ] && [ -s static/css/tailwind.css ]; then
+    echo "✅ Tailwind CSS berhasil dibangun!"
+    echo "📄 Output file: static/css/tailwind.css"
+    echo "📏 File size: $(du -h static/css/tailwind.css | cut -f1)"
 else
-    echo "❌ Build gagal!"
+    echo "❌ Gagal membangun Tailwind CSS."
     exit 1
 fi

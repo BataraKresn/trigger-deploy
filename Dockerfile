@@ -9,8 +9,13 @@ COPY static/ ./static/
 COPY tailwind.config.js ./
 COPY static/css/input.css ./
 
-# Install and build Tailwind CSS
-RUN npm install tailwindcss && ./node_modules/.bin/tailwindcss -i input.css -o output.css --minify
+# Download Tailwind CSS standalone binary
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.0/tailwindcss-linux-x64 \
+    && mv tailwindcss-linux-x64 tailwindcss \
+    && chmod +x tailwindcss
+
+# Build Tailwind CSS
+RUN ./tailwindcss -i input.css -o output.css --minify
 
 # Main application stage
 FROM python:3.10-slim
