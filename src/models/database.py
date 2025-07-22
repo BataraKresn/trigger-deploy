@@ -1,16 +1,17 @@
 """
 Database module for Trigger Deploy Server
-Provides SQLAlchemy configuration and helper functions for PostgreSQL integration.
+Provides SQLAlchemy configuration and database manager for PostgreSQL integration.
 """
 
 import os
 import logging
-from typing import Optional
+from typing import Optional, Dict, List, Any
 from urllib.parse import quote_plus
+from datetime import datetime
 
-from sqlalchemy import create_engine, Engine
+from sqlalchemy import create_engine, Engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from sqlalchemy.pool import QueuePool
 
 # Configure logging
@@ -20,6 +21,10 @@ logger = logging.getLogger(__name__)
 engine: Optional[Engine] = None
 SessionLocal: Optional[sessionmaker] = None
 Base = declarative_base()
+
+# Global database manager instance
+_db_manager_instance = None
+
 
 def get_database_url() -> str:
     """
@@ -174,10 +179,10 @@ def test_database_connection() -> bool:
         
         # Test connection with a simple query
         with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
+            result = conn.execute(text("SELECT 1"))
             result.fetchone()
             
-        logger.info("Database connection test successful")
+        logger.debug("Database connection test successful")
         return True
         
     except SQLAlchemyError as e:
@@ -235,7 +240,7 @@ def close_database() -> None:
     Clean up database connections and resources.
     This function should be called during application shutdown.
     """
-    global engine, SessionLocal
+    global engine, SessionLocal, _db_manager_instance
     
     try:
         if engine:
@@ -244,9 +249,346 @@ def close_database() -> None:
         
         engine = None
         SessionLocal = None
+        _db_manager_instance = None
         
     except Exception as e:
         logger.error(f"Error during database cleanup: {e}")
+
+
+class DatabaseManager:
+    """
+    Database manager class providing high-level database operations.
+    Maintains backward compatibility with existing code.
+    """
+    
+    def __init__(self):
+        self._engine = None
+        self._session_factory = None
+        self._initialized = False
+    
+    def _ensure_initialized(self) -> bool:
+        """Ensure the database manager is initialized."""
+        if not self._initialized:
+            try:
+                self._engine = get_engine()
+                self._session_factory = SessionLocal
+                self._initialized = True
+                return True
+            except Exception as e:
+                logger.warning(f"Database manager initialization failed: {e}")
+                return False
+        return True
+    
+    def health_check(self) -> bool:
+        """
+        Check database health and connectivity.
+        
+        Returns:
+            bool: True if database is healthy, False otherwise
+        """
+        if not self._ensure_initialized():
+            return False
+        
+        return test_database_connection()
+    
+    def get_session(self) -> Optional[Session]:
+        """
+        Get a new database session.
+        
+        Returns:
+            Session: New database session or None if not available
+        """
+        if not self._ensure_initialized():
+            return None
+        
+        try:
+            return get_session()
+        except Exception as e:
+            logger.error(f"Failed to create session: {e}")
+            return None
+    
+    def execute_query(self, query: str, params: Dict = None) -> Optional[List[Dict]]:
+        """
+        Execute a raw SQL query and return results.
+        
+        Args:
+            query: SQL query string
+            params: Query parameters
+            
+        Returns:
+            List of dictionaries representing query results or None if failed
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            result = session.execute(text(query), params or {})
+            if result.returns_rows:
+                return [dict(row._mapping) for row in result]
+            else:
+                session.commit()
+                return []
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Query execution failed: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def authenticate_user(self, username: str, password: str) -> Optional[Any]:
+        """
+        Authenticate user credentials.
+        
+        Args:
+            username: Username
+            password: Password
+            
+        Returns:
+            User object if authentication successful, None otherwise
+        """
+        # This is a placeholder - implement based on your User model
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            # Import here to avoid circular imports
+            from .user import User
+            user = session.query(User).filter(User.username == username).first()
+            if user and user.check_password(password):
+                return user
+            return None
+        except Exception as e:
+            logger.error(f"User authentication failed: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def get_user_by_username(self, username: str) -> Optional[Any]:
+        """
+        Get user by username.
+        
+        Args:
+            username: Username to search for
+            
+        Returns:
+            User object if found, None otherwise
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            from .user import User
+            user = session.query(User).filter(User.username == username).first()
+            return user
+        except Exception as e:
+            logger.error(f"Failed to get user by username: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def get_user_by_id(self, user_id: int) -> Optional[Any]:
+        """
+        Get user by ID.
+        
+        Args:
+            user_id: User ID to search for
+            
+        Returns:
+            User object if found, None otherwise
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            from .user import User
+            user = session.query(User).filter(User.id == user_id).first()
+            return user
+        except Exception as e:
+            logger.error(f"Failed to get user by ID: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def create_user(self, user_data: Dict) -> Optional[Any]:
+        """
+        Create a new user.
+        
+        Args:
+            user_data: Dictionary containing user information
+            
+        Returns:
+            Created user object or None if failed
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            from .user import User
+            user = User(**user_data)
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to create user: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def update_last_login(self, user_id: int) -> bool:
+        """
+        Update user's last login timestamp.
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        session = self.get_session()
+        if not session:
+            return False
+        
+        try:
+            from .user import User
+            user = session.query(User).filter(User.id == user_id).first()
+            if user:
+                user.last_login = datetime.utcnow()
+                session.commit()
+                return True
+            return False
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to update last login: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def list_users(self) -> List[Any]:
+        """
+        Get list of all users.
+        
+        Returns:
+            List of user objects
+        """
+        session = self.get_session()
+        if not session:
+            return []
+        
+        try:
+            from .user import User
+            users = session.query(User).all()
+            return users
+        except Exception as e:
+            logger.error(f"Failed to list users: {e}")
+            return []
+        finally:
+            session.close()
+    
+    def get_user_stats(self) -> Dict:
+        """
+        Get user statistics.
+        
+        Returns:
+            Dictionary containing user statistics
+        """
+        session = self.get_session()
+        if not session:
+            return {}
+        
+        try:
+            from .user import User
+            total_users = session.query(User).count()
+            active_users = session.query(User).filter(User.is_active == True).count()
+            admin_users = session.query(User).filter(User.is_admin == True).count()
+            
+            return {
+                'total_users': total_users,
+                'active_users': active_users,
+                'admin_users': admin_users,
+                'inactive_users': total_users - active_users
+            }
+        except Exception as e:
+            logger.error(f"Failed to get user stats: {e}")
+            return {}
+        finally:
+            session.close()
+    
+    def log_audit(self, user_id: int, action: str, resource: str, 
+                  ip_address: str = None, user_agent: str = None) -> bool:
+        """
+        Log audit event.
+        
+        Args:
+            user_id: User ID performing the action
+            action: Action performed
+            resource: Resource affected
+            ip_address: Client IP address
+            user_agent: Client user agent
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        session = self.get_session()
+        if not session:
+            return False
+        
+        try:
+            # Create audit log entry
+            audit_data = {
+                'user_id': user_id,
+                'action': action,
+                'resource': resource,
+                'ip_address': ip_address,
+                'user_agent': user_agent,
+                'timestamp': datetime.utcnow()
+            }
+            
+            # You can implement AuditLog model later
+            # For now, we'll just log it
+            logger.info(f"Audit log: {audit_data}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to log audit event: {e}")
+            return False
+        finally:
+            session.close()
+
+
+def get_db_manager() -> Optional[DatabaseManager]:
+    """
+    Get the global database manager instance.
+    This function provides backward compatibility with existing code.
+    
+    Returns:
+        DatabaseManager: Global database manager instance or None if not available
+    """
+    global _db_manager_instance
+    
+    # Check if database is initialized
+    if engine is None or SessionLocal is None:
+        logger.warning("Database not initialized, attempting to initialize...")
+        if not init_database():
+            logger.error("Failed to initialize database for db_manager")
+            return None
+    
+    # Create manager instance if not exists
+    if _db_manager_instance is None:
+        try:
+            _db_manager_instance = DatabaseManager()
+            logger.debug("Database manager instance created")
+        except Exception as e:
+            logger.error(f"Failed to create database manager instance: {e}")
+            return None
+    
+    return _db_manager_instance
 
 
 def get_db_session():
@@ -269,42 +611,6 @@ def get_db_session():
         session.close()
 
 
-# Database manager class for backward compatibility
-class DatabaseManager:
-    """
-    Database manager class providing high-level database operations.
-    Maintains backward compatibility with existing code.
-    """
-    
-    @staticmethod
-    def get_engine() -> Engine:
-        """Get the database engine."""
-        return get_engine()
-    
-    @staticmethod
-    def get_session() -> Session:
-        """Get a new database session."""
-        return get_session()
-    
-    @staticmethod
-    def test_connection() -> bool:
-        """Test database connectivity."""
-        return test_database_connection()
-    
-    @staticmethod
-    def initialize() -> bool:
-        """Initialize the database."""
-        return init_database()
-    
-    @staticmethod
-    def close() -> None:
-        """Close database connections."""
-        close_database()
-
-
-# Global database manager instance for backward compatibility
-db_manager = DatabaseManager()
-
 # Export commonly used objects
 __all__ = [
     'Base',
@@ -316,6 +622,6 @@ __all__ = [
     'init_database',
     'close_database',
     'get_db_session',
-    'db_manager',
+    'get_db_manager',
     'DatabaseManager'
 ]
