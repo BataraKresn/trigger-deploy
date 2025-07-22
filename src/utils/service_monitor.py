@@ -90,17 +90,42 @@ class ServiceMonitor:
             
         try:
             container = self.docker_client.containers.get(service_name)
+            status = container.status.lower()
+            
+            # Get container creation time for uptime calculation
+            try:
+                created = container.attrs['Created']
+                created_time = datetime.fromisoformat(created.replace('Z', '+00:00').replace('.', ''))
+                uptime = datetime.now() - created_time.replace(tzinfo=None)
+                uptime_str = self._format_uptime(uptime.total_seconds())
+            except Exception:
+                uptime_str = 'Unknown'
+            
+            # Determine health status
+            if status == 'running':
+                health_status = 'healthy'
+            elif status in ['exited', 'stopped']:
+                health_status = 'unhealthy'
+            elif status in ['paused', 'restarting']:
+                health_status = 'warning'
+            else:
+                health_status = 'unknown'
+                
             return {
                 'name': service_name,
-                'status': container.status,
+                'status': health_status,
+                'container_status': status,
+                'uptime': uptime_str,
                 'image': container.image.tags[0] if container.image.tags else 'unknown',
-                'created': container.attrs['Created'],
+                'ports': self._format_ports(container.ports),
+                'message': f'Container {status}',
                 'timestamp': datetime.now().isoformat()
             }
+            
         except docker.errors.NotFound:
             return {
                 'name': service_name,
-                'status': 'not_found',
+                'status': 'unhealthy',
                 'message': f'Container {service_name} not found',
                 'timestamp': datetime.now().isoformat()
             }
@@ -149,30 +174,57 @@ class ServiceMonitor:
     def check_http_service(self, url: str, timeout: int = 10) -> Dict:
         """Check HTTP service status"""
         try:
+            if not url or not url.strip():
+                return {
+                    'status': 'error',
+                    'message': 'Invalid or empty URL'
+                }
+                
             start_time = time.time()
             response = requests.get(url, timeout=timeout)
             response_time = (time.time() - start_time) * 1000
             
+            # Determine status based on response code
+            if 200 <= response.status_code < 300:
+                status = 'healthy'
+                message = f'HTTP {response.status_code} - OK'
+            elif 300 <= response.status_code < 400:
+                status = 'warning'
+                message = f'HTTP {response.status_code} - Redirect'
+            elif 400 <= response.status_code < 500:
+                status = 'warning'
+                message = f'HTTP {response.status_code} - Client Error'
+            else:
+                status = 'unhealthy'
+                message = f'HTTP {response.status_code} - Server Error'
+            
             return {
-                'status': 'online' if response.status_code == 200 else 'warning',
+                'status': status,
                 'status_code': response.status_code,
-                'response_time': f"{response_time:.2f}ms",
-                'message': f'HTTP {response.status_code}'
+                'response_time': round(response_time, 2),
+                'message': message
             }
+            
         except requests.exceptions.Timeout:
             return {
-                'status': 'warning',
-                'message': 'Request timeout'
+                'status': 'unhealthy',
+                'message': 'Request timeout',
+                'response_time': timeout * 1000
             }
         except requests.exceptions.ConnectionError:
             return {
-                'status': 'offline',
+                'status': 'unhealthy',
                 'message': 'Connection failed'
+            }
+        except requests.exceptions.RequestException as e:
+            return {
+                'status': 'error',
+                'message': f'Request error: {str(e)}'
             }
         except Exception as e:
             return {
                 'status': 'error',
-                'message': f'HTTP error: {str(e)}'
+                'message': f'Unexpected error: {str(e)}'
             }
     
     def check_all_services(self) -> List[Dict]:
@@ -265,41 +317,90 @@ class ServiceMonitor:
             if service.get('type') == 'http' or 'url' in service:
                 try:
                     status = self.check_http_service(service.get('url', ''))
-                    status['name'] = service.get('name', 'Unknown')
-                    status['description'] = service.get('description', '')
-                    status['critical'] = service.get('critical', False)
-                    remote_services.append(status)
+                    
+                    # Ensure status is always a dict
+                    if isinstance(status, str):
+                        status = {'status': status, 'message': 'String status converted to dict'}
+                    elif not isinstance(status, dict):
+                        status = {'status': 'unknown', 'message': 'Invalid status data type'}
+                    
+                    # Build service info with guaranteed dict structure
+                    service_info = {
+                        'name': service.get('name', 'Unknown'),
+                        'description': service.get('description', ''),
+                        'critical': service.get('critical', False),
+                        'url': service.get('url', ''),
+                        'type': 'http',
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    
+                    # Safely merge status information
+                    if isinstance(status, dict):
+                        # Only add valid dict keys to avoid attribute errors
+                        for key, value in status.items():
+                            if isinstance(key, str):
+                                service_info[key] = value
+                    
+                    remote_services.append(service_info)
+                    
                 except Exception as e:
-                    logger.error(f"Error checking remote service {service.get('name')}: {e}")
+                    logger.error(f"Error checking remote service {service.get('name', 'Unknown')}: {e}")
                     remote_services.append({
                         'name': service.get('name', 'Unknown'),
                         'status': 'error',
                         'message': str(e),
                         'description': service.get('description', ''),
                         'critical': service.get('critical', False),
+                        'url': service.get('url', ''),
+                        'type': 'http',
                         'timestamp': datetime.now().isoformat()
                     })
         return remote_services
 
     def get_services_summary(self) -> Dict:
         """Get summary of all services"""
-        local = self.check_all_local_services()
-        remote = self.check_all_remote_services()
-        
-        total_services = len(local) + len(remote)
-        healthy_count = sum(1 for s in local + remote if s.get('status') == 'healthy')
-        unhealthy_count = total_services - healthy_count
-        critical_down = sum(1 for s in local + remote 
-                          if s.get('critical', False) and s.get('status') != 'healthy')
-        
-        return {
-            'total_services': total_services,
-            'healthy_services': healthy_count,
-            'unhealthy_services': unhealthy_count,
-            'critical_down': critical_down,
-            'local_services_count': len(local),
-            'remote_services_count': len(remote)
-        }
+        try:
+            local = self.check_all_local_services()
+            remote = self.check_all_remote_services()
+            
+            all_services = local + remote
+            total_services = len(all_services)
+            
+            # Count healthy services (status = 'healthy')
+            healthy_count = sum(1 for s in all_services 
+                              if isinstance(s, dict) and s.get('status') == 'healthy')
+            
+            # Count unhealthy services (status != 'healthy')
+            unhealthy_count = total_services - healthy_count
+            
+            # Count critical services that are down
+            critical_down = sum(1 for s in all_services
+                              if isinstance(s, dict) and 
+                              s.get('critical', False) and 
+                              s.get('status') != 'healthy')
+            
+            return {
+                'total_services': total_services,
+                'healthy_services': healthy_count,
+                'unhealthy_services': unhealthy_count,
+                'critical_down': critical_down,
+                'local_services_count': len(local),
+                'remote_services_count': len(remote),
+                'last_updated': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating services summary: {e}")
+            return {
+                'total_services': 0,
+                'healthy_services': 0,
+                'unhealthy_services': 0,
+                'critical_down': 0,
+                'local_services_count': 0,
+                'remote_services_count': 0,
+                'error': str(e),
+                'last_updated': datetime.now().isoformat()
+            }
 
 
 # Global service monitor instance

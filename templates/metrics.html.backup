@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 Metrics Dashboard - Trigger Deploy</title>
+  <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          animation: {
+            'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Navigation -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <!-- Logo and Navigation -->
+        <div class="flex items-center">
+          <div class="flex-shrink-0 flex items-center">
+            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white mr-3">
+              <i class="fas fa-rocket"></i>
+            </div>
+            <span class="text-xl font-bold text-gray-900">Trigger Deploy</span>
+          </div>
+          
+          <!-- Navigation Links -->
+          <div class="hidden md:ml-8 md:flex md:space-x-8">
+            <a href="/dashboard" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 px-1 pt-1 text-sm font-medium transition duration-200">
+              <i class="fas fa-home mr-1"></i>Dashboard
+            </a>
+            <a href="/deploy-servers" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 px-1 pt-1 text-sm font-medium transition duration-200">
+              <i class="fas fa-cloud-upload-alt mr-1"></i>Deploy
+            </a>
+            <a href="/services-monitor" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 px-1 pt-1 text-sm font-medium transition duration-200">
+              <i class="fas fa-chart-line mr-1"></i>Monitor
+            </a>
+            <a href="/metrics" class="border-blue-500 text-blue-600 border-b-2 px-1 pt-1 text-sm font-medium">
+              <i class="fas fa-analytics mr-1"></i>Metrics
+            </a>
+            <a href="/users" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 px-1 pt-1 text-sm font-medium transition duration-200">
+              <i class="fas fa-users mr-1"></i>Users
+            </a>
+          </div>
+        </div>
+        
+        <!-- Right side -->
+        <div class="flex items-center space-x-4">
+          <button id="refreshBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
+            <i class="fas fa-sync-alt mr-1"></i>Refresh
+          </button>
+          
+          <!-- User Menu -->
+          <div class="relative">
+            <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition duration-200">
+              <i class="fas fa-user-circle text-lg"></i>
+              <i class="fas fa-chevron-down text-xs"></i>
+            </button>
+            
+            <!-- Dropdown Menu -->
+            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+              <a href="/users" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-user mr-2"></i>Profile
+              </a>
+              <hr class="my-1">
+              <button id="logoutBtn" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+        <i class="fas fa-chart-bar mr-3 text-blue-500"></i>
+        Metrics Dashboard
+      </h1>
+      <p class="text-gray-600 mt-2">Deployment analytics and system performance overview</p>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Total Deployments -->
+      <div class="bg-white rounded-xl p-6 border-l-4 border-blue-500 shadow-sm hover:shadow-md transition duration-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Total Deployments</p>
+            <p class="text-3xl font-bold text-gray-900" id="totalDeployments">1,247</p>
+            <p class="text-sm text-green-600 flex items-center mt-1">
+              <i class="fas fa-arrow-up mr-1"></i>
+              +12% from last month
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-rocket text-blue-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Rate -->
+      <div class="bg-white rounded-xl p-6 border-l-4 border-green-500 shadow-sm hover:shadow-md transition duration-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Success Rate</p>
+            <p class="text-3xl font-bold text-gray-900" id="successRate">98.5%</p>
+            <p class="text-sm text-green-600 flex items-center mt-1">
+              <i class="fas fa-arrow-up mr-1"></i>
+              +0.3% from last week
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Failed Deployments -->
+      <div class="bg-white rounded-xl p-6 border-l-4 border-red-500 shadow-sm hover:shadow-md transition duration-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Failed Deployments</p>
+            <p class="text-3xl font-bold text-gray-900" id="failedDeployments">18</p>
+            <p class="text-sm text-red-600 flex items-center mt-1">
+              <i class="fas fa-arrow-down mr-1"></i>
+              -25% from last month
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-times-circle text-red-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Average Deploy Time -->
+      <div class="bg-white rounded-xl p-6 border-l-4 border-yellow-500 shadow-sm hover:shadow-md transition duration-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Avg Deploy Time</p>
+            <p class="text-3xl font-bold text-gray-900" id="avgDeployTime">2.4min</p>
+            <p class="text-sm text-green-600 flex items-center mt-1">
+              <i class="fas fa-arrow-down mr-1"></i>
+              -15s faster
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-clock text-yellow-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <!-- Deployment Trends Chart -->
+      <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-chart-line mr-2 text-blue-500"></i>
+          Deployment Trends (Last 30 Days)
+        </h3>
+        <div class="relative h-64">
+          <canvas id="deploymentTrendsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Success vs Failure Chart -->
+      <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-chart-pie mr-2 text-green-500"></i>
+          Success vs Failure Rate
+        </h3>
+        <div class="relative h-64">
+          <canvas id="successFailureChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Performance -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <!-- Server Health -->
+      <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-server mr-2 text-purple-500"></i>
+          Server Health
+        </h3>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">CPU Usage</span>
+            <span class="text-sm font-semibold text-gray-900">42%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-blue-500 h-2 rounded-full" style="width: 42%"></div>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Memory Usage</span>
+            <span class="text-sm font-semibold text-gray-900">68%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-green-500 h-2 rounded-full" style="width: 68%"></div>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Disk Usage</span>
+            <span class="text-sm font-semibold text-gray-900">34%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-yellow-500 h-2 rounded-full" style="width: 34%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Services -->
+      <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-trophy mr-2 text-yellow-500"></i>
+          Top Deployed Services
+        </h3>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
+            <div class="flex items-center">
+              <div class="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+              <span class="text-sm text-gray-900">web-api</span>
+            </div>
+            <span class="text-sm text-gray-600">347 deploys</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
+            <div class="flex items-center">
+              <div class="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+              <span class="text-sm text-gray-900">database</span>
+            </div>
+            <span class="text-sm text-gray-600">289 deploys</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
+            <div class="flex items-center">
+              <div class="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+              <span class="text-sm text-gray-900">frontend</span>
+            </div>
+            <span class="text-sm text-gray-600">234 deploys</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center">
+              <div class="w-2 h-2 bg-orange-500 rounded-full mr-3"></div>
+              <span class="text-sm text-gray-900">worker</span>
+            </div>
+            <span class="text-sm text-gray-600">156 deploys</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-history mr-2 text-indigo-500"></i>
+          Recent Activity
+        </h3>
+        <div class="space-y-4">
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
+              <i class="fas fa-check text-green-600 text-xs"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900">Production deploy successful</p>
+              <p class="text-xs text-gray-600">2 minutes ago</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+              <i class="fas fa-rocket text-blue-600 text-xs"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900">Staging deployment started</p>
+              <p class="text-xs text-gray-600">5 minutes ago</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mt-0.5">
+              <i class="fas fa-exclamation text-yellow-600 text-xs"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900">High memory usage detected</p>
+              <p class="text-xs text-gray-600">12 minutes ago</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mt-0.5">
+              <i class="fas fa-user text-purple-600 text-xs"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900">New user registered</p>
+              <p class="text-xs text-gray-600">18 minutes ago</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Deployments Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">
+          <i class="fas fa-list mr-2 text-blue-500"></i>
+          Recent Deployments
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Environment</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200" id="deploymentsTableBody">
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">web-api</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Production</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Success</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">2m 34s</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">admin</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">2 mins ago</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">database</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Staging</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">Running</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">1m 45s</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">developer</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">5 mins ago</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">frontend</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Development</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Failed</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">45s</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">developer</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">8 mins ago</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center">
+        <div class="flex items-center mb-4 sm:mb-0">
+          <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white mr-2">
+            <i class="fas fa-rocket text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Trigger Deploy Server</h3>
+            <p class="text-xs text-gray-600">Infrastructure deployment and monitoring</p>
+          </div>
+        </div>
+        <div class="text-sm text-gray-500">
+          <i class="fas fa-clock mr-1"></i>
+          Last updated: <span id="lastUpdated">--:--:--</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+      // Deployment Trends Chart
+      const trendsCtx = document.getElementById('deploymentTrendsChart').getContext('2d');
+      new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+          datasets: [{
+            label: 'Successful Deployments',
+            data: [45, 52, 48, 61],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4
+          }, {
+            label: 'Failed Deployments',
+            data: [3, 2, 4, 1],
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Success vs Failure Chart
+      const successCtx = document.getElementById('successFailureChart').getContext('2d');
+      new Chart(successCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Successful', 'Failed', 'Cancelled'],
+          datasets: [{
+            data: [1229, 18, 0],
+            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Update timestamp
+      function updateTimestamp() {
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+      }
+      updateTimestamp();
+      setInterval(updateTimestamp, 1000);
+    });
+
+    // User menu functionality
+    document.getElementById('userMenuButton').addEventListener('click', function(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('userMenu');
+      menu.classList.toggle('hidden');
+    });
+    
+    document.addEventListener('click', function() {
+      document.getElementById('userMenu').classList.add('hidden');
+    });
+    
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', async function() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+          window.location.href = '/login?message=Successfully logged out';
+        } else {
+          alert('Failed to logout. Please try again.');
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('Network error. Please try again.');
+      }
+    });
+
+    // Refresh functionality
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+      location.reload();
+    });
+  </script>
+</body>
+</html>
+    
+    <div class="content">
+      <!-- Navigation -->
+      <div class="text-center mb-3">
+        <a href="/" class="btn btn-secondary">← Back to Home</a>
+        <button onclick="refreshMetrics()" class="btn btn-primary" id="refreshBtn">
+          🔄 Refresh Data
+        </button>
+      </div>
+
+      <!-- Metrics Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card success">
+          <div class="metric-value" id="totalDeployments">-</div>
+          <div class="metric-label">Total Deployments</div>
+        </div>
+        
+        <div class="metric-card success">
+          <div class="metric-value" id="successfulDeployments">-</div>
+          <div class="metric-label">Successful</div>
+        </div>
+        
+        <div class="metric-card danger">
+          <div class="metric-value" id="failedDeployments">-</div>
+          <div class="metric-label">Failed</div>
+        </div>
+        
+        <div class="metric-card info">
+          <div class="metric-value" id="successRate">-%</div>
+          <div class="metric-label">Success Rate</div>
+        </div>
+        
+        <div class="metric-card warning">
+          <div class="metric-value" id="inProgressDeployments">-</div>
+          <div class="metric-label">In Progress</div>
+        </div>
+        
+        <div class="metric-card info">
+          <div class="metric-value" id="uptime">-</div>
+          <div class="metric-label">Server Uptime</div>
+        </div>
+      </div>
+
+      <!-- Recent Deployments -->
+      <div class="chart-container">
+        <h3>📋 Recent Deployments</h3>
+        <div id="deploymentHistory"></div>
+      </div>
+
+      <!-- Server Statistics -->
+      <div class="chart-container">
+        <h3>🖥️ Server Statistics</h3>
+        <div id="serverStats"></div>
+      </div>
+
+      <!-- System Info -->
+      <div class="chart-container">
+        <h3>⚙️ System Information</h3>
+        <div id="systemInfo"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/metrics.js"></script>
+</body>
+</html>

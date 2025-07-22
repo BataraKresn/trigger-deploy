@@ -5,199 +5,172 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📚 API Documentation - Trigger Deploy</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-dot': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.6s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
         }
-        
-        .docs-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 3rem 0;
-            text-align: center;
-        }
-        
-        .docs-header h1 {
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-        
-        .docs-header p {
-            margin: 0.5rem 0 0 0;
-            font-size: 1.125rem;
-            opacity: 0.9;
-        }
-        
-        .docs-nav {
-            background: white;
-            padding: 1rem 0;
-            border-bottom: 1px solid #e9ecef;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: #6c757d;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background-color 0.3s ease;
-        }
-        
-        .back-btn:hover {
-            background: #5a6268;
-            color: white;
-            text-decoration: none;
-        }
-        
-        .api-info {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-        
-        .api-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: #28a745;
-            color: white;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .docs-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .endpoint {
-            background: white;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            border: 1px solid #e9ecef;
-        }
-        
-        .endpoint-header {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .method {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            min-width: 60px;
-            text-align: center;
-        }
-        
-        .method.get { background: #28a745; color: white; }
-        .method.post { background: #007bff; color: white; }
-        .method.put { background: #ffc107; color: #212529; }
-        .method.delete { background: #dc3545; color: white; }
-        
-        .endpoint-url {
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: #495057;
-        }
-        
-        .endpoint-body {
-            padding: 1.5rem;
-        }
-        
-        .endpoint-description {
-            margin-bottom: 1.5rem;
-            color: #6c757d;
-            line-height: 1.6;
-        }
-        
-        .params-section, .response-section {
-            margin-bottom: 1.5rem;
-        }
-        
-        .section-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
-            color: #495057;
-        }
-        
-        .param-item, .response-item {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            border-left: 4px solid #667eea;
-        }
-        
-        .param-name, .response-code {
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .param-type {
-            color: #28a745;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .param-description {
-            margin-top: 0.5rem;
-            color: #6c757d;
-        }
-        
-        .code-example {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 1.5rem;
-            border-radius: 8px;
-            font-family: 'Monaco', 'Consolas', monospace;
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Animated Header -->
+    <div class="bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 text-white">
+        <div class="container mx-auto px-6 py-16 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 animate-slide-up">
+                📚 Trigger Deploy API
+            </h1>
+            <p class="text-xl md:text-2xl opacity-90 mb-6 animate-fade-in">
+                Complete API Reference & Interactive Documentation
+            </p>
+            <div class="flex flex-wrap justify-center gap-4 mt-8 animate-slide-up">
+                <span class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium">
+                    ⚡ Flask 2.3.x
+                </span>
+                <span class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium">
+                    🐘 PostgreSQL 15
+                </span>
+                <span class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium">
+                    🐳 Docker Ready
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="bg-white shadow-md border-b sticky top-0 z-40">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105">
+                    <span>🏠</span>
+                    Back to Home
+                </a>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium">
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse-dot"></div>
+                        API Online
+                    </div>
+                    <span class="text-gray-600 font-medium">Version 2.1.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation Content -->
+    <div class="container mx-auto px-6 py-8 max-w-7xl">
+        <!-- Quick Links Section -->
+        <div class="bg-white rounded-xl shadow-lg border p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🎯</span> Getting Started
+            </h2>
+            <p class="text-gray-600 mb-6 leading-relaxed">
+                Welcome to Trigger Deploy API! This powerful automation platform helps you manage deployments, 
+                monitor services, and maintain your infrastructure with ease.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <a href="/login" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-blue-100 p-6 rounded-xl border hover:border-indigo-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🎛️</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Control Panel</h4>
+                    <p class="text-gray-600 text-sm">Access the main deployment dashboard</p>
+                </a>
+                
+                <a href="/help" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-green-50 hover:to-emerald-100 p-6 rounded-xl border hover:border-green-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">📖</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Help Center</h4>
+                    <p class="text-gray-600 text-sm">Tutorials, FAQ & troubleshooting guides</p>
+                </a>
+                
+                <a href="/contact" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-orange-50 hover:to-amber-100 p-6 rounded-xl border hover:border-orange-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">💬</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Support</h4>
+                    <p class="text-gray-600 text-sm">Get technical assistance from our team</p>
+                </a>
+                
+                <a href="#auth-section" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-purple-50 hover:to-violet-100 p-6 rounded-xl border hover:border-purple-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🔐</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Authentication</h4>
+                    <p class="text-gray-600 text-sm">Learn how to authenticate with the API</p>
+                </a>
+                
+                <a href="#deploy-section" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-blue-50 hover:to-cyan-100 p-6 rounded-xl border hover:border-blue-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🚀</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Deploy</h4>
+                    <p class="text-gray-600 text-sm">Trigger deployments to your servers</p>
+                </a>
+                
+                <a href="#monitor-section" class="group bg-gradient-to-br from-gray-50 to-gray-100 hover:from-teal-50 hover:to-green-100 p-6 rounded-xl border hover:border-teal-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                    <div class="text-3xl mb-3">📊</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Monitor</h4>
+                    <p class="text-gray-600 text-sm">Health checks and server monitoring</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- API Overview -->
+        <div class="bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 border border-gray-200 rounded-xl p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span>📋</span> API Overview
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="text-4xl text-green-500 mb-3">⚡</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Fast & Reliable</h4>
+                    <p class="text-gray-600 text-sm">High-performance Flask API</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl text-blue-500 mb-3">🔒</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Secure</h4>
+                    <p class="text-gray-600 text-sm">JWT & Session authentication</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl text-purple-500 mb-3">📡</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">RESTful</h4>
+                    <p class="text-gray-600 text-sm">Standard HTTP methods</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl text-orange-500 mb-3">📦</div>
+                    <h4 class="font-semibold text-gray-800 mb-2">Containerized</h4>
+                    <p class="text-gray-600 text-sm">Docker & PostgreSQL ready</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Start Alert -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">💡</span>
+                <div>
+                    <h3 class="font-semibold text-amber-800 mb-2">Quick Start</h3>
+                    <p class="text-amber-700 text-sm">
+                        All endpoints require authentication except health checks. 
+                        Use session cookies (after web login) or include <code class="bg-amber-100 px-2 py-1 rounded text-xs">X-Deploy-Token</code> header.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <h2 id="endpoints" class="text-3xl font-bold text-gray-800 mb-8 flex items-center gap-3">
+            <span>🔗</span> API Endpoints Reference
+        </h2>
             font-size: 0.875rem;
             overflow-x: auto;
             margin: 1rem 0;
@@ -574,50 +547,60 @@ curl -X POST http://localhost:3111/api/deploy \
             </div>
         </div>
 
-        <!-- Monitoring Section -->
-        <h3 id="monitor-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #17a2b8;">📊 Health Monitoring</h3>
+        <!-- Health Monitoring Section -->
+        <h3 id="monitor-section" class="text-2xl font-semibold text-gray-800 mb-6 pb-2 border-b-2 border-teal-500 flex items-center gap-2">
+            <span>📊</span> Health Monitoring
+        </h3>
 
-        <div class="endpoint">
-            <div class="endpoint-header">
-                <span class="method get">GET</span>
-                <span class="endpoint-url">/api/health/{target}</span>
-                <span style="background: #28a745; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">✅ PUBLIC</span>
+        <div class="bg-white rounded-xl shadow-lg border overflow-hidden mb-8">
+            <div class="bg-gray-50 px-6 py-4 border-b flex flex-wrap items-center gap-4">
+                <span class="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold text-sm uppercase">GET</span>
+                <code class="text-gray-700 font-mono text-lg font-medium">/api/health/{target}</code>
+                <span class="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium ml-auto">✅ PUBLIC</span>
             </div>
-            <div class="endpoint-body">
-                <div class="endpoint-description">
-                    <strong>🎯 Purpose:</strong> Perform comprehensive health check on any domain, IP address, or service endpoint.
-                    <br><br>
-                    <strong>🔍 Features:</strong> Ping test, HTTP response check, response time measurement, and status analysis
+            
+            <div class="p-6">
+                <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
+                    <p class="text-teal-800 text-sm leading-relaxed">
+                        <strong>🎯 Purpose:</strong> Perform comprehensive health check on any domain, IP address, or service endpoint.
+                        <br><br>
+                        <strong>🔍 Features:</strong> Ping test, HTTP response check, response time measurement, and status analysis
+                    </p>
                 </div>
-                
-                <div class="params-section">
-                    <div class="section-title">📥 Path Parameters</div>
-                    <div class="param-item">
-                        <div class="param-name">target <span class="param-type">string (required)</span></div>
-                        <div class="param-description">
-                            <strong>Target to check</strong> - Domain, IP address, or hostname<br>
-                            <em>Examples:</em> <code>google.com</code>, <code>192.168.1.100</code>, <code>api.example.com</code>
+
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">📥 Path Parameters</h4>
+                    
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <code class="font-mono font-semibold text-gray-800">target</code>
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">string (required)</span>
                         </div>
+                        <p class="text-gray-600 text-sm">
+                            <strong>Target to check</strong> - Domain, IP address, or hostname<br>
+                            <em>Examples:</em> <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">google.com</code>, <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">192.168.1.100</code>, <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">api.example.com</code>
+                        </p>
                     </div>
                 </div>
 
-                <div class="response-section">
-                    <div class="section-title">📤 Example Requests</div>
-                    <div class="code-example">
-# Check Google's status
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">📤 Example Requests</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code># Check Google's status
 curl -X GET http://localhost:3111/api/health/google.com
 
 # Check local server
 curl -X GET http://localhost:3111/api/health/192.168.1.100
 
 # Check API endpoint
-curl -X GET http://localhost:3111/api/health/api.myservice.com</div>
+curl -X GET http://localhost:3111/api/health/api.myservice.com</code></pre>
+                    </div>
                 </div>
 
-                <div class="response-section">
-                    <div class="section-title">✅ Success Response</div>
-                    <div class="code-example">
-{
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-3">✅ Success Response</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code>{
   "status": "healthy",
   "target": "google.com",
   "checks": {
@@ -635,43 +618,50 @@ curl -X GET http://localhost:3111/api/health/api.myservice.com</div>
   },
   "timestamp": "2025-07-21T10:30:00Z",
   "overall_health": "excellent"
-}</div>
+}</code></pre>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Logs Section -->
-        <h3 id="logs-section" style="color: #495057; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #6f42c1;">📄 Log Management</h3>
+        <!-- Log Management Section -->
+        <h3 id="logs-section" class="text-2xl font-semibold text-gray-800 mb-6 pb-2 border-b-2 border-purple-500 flex items-center gap-2">
+            <span>📄</span> Log Management
+        </h3>
 
-        <div class="endpoint">
-            <div class="endpoint-header">
-                <span class="method get">GET</span>
-                <span class="endpoint-url">/api/logs</span>
-                <span style="background: #ffc107; color: #212529; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; margin-left: auto;">🔒 PROTECTED</span>
+        <div class="bg-white rounded-xl shadow-lg border overflow-hidden mb-8">
+            <div class="bg-gray-50 px-6 py-4 border-b flex flex-wrap items-center gap-4">
+                <span class="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold text-sm uppercase">GET</span>
+                <code class="text-gray-700 font-mono text-lg font-medium">/api/logs</code>
+                <span class="bg-amber-400 text-amber-900 px-3 py-1 rounded-full text-xs font-medium ml-auto">🔒 PROTECTED</span>
             </div>
-            <div class="endpoint-body">
-                <div class="endpoint-description">
-                    <strong>🎯 Purpose:</strong> Retrieve comprehensive list of system logs, deployment logs, and application logs with metadata.
-                    <br><br>
-                    <strong>📂 Log Types:</strong> Deployment logs, error logs, security logs, and application logs
+            
+            <div class="p-6">
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                    <p class="text-purple-800 text-sm leading-relaxed">
+                        <strong>🎯 Purpose:</strong> Retrieve comprehensive list of system logs, deployment logs, and application logs with metadata.
+                        <br><br>
+                        <strong>📂 Log Types:</strong> Deployment logs, error logs, security logs, and application logs
+                    </p>
                 </div>
-                
-                <div class="response-section">
-                    <div class="section-title">📤 Example Request</div>
-                    <div class="code-example">
-# Get all logs
+
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">📤 Example Request</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code># Get all logs
 curl -X GET http://localhost:3111/api/logs \
   -H "Cookie: session=your_session_cookie"
 
 # Filter by type
 curl -X GET "http://localhost:3111/api/logs?type=deployment" \
-  -H "X-Deploy-Token: SATindonesia2026"</div>
+  -H "X-Deploy-Token: SATindonesia2026"</code></pre>
+                    </div>
                 </div>
 
-                <div class="response-section">
-                    <div class="section-title">✅ Success Response</div>
-                    <div class="code-example">
-{
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-3">✅ Success Response</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code>{
   "logs": [
     {
       "filename": "trigger-20250721-103045.log",
@@ -692,50 +682,64 @@ curl -X GET "http://localhost:3111/api/logs?type=deployment" \
   ],
   "total_logs": 15,
   "total_size": "45.7 MB"
-}</div>
+}</code></pre>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Authentication Info -->
-        <div class="endpoint" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #667eea;">
-            <div class="endpoint-header" style="background: #667eea; color: white;">
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem;">🔐 AUTH</span>
-                <span class="endpoint-url" style="color: white;">Authentication Guide</span>
+        <!-- Authentication Guide -->
+        <div class="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 border-2 border-indigo-200 rounded-xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 flex flex-wrap items-center gap-4">
+                <span class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg font-semibold text-sm">🔐 AUTH</span>
+                <code class="text-white font-mono text-lg font-medium">Authentication Guide</code>
             </div>
-            <div class="endpoint-body">
-                <div class="endpoint-description">
-                    <strong>🔒 Security:</strong> This API implements multiple authentication methods to ensure secure access to deployment operations.
+            
+            <div class="p-6">
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+                    <p class="text-indigo-800 text-sm leading-relaxed">
+                        <strong>🔒 Security:</strong> This API implements multiple authentication methods to ensure secure access to deployment operations.
+                    </p>
                 </div>
                 
-                <div class="params-section">
-                    <div class="section-title">🍪 Session-based Authentication</div>
-                    <div class="param-item" style="border-left-color: #28a745;">
-                        <div class="param-name">Method: Browser Session <span class="param-type">automatic</span></div>
-                        <div class="param-description">
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span>🍪</span> Session-based Authentication
+                    </h4>
+                    <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <code class="font-mono font-semibold text-gray-800">Method: Browser Session</code>
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">automatic</span>
+                        </div>
+                        <p class="text-gray-600 text-sm leading-relaxed">
                             <strong>How it works:</strong> Login through web interface → Automatic session cookie → Protected access<br>
                             <strong>Best for:</strong> Web dashboard usage and browser-based interactions<br>
                             <strong>Duration:</strong> Session expires after inactivity or logout
-                        </div>
+                        </p>
                     </div>
                 </div>
 
-                <div class="params-section">
-                    <div class="section-title">🎟️ Token-based Authentication</div>
-                    <div class="param-item" style="border-left-color: #007bff;">
-                        <div class="param-name">Header: X-Deploy-Token <span class="param-type">string</span></div>
-                        <div class="param-description">
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <span>🎟️</span> Token-based Authentication
+                    </h4>
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <code class="font-mono font-semibold text-gray-800">Header: X-Deploy-Token</code>
+                            <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">string</span>
+                        </div>
+                        <p class="text-gray-600 text-sm leading-relaxed">
                             <strong>How it works:</strong> Include token in request headers → Direct API access<br>
                             <strong>Best for:</strong> API integrations, automation scripts, CI/CD pipelines<br>
                             <strong>Security:</strong> Stateless, no session management required
-                        </div>
+                        </p>
                     </div>
                 </div>
 
-                <div class="response-section">
-                    <div class="section-title">⚙️ Configuration Settings</div>
-                    <div class="code-example">
-# Your .env file should contain:
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">⚙️ Configuration Settings</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code># Your .env file should contain:
 LOGIN_PASSWORD=admin123          # For web login
 DEPLOY_TOKEN=SATindonesia2026   # For API access
 JWT_SECRET=your_jwt_secret      # For session security
@@ -743,13 +747,14 @@ JWT_SECRET=your_jwt_secret      # For session security
 # Docker environment variables:
 - SECURE_HEADERS=true           # Enable security headers
 - SESSION_COOKIE_SECURE=true    # HTTPS-only cookies (production)
-- SESSION_COOKIE_HTTPONLY=true  # Prevent XSS attacks</div>
+- SESSION_COOKIE_HTTPONLY=true  # Prevent XSS attacks</code></pre>
+                    </div>
                 </div>
 
-                <div class="response-section">
-                    <div class="section-title">💡 Quick Examples</div>
-                    <div class="code-example">
-# Web login (get session cookie)
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-3">💡 Quick Examples</h4>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-sm"><code># Web login (get session cookie)
 curl -X POST http://localhost:3111/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
@@ -760,39 +765,84 @@ curl -X GET http://localhost:3111/api/servers \
 
 # Or use deploy token directly
 curl -X GET http://localhost:3111/api/servers \
-  -H "X-Deploy-Token: SATindonesia2026"</div>
+  -H "X-Deploy-Token: SATindonesia2026"</code></pre>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer Info -->
-        <div style="background: #343a40; color: white; border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center;">
-            <h3 style="color: #ffffff; margin-bottom: 1rem;">🚀 Trigger Deploy API v2.1.0</h3>
-            <p style="margin-bottom: 1.5rem; opacity: 0.8;">
+        <!-- Footer -->
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl p-8 text-center">
+            <h3 class="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
+                <span>🚀</span> Trigger Deploy API v2.1.0
+            </h3>
+            <p class="text-gray-300 mb-6 text-lg">
                 Powerful deployment automation platform built with Flask, PostgreSQL, and Docker
             </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                <div>
-                    <strong>⚡ Performance</strong><br>
-                    <span style="opacity: 0.8;">Sub-second response times</span>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="text-center">
+                    <div class="text-2xl mb-2">⚡</div>
+                    <h4 class="font-semibold mb-1">Performance</h4>
+                    <p class="text-gray-400 text-sm">Sub-second response times</p>
                 </div>
-                <div>
-                    <strong>🔒 Security</strong><br>
-                    <span style="opacity: 0.8;">JWT + Token authentication</span>
+                <div class="text-center">
+                    <div class="text-2xl mb-2">🔒</div>
+                    <h4 class="font-semibold mb-1">Security</h4>
+                    <p class="text-gray-400 text-sm">JWT + Token authentication</p>
                 </div>
-                <div>
-                    <strong>📊 Monitoring</strong><br>
-                    <span style="opacity: 0.8;">Real-time health checks</span>
+                <div class="text-center">
+                    <div class="text-2xl mb-2">📊</div>
+                    <h4 class="font-semibold mb-1">Monitoring</h4>
+                    <p class="text-gray-400 text-sm">Real-time health checks</p>
                 </div>
-                <div>
-                    <strong>🐳 Containerized</strong><br>
-                    <span style="opacity: 0.8;">Docker & PostgreSQL ready</span>
+                <div class="text-center">
+                    <div class="text-2xl mb-2">🐳</div>
+                    <h4 class="font-semibold mb-1">Containerized</h4>
+                    <p class="text-gray-400 text-sm">Docker & PostgreSQL ready</p>
                 </div>
             </div>
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; opacity: 0.7;">
-                Need help? Visit our <a href="/help" style="color: #007bff;">Help Center</a> or <a href="/contact" style="color: #007bff;">Contact Support</a>
+            
+            <div class="border-t border-gray-700 pt-4 text-gray-400">
+                Need help? Visit our <a href="/help" class="text-blue-400 hover:text-blue-300 transition-colors">Help Center</a> or <a href="/contact" class="text-blue-400 hover:text-blue-300 transition-colors">Contact Support</a>
             </div>
         </div>
     </div>
+
+    <!-- Smooth Scrolling Script -->
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add animation classes on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slide-up');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all endpoint cards
+        document.querySelectorAll('.bg-white.rounded-xl.shadow-lg').forEach(card => {
+            observer.observe(card);
+        });
+    </script>
 </body>
 </html>

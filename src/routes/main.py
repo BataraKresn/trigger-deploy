@@ -1,8 +1,8 @@
 # =================================
-# Main Web Routes
+# Main Web Routes - Updated with proper auth flow
 # =================================
 
-from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, redirect, url_for, flash
 import os
 import json
 import re
@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from src.utils.helpers import load_servers, validate_token, is_valid_server
 from src.models.config import config
-from src.utils.auth import require_auth, is_authenticated
+from src.utils.auth import require_auth, is_authenticated, logout_user
 
 logger = logging.getLogger(__name__)
 main_bp = Blueprint('main', __name__)
@@ -18,27 +18,20 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def landing():
-    """Landing page - always accessible"""
-    # If user is already authenticated, redirect to dashboard
-    if is_authenticated():
-        return redirect(url_for('main.dashboard'))
+    """Landing page - always accessible. Shows welcome page."""
     return render_template('landing.html')
 
 
 @main_bp.route('/home')
-@require_auth
 def home():
-    """Home page (dashboard)"""
-    return render_template('home.html')
+    """Redirect /home to /dashboard for consistency"""
+    return redirect(url_for('main.dashboard'))
 
 
 @main_bp.route('/dashboard')
 @require_auth
 def dashboard():
-    """Dashboard page (same as home but with explicit route)"""
-    # Ensure we don't have redirect loops by checking the request
-    if request.endpoint == 'main.dashboard' and request.path == '/dashboard':
-        return render_template('home.html')
+    """Dashboard page - requires authentication"""
     return render_template('home.html')
 
 
@@ -53,11 +46,21 @@ def login():
     message = request.args.get('message', '')
     error = request.args.get('error', '')
     
-    # Pass configuration to template
-    return render_template('login.html', 
-                         show_demo_credentials=config.SHOW_DEMO_CREDENTIALS,
-                         message=message,
-                         error=error)
+    return render_template('login.html', message=message, error=error)
+
+
+@main_bp.route('/logout')
+def logout():
+    """Logout endpoint"""
+    logout_user()
+    return redirect(url_for('main.login', message='Successfully logged out'))
+
+
+@main_bp.route('/deploy-servers')
+@require_auth
+def deploy_servers():
+    """Deploy servers page - requires authentication"""
+    return render_template('deploy_servers.html')
 
 
 @main_bp.route('/logout')
@@ -84,28 +87,21 @@ def logout_post():
 @main_bp.route('/users')
 @require_auth
 def users():
-    """User management page"""
+    """User management page - requires authentication"""
     return render_template('user_management.html')
-
-
-@main_bp.route('/deploy-servers')
-@require_auth
-def deploy_servers():
-    """Deploy servers page"""
-    return render_template('deploy_servers.html')
 
 
 @main_bp.route('/metrics')
 @require_auth
 def metrics():
-    """Metrics dashboard page"""
+    """Metrics dashboard page - requires authentication"""
     return render_template('metrics.html')
 
 
 @main_bp.route('/services-monitor')
 @require_auth
 def services_monitor():
-    """Services monitor page"""
+    """Services monitor page - requires authentication"""
     return render_template('services_monitor.html')
 
 

@@ -1,352 +1,655 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🏠 Dashboard - Trigger Deploy Server</title>
-  <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-  
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-  
-  <!-- Custom CSS -->
-  <link href="/static/css/styles.css" rel="stylesheet">
-  <link href="/static/css/dashboard.css" rel="stylesheet">
-  
-  <style>
-    .service-card {
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      height: 100%;
-    }
-    
-    .service-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .status-healthy {
-      border-left: 4px solid #28a745;
-      background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), transparent);
-    }
-    
-    .status-warning {
-      border-left: 4px solid #ffc107;
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), transparent);
-    }
-    
-    .status-error {
-      border-left: 4px solid #dc3545;
-      background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), transparent);
-    }
-    
-    .status-unknown {
-      border-left: 4px solid #6c757d;
-      background: linear-gradient(135deg, rgba(108, 117, 125, 0.1), transparent);
-    }
-    
-    .status-badge {
-      font-size: 0.75rem;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-    }
-    
-    .status-badge.status-healthy {
-      background: #d4edda;
-      color: #155724;
-    }
-    
-    .status-badge.status-warning {
-      background: #fff3cd;
-      color: #856404;
-    }
-    
-    .status-badge.status-error {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    
-    .stats-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 12px;
-    }
-    
-    .stats-number {
-      font-size: 2rem;
-      font-weight: bold;
-    }
-    
-    .navbar-brand {
-      font-weight: bold;
-    }
-    
-    .service-details small {
-      line-height: 1.4;
-    }
-    
-    .alert {
-      border-radius: 8px;
-    }
-    
-    .btn {
-      border-radius: 6px;
-    }
-    
-    .card {
-      border-radius: 8px;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-    
-    .notification-badge {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: #dc3545;
-      color: white;
-      border-radius: 50%;
-      padding: 2px 6px;
-      font-size: 0.7rem;
-      font-weight: bold;
-      min-width: 16px;
-      text-align: center;
-      animation: pulse 2s infinite;
-    }
-  </style>
-</head>
-<body>
-  <!-- Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand" href="/dashboard">
-        <i class="bi bi-server"></i> Trigger Deploy
-      </a>
-      
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link active" href="/dashboard">
-              <i class="bi bi-house-door"></i> Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/deploy-servers">
-              <i class="bi bi-cloud-arrow-up"></i> Deploy
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/services-monitor">
-              <i class="bi bi-activity"></i> Monitor
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/metrics">
-              <i class="bi bi-graph-up"></i> Metrics
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/users">
-              <i class="bi bi-people"></i> Users
-            </a>
-          </li>
-        </ul>
-        
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <span class="navbar-text me-3">
-              <i class="bi bi-clock"></i> Last updated: <span id="lastUpdated">--:--:--</span>
-            </span>
-          </li>
-          <li class="nav-item">
-            <button class="btn btn-outline-light btn-sm me-2" id="refreshBtn">
-              <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-              <i class="bi bi-person-circle"></i> Account
-            </a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="/users"><i class="bi bi-person"></i> Profile</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+{% extends "base.html" %}
 
-  <!-- Main Content -->
-  <div class="container mt-4">
+{% block title %}Dashboard - Trigger Deploy{% endblock %}
+{% block description %}Monitor and manage your infrastructure services{% endblock %}
+
+{% set current_page = "dashboard" %}
+{% set show_nav = true %}
+{% set show_footer = true %}
+
+{% block nav_controls %}
+<button id="refreshBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition duration-200">
+    <i class="fas fa-sync-alt mr-1"></i>Refresh
+</button>
+<span class="text-sm text-gray-500">
+    <i class="fas fa-clock mr-1"></i>
+    Last updated: <span id="lastUpdated">--:--:--</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 animate-fade-in">
     <!-- Dashboard Header -->
-    <div class="row mb-4">
-      <div class="col">
-        <h2><i class="bi bi-speedometer2"></i> Services Dashboard</h2>
-        <p class="text-muted">Monitor the status of all your services and infrastructure</p>
-      </div>
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+            <i class="fas fa-tachometer-alt mr-3 text-blue-500"></i>
+            Dashboard
+        </h1>
+        <p class="text-gray-600 mt-2">Monitor and manage your infrastructure services</p>
     </div>
 
     <!-- Summary Statistics -->
-    <div class="row mb-4">
-      <div class="col-md-3 mb-3">
-        <div class="card stats-card text-white">
-          <div class="card-body text-center">
-            <div class="stats-number" id="totalServices">0</div>
-            <div>Total Services</div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white transform hover:scale-105 transition duration-300">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-blue-100">Total Services</p>
+                    <p class="text-3xl font-bold" id="totalServices">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </p>
+                </div>
+                <i class="fas fa-server text-2xl text-blue-200"></i>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white transform hover:scale-105 transition duration-300">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-green-100">Healthy Services</p>
+                    <p class="text-3xl font-bold" id="healthyServices">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </p>
+                </div>
+                <i class="fas fa-check-circle text-2xl text-green-200"></i>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl p-6 text-white transform hover:scale-105 transition duration-300">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-yellow-100">Issues</p>
+                    <p class="text-3xl font-bold" id="unhealthyServices">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </p>
+                </div>
+                <i class="fas fa-exclamation-triangle text-2xl text-yellow-200"></i>
+            </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white transform hover:scale-105 transition duration-300">
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="text-red-100">Critical Down</p>
+                    <p class="text-3xl font-bold" id="criticalDown">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </p>
+                </div>
+                <i class="fas fa-times-circle text-2xl text-red-200"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Grid -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">
+            <i class="fas fa-list-ul mr-2"></i>Services Status
+        </h2>
+        <div id="servicesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading State -->
+            <div class="col-span-full flex justify-center items-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p class="text-gray-600">Loading services...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">
+            <i class="fas fa-bolt mr-2"></i>Quick Actions
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Deploy Services -->
+            <a href="/deploy-servers" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-blue-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+                        <i class="fas fa-cloud-upload-alt text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 mb-2">Deploy Services</h3>
+                    <p class="text-sm text-gray-600 mb-4">Deploy to your servers</p>
+                    <div class="inline-flex items-center text-blue-600 text-sm font-medium">
+                        Start Deploy <i class="fas fa-arrow-right ml-1"></i>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- Monitor Services -->
+            <a href="/services-monitor" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-purple-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 mb-2">Monitor Services</h3>
+                    <p class="text-sm text-gray-600 mb-4">Real-time service monitoring</p>
+                    <div class="inline-flex items-center text-purple-600 text-sm font-medium">
+                        View Monitor <i class="fas fa-arrow-right ml-1"></i>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- View Metrics -->
+            <a href="/metrics" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-green-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+                        <i class="fas fa-chart-bar text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 mb-2">View Metrics</h3>
+                    <p class="text-sm text-gray-600 mb-4">System performance metrics</p>
+                    <div class="inline-flex items-center text-green-600 text-sm font-medium">
+                        View Metrics <i class="fas fa-arrow-right ml-1"></i>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- User Management -->
+            <a href="/users" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-indigo-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 mb-2">User Management</h3>
+                    <p class="text-sm text-gray-600 mb-4">Manage system users</p>
+                    <div class="inline-flex items-center text-indigo-600 text-sm font-medium">
+                        Manage Users <i class="fas fa-arrow-right ml-1"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-history mr-2 text-blue-500"></i>
+                Recent Activity
+            </h3>
+        </div>
+        <div class="p-6">
+            <div id="recentActivity" class="space-y-4">
+                <!-- Activity items will be loaded here -->
+                <div class="flex items-center text-gray-500">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span class="text-sm">Loading recent activity...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer_subtitle %}Infrastructure deployment and monitoring{% endblock %}
+
+{% block extra_js %}
+<script>
+    class DashboardManager {
+        constructor() {
+            this.services = [];
+            this.init();
+        }
+        
+        async init() {
+            await this.loadServices();
+            this.setupEventListeners();
+            this.startAutoRefresh();
+        }
+        
+        setupEventListeners() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.refreshServices());
+            }
+        }
+        
+        async loadServices() {
+            try {
+                console.log('📡 Loading dashboard data...');
+                const response = await fetch('/api/services/status');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                this.services = data;
+                this.updateDashboard();
+                updateLastUpdated();
+                
+            } catch (error) {
+                console.error('❌ Failed to load services:', error);
+                this.showError('Failed to load dashboard data: ' + error.message);
+            }
+        }
+        
+        async refreshServices() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin mr-1"></i>Refreshing...';
+            }
+            
+            await this.loadServices();
+            
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>Refresh';
+            }
+            
+            showNotification('Dashboard refreshed successfully', 'success');
+        }
+        
+        updateDashboard() {
+            this.updateSummaryStats();
+            this.updateServiceCards();
+        }
+        
+        updateSummaryStats() {
+            const summary = this.services.summary || {};
+            
+            this.updateStat('totalServices', summary.total_services || 0);
+            this.updateStat('healthyServices', summary.healthy_services || 0);
+            this.updateStat('unhealthyServices', summary.unhealthy_services || 0);
+            this.updateStat('criticalDown', summary.critical_down || 0);
+        }
+        
+        updateStat(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = value;
+                
+                // Add pulse animation for critical stats
+                if ((elementId === 'criticalDown' || elementId === 'unhealthyServices') && value > 0) {
+                    element.parentElement.parentElement.classList.add('animate-pulse-slow');
+                } else {
+                    element.parentElement.parentElement.classList.remove('animate-pulse-slow');
+                }
+            }
+        }
+        
+        updateServiceCards() {
+            const container = document.getElementById('servicesContainer');
+            if (!container) return;
+            
+            const localServices = this.services.local_services || [];
+            const remoteServices = this.services.remote_services || [];
+            const allServices = [...localServices, ...remoteServices];
+            
+            if (allServices.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-server text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600 text-lg font-medium">No services configured</p>
+                        <p class="text-gray-500 text-sm">Add services to your configuration to start monitoring</p>
+                        <a href="/docs" class="inline-block mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-book mr-2"></i>View Documentation
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = allServices.map(service => this.createServiceCard(service)).join('');
+        }
+        
+        createServiceCard(service) {
+            const status = service.status || 'unknown';
+            const { color, bgColor, icon } = this.getStatusStyles(status);
+            const isCritical = service.critical && status !== 'healthy';
+            
+            return `
+                <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition duration-200 ${isCritical ? 'border-2 border-red-200 bg-red-50' : 'border border-gray-200'}">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 ${bgColor} rounded-lg flex items-center justify-center text-white mr-3">
+                                <i class="fas ${this.getServiceIcon(service)} ${isCritical ? 'animate-pulse' : ''}"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">${service.name || 'Unknown Service'}</h3>
+                                <p class="text-sm text-gray-500">${service.description || 'No description'}</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${color}">
+                            <i class="fas ${icon} mr-1"></i>${status.toUpperCase()}
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-2 text-sm">
+                        ${service.url ? `
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">URL:</span>
+                                <span class="font-mono text-xs text-gray-900 truncate max-w-32">${service.url}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${service.port ? `
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Port:</span>
+                                <span class="text-gray-900">${service.port}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${service.response_time ? `
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Response Time:</span>
+                                <span class="text-gray-900">${service.response_time}${typeof service.response_time === 'number' ? 'ms' : ''}</span>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Last Check:</span>
+                            <span class="text-gray-900">${this.formatTimestamp(service.timestamp)}</span>
+                        </div>
+                        
+                        ${service.critical ? `
+                            <div class="flex justify-between">
+                                <span class="text-red-600">Priority:</span>
+                                <span class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">Critical</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${service.message && status !== 'healthy' ? `
+                        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p class="text-sm text-yellow-800">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                ${service.message}
+                            </p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        getStatusStyles(status) {
+            switch (status.toLowerCase()) {
+                case 'healthy':
+                case 'running':
+                case 'online':
+                    return {
+                        color: 'bg-green-100 text-green-700',
+                        bgColor: 'bg-green-500',
+                        icon: 'fa-check-circle'
+                    };
+                case 'unhealthy':
+                case 'offline':
+                case 'error':
+                    return {
+                        color: 'bg-red-100 text-red-700',
+                        bgColor: 'bg-red-500',
+                        icon: 'fa-times-circle'
+                    };
+                case 'warning':
+                    return {
+                        color: 'bg-yellow-100 text-yellow-700',
+                        bgColor: 'bg-yellow-500',
+                        icon: 'fa-exclamation-triangle'
+                    };
+                default:
+                    return {
+                        color: 'bg-gray-100 text-gray-700',
+                        bgColor: 'bg-gray-500',
+                        icon: 'fa-question-circle'
+                    };
+            }
+        }
+        
+        getServiceIcon(service) {
+            if (service.type === 'docker') return 'fa-docker';
+            if (service.url || service.type === 'http') return 'fa-globe';
+            return 'fa-server';
+        }
+        
+        formatTimestamp(timestamp) {
+            if (!timestamp) return 'Never';
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString();
+            } catch {
+                return 'Invalid';
+            }
+        }
+        
+        showError(message) {
+            const container = document.getElementById('servicesContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div class="col-span-full">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-6">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-xl mr-3"></i>
+                                <div>
+                                    <h4 class="text-red-800 font-semibold">Error Loading Services</h4>
+                                    <p class="text-red-600">${message}</p>
+                                    <button onclick="dashboardManager.refreshServices()" class="mt-3 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200">
+                                        <i class="fas fa-sync-alt mr-1"></i>Try Again
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            showNotification(message, 'error');
+        }
+        
+        startAutoRefresh() {
+            // Refresh every 30 seconds
+            setInterval(() => {
+                this.loadServices();
+            }, 30000);
+        }
+    }
+    
+    // Initialize dashboard
+    let dashboardManager;
+    document.addEventListener('DOMContentLoaded', function() {
+        dashboardManager = new DashboardManager();
+    });
+</script>
+{% endblock %}
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-blue-100">Total Services</p>
+            <p class="text-3xl font-bold" id="totalServices">0</p>
           </div>
+          <i class="fas fa-server text-2xl text-blue-200"></i>
         </div>
       </div>
-      <div class="col-md-3 mb-3">
-        <div class="card bg-success text-white">
-          <div class="card-body text-center">
-            <div class="stats-number" id="healthyServices">0</div>
-            <div>Healthy</div>
+      
+      <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-green-100">Healthy</p>
+            <p class="text-3xl font-bold" id="healthyServices">0</p>
           </div>
+          <i class="fas fa-check-circle text-2xl text-green-200"></i>
         </div>
       </div>
-      <div class="col-md-3 mb-3">
-        <div class="card bg-warning text-white">
-          <div class="card-body text-center">
-            <div class="stats-number" id="unhealthyServices">0</div>
-            <div>Issues</div>
+      
+      <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl p-6 text-white">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-yellow-100">Issues</p>
+            <p class="text-3xl font-bold" id="unhealthyServices">0</p>
           </div>
+          <i class="fas fa-exclamation-triangle text-2xl text-yellow-200"></i>
         </div>
       </div>
-      <div class="col-md-3 mb-3">
-        <div class="card bg-danger text-white">
-          <div class="card-body text-center">
-            <div class="stats-number" id="criticalDown">0</div>
-            <div>Critical Down</div>
+      
+      <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-red-100">Critical Down</p>
+            <p class="text-3xl font-bold" id="criticalDown">0</p>
           </div>
+          <i class="fas fa-times-circle text-2xl text-red-200"></i>
         </div>
       </div>
     </div>
 
     <!-- Auto-refresh Controls -->
-    <div class="row mb-4">
-      <div class="col">
-        <div class="card bg-light">
-          <div class="card-body py-2">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="autoRefreshToggle" checked>
-                <label class="form-check-label" for="autoRefreshToggle">
-                  <i class="bi bi-arrow-clockwise"></i> Auto Refresh (30s)
-                </label>
-              </div>
-              <div class="text-muted small">
-                <i class="bi bi-info-circle"></i> Dashboard updates automatically every 30 seconds
-              </div>
-            </div>
-          </div>
+    <div class="bg-white rounded-xl p-4 mb-8 border border-gray-200">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center mb-3 sm:mb-0">
+          <input type="checkbox" id="autoRefreshToggle" checked class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+          <label for="autoRefreshToggle" class="ml-2 text-sm font-medium text-gray-700">
+            <i class="fas fa-sync-alt mr-1"></i>Auto Refresh (30s)
+          </label>
+        </div>
+        <div class="text-sm text-gray-500">
+          <i class="fas fa-info-circle mr-1"></i>Dashboard updates automatically every 30 seconds
         </div>
       </div>
     </div>
 
     <!-- Services Grid -->
-    <div class="row" id="servicesContainer">
-      <!-- Services will be loaded here via JavaScript -->
-      <div class="col-12">
-        <div class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">
+        <i class="fas fa-list-ul mr-2"></i>Services Status
+      </h2>
+      <div id="servicesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Loading State -->
+        <div class="col-span-full flex justify-center items-center py-12">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading services...</p>
           </div>
-          <div class="mt-3">Loading services...</div>
         </div>
       </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="row mt-5 mb-4">
-      <div class="col">
-        <h4><i class="bi bi-lightning"></i> Quick Actions</h4>
-      </div>
-    </div>
-    
-    <div class="row">
-      <div class="col-md-6 col-lg-3 mb-3">
-        <div class="card action-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
-            <h6 class="mt-3">Deploy Services</h6>
-            <p class="card-text small text-muted">Deploy applications to your servers</p>
-            <a href="/deploy-servers" class="btn btn-primary btn-sm">Go to Deploy</a>
-          </div>
-        </div>
-      </div>
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">
+        <i class="fas fa-bolt mr-2"></i>Quick Actions
+      </h2>
       
-      <div class="col-md-6 col-lg-3 mb-3">
-        <div class="card action-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-graph-up fs-1 text-success"></i>
-            <h6 class="mt-3">View Metrics</h6>
-            <p class="card-text small text-muted">Monitor system performance</p>
-            <a href="/metrics" class="btn btn-success btn-sm">View Metrics</a>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Deploy Services -->
+        <a href="/deploy-servers" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-blue-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+          <div class="text-center">
+            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+              <i class="fas fa-cloud-upload-alt text-xl"></i>
+            </div>
+            <h3 class="font-semibold text-gray-900 mb-2">Deploy Services</h3>
+            <p class="text-sm text-gray-600 mb-4">Deploy applications to your servers</p>
+            <div class="inline-flex items-center text-blue-600 text-sm font-medium">
+              Go to Deploy <i class="fas fa-arrow-right ml-1"></i>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-3 mb-3">
-        <div class="card action-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-people fs-1 text-info"></i>
-            <h6 class="mt-3">User Management</h6>
-            <p class="card-text small text-muted">Manage user accounts and permissions</p>
-            <a href="/users" class="btn btn-info btn-sm">Manage Users</a>
+        </a>
+        
+        <!-- View Metrics -->
+        <a href="/metrics" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-green-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+          <div class="text-center">
+            <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+              <i class="fas fa-chart-line text-xl"></i>
+            </div>
+            <h3 class="font-semibold text-gray-900 mb-2">View Metrics</h3>
+            <p class="text-sm text-gray-600 mb-4">Monitor system performance</p>
+            <div class="inline-flex items-center text-green-600 text-sm font-medium">
+              View Metrics <i class="fas fa-arrow-right ml-1"></i>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-3 mb-3">
-        <div class="card action-card h-100">
-          <div class="card-body text-center">
-            <i class="bi bi-book fs-1 text-warning"></i>
-            <h6 class="mt-3">Documentation</h6>
-            <p class="card-text small text-muted">API docs and help guides</p>
-            <a href="/docs" class="btn btn-warning btn-sm">View Docs</a>
+        </a>
+        
+        <!-- User Management -->
+        <a href="/users" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-purple-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+          <div class="text-center">
+            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+              <i class="fas fa-users text-xl"></i>
+            </div>
+            <h3 class="font-semibold text-gray-900 mb-2">User Management</h3>
+            <p class="text-sm text-gray-600 mb-4">Manage accounts and permissions</p>
+            <div class="inline-flex items-center text-purple-600 text-sm font-medium">
+              Manage Users <i class="fas fa-arrow-right ml-1"></i>
+            </div>
           </div>
-        </div>
+        </a>
+        
+        <!-- Documentation -->
+        <a href="/docs" class="group bg-white rounded-xl p-6 border border-gray-200 hover:border-orange-300 hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+          <div class="text-center">
+            <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white mx-auto mb-4 group-hover:scale-110 transition duration-300">
+              <i class="fas fa-book text-xl"></i>
+            </div>
+            <h3 class="font-semibold text-gray-900 mb-2">Documentation</h3>
+            <p class="text-sm text-gray-600 mb-4">API docs and help guides</p>
+            <div class="inline-flex items-center text-orange-600 text-sm font-medium">
+              View Docs <i class="fas fa-arrow-right ml-1"></i>
+            </div>
+          </div>
+        </a>
       </div>
     </div>
   </div>
 
   <!-- Footer -->
-  <footer class="bg-light mt-5 py-4">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-6">
-          <h6>Trigger Deploy Server</h6>
-          <p class="text-muted small">Infrastructure deployment and monitoring dashboard</p>
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center">
+        <div class="flex items-center mb-4 sm:mb-0">
+          <div class="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white mr-2">
+            <i class="fas fa-rocket text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Trigger Deploy Server</h3>
+            <p class="text-xs text-gray-600">Infrastructure deployment and monitoring</p>
+          </div>
         </div>
-        <div class="col-md-6 text-md-end">
-          <small class="text-muted">
-            <i class="bi bi-clock"></i> Server Time: <span id="serverTime"></span>
-          </small>
+        <div class="text-sm text-gray-500">
+          <i class="fas fa-clock mr-1"></i>
+          Server Time: <span id="serverTime">--:--:--</span>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  
   <!-- Services Monitor JS -->
   <script src="/static/services-monitor.js"></script>
   
   <script>
+    // User menu toggle
+    document.getElementById('userMenuButton').addEventListener('click', function(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('userMenu');
+      menu.classList.toggle('hidden');
+    });
+    
+    // Close user menu when clicking outside
+    document.addEventListener('click', function() {
+      document.getElementById('userMenu').classList.add('hidden');
+    });
+    
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', async function() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+          window.location.href = '/login?message=Successfully logged out';
+        } else {
+          alert('Failed to logout. Please try again.');
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('Network error. Please try again.');
+      }
+    });
+    
     // Update server time
     function updateServerTime() {
       document.getElementById('serverTime').textContent = new Date().toLocaleString();

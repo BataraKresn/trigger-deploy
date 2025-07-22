@@ -60,8 +60,8 @@ class Config:
     MAX_LOG_SIZE: int = int(os.getenv("MAX_LOG_SIZE", "10485760"))
     
     # Server Configuration  
-    SERVERS_FILE: str = os.getenv("SERVERS_FILE", "config/servers.json")
-    SERVICES_FILE: str = os.getenv("SERVICES_FILE", "config/services.json")
+    SERVERS_FILE: str = os.getenv("SERVERS_FILE", "static/servers.json")
+    SERVICES_FILE: str = os.getenv("SERVICES_FILE", "static/services.json")
     
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
