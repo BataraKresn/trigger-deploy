@@ -191,41 +191,34 @@ def run_async(coro):
     
     def run_in_thread():
         """Run coroutine in a new thread with its own event loop"""
-        try:
-            # Check if there's already an event loop in this thread
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, we need a new thread
-                raise RuntimeError("Event loop is running")
-        except RuntimeError:
-            # No event loop in this thread, create a new one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        # Always create a new event loop for database operations
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         
         try:
-            return loop.run_until_complete(coro)
+            result = loop.run_until_complete(coro)
+            return result
         except Exception as e:
             logger.error(f"Error in async execution: {e}")
             raise
         finally:
+            # Clean shutdown of the event loop
             try:
-                # Only close the loop if we created it
-                if not loop.is_running():
-                    # Cancel all pending tasks
-                    pending = asyncio.all_tasks(loop)
-                    if pending:
-                        for task in pending:
-                            task.cancel()
-                        try:
-                            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-                        except Exception:
-                            pass
-                    loop.close()
+                # Cancel all remaining tasks
+                pending = asyncio.all_tasks(loop)
+                if pending:
+                    for task in pending:
+                        task.cancel()
+                    # Wait for cancellation to complete
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                
+                # Close the loop
+                loop.close()
             except Exception as cleanup_error:
                 logger.warning(f"Error during loop cleanup: {cleanup_error}")
     
     try:
-        # Use thread-based execution to avoid loop conflicts
+        # Run in a separate thread to avoid conflicts with any existing event loop
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(run_in_thread)
             return future.result(timeout=30)

@@ -712,11 +712,14 @@ class ContactMessageManager:
 # Global database manager instance
 db_manager = None
 contact_manager = None
+_init_lock = None
 
 
 def get_db_manager() -> Optional[PostgreSQLManager]:
     """Get database manager instance (synchronous)"""
     global db_manager
+    if db_manager is None:
+        init_db_manager_sync()
     return db_manager
 
 
@@ -730,29 +733,53 @@ async def get_db_manager_async() -> PostgreSQLManager:
 
 
 def init_db_manager_sync():
-    """Initialize database manager synchronously"""
-    import asyncio
+    """Initialize database manager synchronously with proper thread safety"""
     import threading
     
-    def run_in_thread():
-        """Run initialization in a new thread with its own event loop"""
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop.run_until_complete(get_db_manager_async())
-        finally:
-            loop.close()
+    global db_manager, _init_lock
     
-    global db_manager
-    if db_manager is None:
+    # Thread-safe initialization
+    if _init_lock is None:
+        _init_lock = threading.Lock()
+    
+    with _init_lock:
+        if db_manager is not None:
+            return db_manager
+        
         try:
+            # Create database manager
+            db_manager = PostgreSQLManager()
+            
+            # Initialize in a controlled way
+            import asyncio
             import concurrent.futures
+            
+            def run_init():
+                """Run initialization in a dedicated thread with new event loop"""
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(db_manager.initialize())
+                except Exception as e:
+                    logger.error(f"Database initialization failed: {e}")
+                    raise
+                finally:
+                    try:
+                        loop.close()
+                    except:
+                        pass
+            
+            # Run initialization with timeout
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(run_in_thread)
-                db_manager = future.result(timeout=30)
-                logger.info("Database manager initialized synchronously")
+                future = executor.submit(run_init)
+                future.result(timeout=30)
+            
+            logger.info("Database manager initialized synchronously")
+            return db_manager
+            
         except Exception as e:
             logger.error(f"Failed to initialize database manager: {e}")
+            db_manager = None
             raise
 
 
