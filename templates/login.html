@@ -91,7 +91,7 @@
       <div class="mt-8 text-center space-y-3">
         <a href="/" class="inline-flex items-center text-gray-600 hover:text-blue-600 transition duration-200">
           <i class="fas fa-home mr-2"></i>
-          Back to Home
+          🏠 Home
         </a>
         
         {% if show_demo_credentials %}
@@ -186,65 +186,12 @@
       loginBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Sign In';
     });
   </script>
-</body>
-</html>
-        </div>
-        <div class="status-item">
-          <span>Version: 2.1.0</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Background Animation -->
-    <div class="background-animation">
-      <div class="floating-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-        <div class="shape shape-4"></div>
-        <div class="shape shape-5"></div>
-      </div>
-    </div>
-  </div>
   
-  <!-- Forgot Password Modal -->
-  <div id="forgotPasswordModal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>🔄 Reset Password</h3>
-        <button type="button" class="modal-close" onclick="closeForgotPassword()">✖️</button>
-      </div>
-      <div class="modal-body">
-        <p>Contact your system administrator to reset your password.</p>
-        <div class="form-group">
-          <label for="resetEmail">📧 Email Address</label>
-          <input 
-            type="email" 
-            id="resetEmail" 
-            class="form-control" 
-            placeholder="Enter your email"
-          >
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" onclick="closeForgotPassword()" class="btn btn-secondary">
-          Cancel
-        </button>
-        <button type="button" onclick="requestPasswordReset()" class="btn btn-primary">
-          📧 Send Reset Request
-        </button>
-      </div>
+  <!-- Footer dengan Versi -->
+  <footer class="fixed bottom-0 right-0 p-4">
+    <div class="text-xs text-gray-500">
+      Version: 2.1.0
     </div>
-  </div>
-  
-  <!-- Loading Spinner -->
-  <div id="loginSpinner" class="spinner-overlay hidden">
-    <div class="spinner-content">
-      <div class="spinner"></div>
-      <p class="spinner-text">🔐 Authenticating...</p>
-    </div>
-  </div>
-
-  <script src="/static/js/login.js"></script>
+  </footer>
 </body>
 </html>
