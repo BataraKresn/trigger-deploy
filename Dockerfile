@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    openssh-client jq bash iputils-ping net-tools curl dnsutils procps \
+    openssh-client jq bash iputils-ping net-tools curl dnsutils procps nano vim \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
