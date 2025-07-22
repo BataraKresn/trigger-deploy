@@ -30,11 +30,11 @@ RUN mkdir -p logs trigger-logs
 RUN chmod +x scripts/*.sh
 
 # Expose port
-EXPOSE 5000
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run application
-CMD ["gunicorn", "--timeout", "600", "--workers=4", "--worker-class=gevent", "--bind", "0.0.0.0:5000", "wsgi:app"]
+CMD ["gunicorn", "--timeout", "600", "--workers=4", "--worker-class=gevent", "--bind", "0.0.0.0:8000", "wsgi:app"]
