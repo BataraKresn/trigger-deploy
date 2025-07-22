@@ -100,6 +100,10 @@ class PostgreSQLManager:
             
         from .config import config as app_config
         
+        # Validate app_config is available
+        if not app_config:
+            raise Exception("Application config is not available")
+        
         # Build connection parameters
         if database_url:
             self.database_url = database_url
@@ -108,29 +112,88 @@ class PostgreSQLManager:
         else:
             self.database_url = app_config.database_url
         
-        # Parse URL for connection parameters
-        self._parse_database_url()
+        # Validate database_url is available
+        if not self.database_url:
+            raise Exception("Database URL is not configured")
         
-        # Pool settings
-        self.min_connections = config.get('min_size', app_config.POSTGRES_MIN_CONNECTIONS) if config else app_config.POSTGRES_MIN_CONNECTIONS
-        self.max_connections = config.get('max_size', app_config.POSTGRES_MAX_CONNECTIONS) if config else app_config.POSTGRES_MAX_CONNECTIONS
+        logger.info(f"Using database URL: {self.database_url.replace(self.database_url.split('@')[0].split('//')[1], '***:***')}")
+        
+        # Parse URL for connection parameters
+        try:
+            self._parse_database_url()
+        except Exception as e:
+            logger.error(f"Failed to parse database URL: {e}")
+            logger.error(f"Database URL format should be: postgresql://user:password@host:port/database")
+            raise
+        
+        # Pool settings with validation
+        try:
+            self.min_connections = config.get('min_size', app_config.POSTGRES_MIN_CONNECTIONS) if config else app_config.POSTGRES_MIN_CONNECTIONS
+            self.max_connections = config.get('max_size', app_config.POSTGRES_MAX_CONNECTIONS) if config else app_config.POSTGRES_MAX_CONNECTIONS
+        except AttributeError as e:
+            logger.error(f"Failed to get pool configuration: {e}")
+            logger.error("Using default pool settings")
+            self.min_connections = 1
+            self.max_connections = 20
         
         self.pool = None
         self._initialized = False
         self._initialized_instance = True
         
         logger.info(f"PostgreSQL Manager initialized for {self.host}:{self.port}/{self.database}")
+        logger.info(f"Pool settings: min={self.min_connections}, max={self.max_connections}")
     
     def _parse_database_url(self):
         """Parse database URL into components"""
         from urllib.parse import urlparse
         
-        parsed = urlparse(self.database_url)
-        self.host = parsed.hostname or 'localhost'
-        self.port = parsed.port or 5432
-        self.database = parsed.path.lstrip('/') if parsed.path else 'trigger_deploy'
-        self.user = parsed.username or 'trigger_deploy_user'
-        self.password = parsed.password or 'secure_password_123'
+        try:
+            parsed = urlparse(self.database_url)
+            
+            # Validate URL format
+            if not parsed.scheme or parsed.scheme != 'postgresql':
+                raise ValueError(f"Invalid database URL scheme: {parsed.scheme}. Expected 'postgresql'")
+            
+            self.host = parsed.hostname
+            self.port = parsed.port
+            self.database = parsed.path.lstrip('/') if parsed.path else None
+            self.user = parsed.username
+            self.password = parsed.password
+            
+            # Validate required components
+            missing_components = []
+            if not self.host:
+                missing_components.append('hostname')
+            if not self.port:
+                missing_components.append('port')
+            if not self.database:
+                missing_components.append('database')
+            if not self.user:
+                missing_components.append('username')
+            if not self.password:
+                missing_components.append('password')
+            
+            if missing_components:
+                raise ValueError(f"Missing required database URL components: {', '.join(missing_components)}")
+            
+            # Set defaults if missing
+            if not self.host:
+                self.host = 'localhost'
+            if not self.port:
+                self.port = 5432
+            if not self.database:
+                self.database = 'trigger_deploy'
+            if not self.user:
+                self.user = 'trigger_deploy_user'
+            if not self.password:
+                self.password = 'secure_password_123'
+                
+            logger.info(f"Parsed database components: host={self.host}, port={self.port}, database={self.database}, user={self.user}")
+            
+        except Exception as e:
+            logger.error(f"Error parsing database URL: {e}")
+            logger.error(f"URL format: {self.database_url}")
+            raise ValueError(f"Failed to parse database URL: {e}")
     
     def initialize(self):
         """Initialize connection pool (sync version)"""
@@ -149,7 +212,11 @@ class PostgreSQLManager:
                 if SYNC_MODE:
                     # Get SSL configuration
                     from .config import config as app_config
-                    ssl_config = app_config.get_postgres_ssl_config()
+                    try:
+                        ssl_config = app_config.get_postgres_ssl_config()
+                    except Exception as ssl_error:
+                        logger.warning(f"Failed to get SSL config: {ssl_error}")
+                        ssl_config = {'sslmode': 'disable'}
                     
                     # Build connection parameters
                     conn_params = {
@@ -163,8 +230,21 @@ class PostgreSQLManager:
                         'application_name': 'trigger_deploy_app'
                     }
                     
+                    # Validate all required parameters are present
+                    missing_params = []
+                    for param in ['host', 'port', 'database', 'user', 'password']:
+                        if not conn_params.get(param):
+                            missing_params.append(param)
+                    
+                    if missing_params:
+                        raise ValueError(f"Missing required connection parameters: {', '.join(missing_params)}")
+                    
                     # Add SSL parameters if configured
-                    conn_params.update(ssl_config)
+                    try:
+                        conn_params.update(ssl_config)
+                    except Exception as ssl_update_error:
+                        logger.warning(f"Failed to update SSL config: {ssl_update_error}")
+                        conn_params['sslmode'] = 'disable'
                     
                     # Validate pool sizes
                     if self.max_connections > 100:
@@ -180,6 +260,10 @@ class PostgreSQLManager:
                     logger.info(f"SSL Mode: {ssl_config.get('sslmode', 'default')}")
                     logger.info(f"Connection timeout: {conn_params.get('connect_timeout', 10)}s")
                     
+                    # Log connection parameters (safely)
+                    safe_params = {k: v for k, v in conn_params.items() if k != 'password'}
+                    logger.info(f"Connection parameters: {safe_params}")
+                    
                     try:
                         self.pool = psycopg2.pool.ThreadedConnectionPool(
                             minconn=self.min_connections,
@@ -188,6 +272,7 @@ class PostgreSQLManager:
                         )
                     except Exception as pool_error:
                         logger.error(f"Pool creation failed: {pool_error}")
+                        logger.error(f"Error type: {type(pool_error).__name__}")
                         safe_params = {k: v for k, v in conn_params.items() if k != 'password'}
                         logger.error(f"Connection params (excluding password): {safe_params}")
                         raise
@@ -259,6 +344,36 @@ class PostgreSQLManager:
             except Exception as e:
                 logger.error(f"Unexpected error initializing PostgreSQL connection pool: {e}")
                 logger.error(f"Error type: {type(e).__name__}")
+                
+                # Try to provide more specific error information
+                if isinstance(e, KeyError):
+                    logger.error(f"KeyError - Missing key: {str(e)}")
+                    logger.error("This usually indicates missing environment variables or configuration")
+                    
+                    # List current environment variables for debugging
+                    postgres_env_vars = {k: v for k, v in os.environ.items() if k.startswith('POSTGRES_')}
+                    logger.error(f"Available POSTGRES_* environment variables: {list(postgres_env_vars.keys())}")
+                    
+                    # Check specific variables that might be missing
+                    required_vars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']
+                    missing_vars = [var for var in required_vars if not os.getenv(var)]
+                    if missing_vars:
+                        logger.error(f"Missing environment variables: {missing_vars}")
+                
+                elif isinstance(e, AttributeError):
+                    logger.error(f"AttributeError - Missing attribute: {str(e)}")
+                    logger.error("This usually indicates a problem with the config object")
+                
+                # Log current configuration state
+                try:
+                    logger.error(f"Current database URL: {self.database_url.replace(self.database_url.split('@')[0].split('//')[1], '***:***') if hasattr(self, 'database_url') else 'Not set'}")
+                    logger.error(f"Parsed host: {getattr(self, 'host', 'Not set')}")
+                    logger.error(f"Parsed port: {getattr(self, 'port', 'Not set')}")
+                    logger.error(f"Parsed database: {getattr(self, 'database', 'Not set')}")
+                    logger.error(f"Parsed user: {getattr(self, 'user', 'Not set')}")
+                except Exception as log_error:
+                    logger.error(f"Failed to log configuration state: {log_error}")
+                
                 self.pool = None
                 raise
 
@@ -1010,17 +1125,64 @@ def get_db_manager() -> Optional[PostgreSQLManager]:
             if db_manager is None:
                 try:
                     logger.info("Initializing PostgreSQL database manager...")
+                    
+                    # Pre-validate configuration before creating manager
+                    from .config import config as app_config
+                    
+                    # Check if required configuration is available
+                    if not hasattr(app_config, 'DATABASE_URL') or not app_config.DATABASE_URL:
+                        logger.error("DATABASE_URL is not configured")
+                        return None
+                    
+                    # Check environment variables that might be missing
+                    required_env_vars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']
+                    missing_env_vars = []
+                    for var in required_env_vars:
+                        if not os.getenv(var):
+                            missing_env_vars.append(var)
+                    
+                    if missing_env_vars:
+                        logger.warning(f"Missing environment variables: {missing_env_vars}")
+                        logger.warning("Will use default values from configuration")
+                    
+                    # Create database manager
                     db_manager = PostgreSQLManager()
+                    
+                    # Initialize the manager
                     db_manager.initialize()
                     logger.info("Database manager initialized successfully")
+                    
+                except KeyError as ke:
+                    logger.error(f"KeyError during database initialization: {ke}")
+                    logger.error("This usually indicates missing environment variables or configuration keys")
+                    logger.error("Check that all required PostgreSQL environment variables are set")
+                    
+                    # List available environment variables for debugging
+                    postgres_env_vars = {k: v for k, v in os.environ.items() if k.startswith('POSTGRES_')}
+                    logger.error(f"Available POSTGRES_* environment variables: {list(postgres_env_vars.keys())}")
+                    return None
+                    
                 except Exception as e:
                     logger.error(f"Failed to initialize database manager: {e}")
+                    logger.error(f"Error type: {type(e).__name__}")
                     logger.error("Database features will be unavailable")
+                    logger.error("Application will fall back to file-based user management")
+                    
+                    # Additional debugging info
+                    try:
+                        from .config import config as app_config
+                        logger.error(f"Config DATABASE_URL available: {bool(getattr(app_config, 'DATABASE_URL', None))}")
+                        logger.error(f"Config POSTGRES_HOST: {getattr(app_config, 'POSTGRES_HOST', 'Not set')}")
+                        logger.error(f"Config POSTGRES_PORT: {getattr(app_config, 'POSTGRES_PORT', 'Not set')}")
+                    except Exception as config_error:
+                        logger.error(f"Could not access config for debugging: {config_error}")
+                    
                     return None
     
     # Verify pool is still healthy
     if db_manager and not db_manager.pool:
         logger.warning("Database manager exists but pool is None")
+        logger.warning("This indicates the database connection pool failed to initialize")
         return None
     
     return db_manager

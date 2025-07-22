@@ -90,6 +90,9 @@ class Config:
         if not self.JWT_SECRET:
             self.JWT_SECRET = self.TOKEN + "_jwt_secret"
         
+        # Validate PostgreSQL configuration
+        self._validate_postgres_config()
+        
         # Auto-detect environment and adjust database host
         self._adjust_database_host()
         
@@ -100,6 +103,56 @@ class Config:
         # Create log directory if it doesn't exist
         if not os.path.exists(self.LOG_DIR):
             os.makedirs(self.LOG_DIR)
+
+    def _validate_postgres_config(self):
+        """Validate PostgreSQL configuration"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Check for missing required PostgreSQL environment variables
+        required_postgres_vars = {
+            'POSTGRES_HOST': self.POSTGRES_HOST,
+            'POSTGRES_PORT': self.POSTGRES_PORT,
+            'POSTGRES_DB': self.POSTGRES_DB,
+            'POSTGRES_USER': self.POSTGRES_USER,
+            'POSTGRES_PASSWORD': self.POSTGRES_PASSWORD
+        }
+        
+        missing_vars = []
+        for var_name, var_value in required_postgres_vars.items():
+            # Check if the value is the default value (indicating env var not set)
+            env_value = os.getenv(var_name)
+            if not env_value:
+                if var_name == 'POSTGRES_HOST' and var_value != 'localhost':
+                    continue  # Host auto-detection handled elsewhere
+                missing_vars.append(var_name)
+        
+        if missing_vars:
+            logger.warning(f"Missing PostgreSQL environment variables: {missing_vars}")
+            logger.warning("Using default values. For production, set these environment variables:")
+            for var in missing_vars:
+                default_value = required_postgres_vars[var.replace('POSTGRES_', '').lower()]
+                if 'PASSWORD' in var:
+                    logger.warning(f"  {var}=<your_password>")
+                else:
+                    logger.warning(f"  {var}={default_value}")
+        
+        # Validate pool settings
+        if self.POSTGRES_MIN_CONNECTIONS < 1:
+            logger.warning(f"POSTGRES_MIN_CONNECTIONS ({self.POSTGRES_MIN_CONNECTIONS}) must be >= 1, setting to 1")
+            self.POSTGRES_MIN_CONNECTIONS = 1
+        
+        if self.POSTGRES_MAX_CONNECTIONS < self.POSTGRES_MIN_CONNECTIONS:
+            logger.warning(f"POSTGRES_MAX_CONNECTIONS ({self.POSTGRES_MAX_CONNECTIONS}) < min ({self.POSTGRES_MIN_CONNECTIONS}), adjusting")
+            self.POSTGRES_MAX_CONNECTIONS = max(self.POSTGRES_MIN_CONNECTIONS, 20)
+        
+        logger.info(f"PostgreSQL configuration validated:")
+        logger.info(f"  Host: {self.POSTGRES_HOST}")
+        logger.info(f"  Port: {self.POSTGRES_PORT}")
+        logger.info(f"  Database: {self.POSTGRES_DB}")
+        logger.info(f"  User: {self.POSTGRES_USER}")
+        logger.info(f"  Pool: {self.POSTGRES_MIN_CONNECTIONS}-{self.POSTGRES_MAX_CONNECTIONS} connections")
+        logger.info(f"  SSL Mode: {self.POSTGRES_SSL_MODE}")
 
     def _adjust_database_host(self):
         """Auto-detect environment and adjust PostgreSQL host"""
