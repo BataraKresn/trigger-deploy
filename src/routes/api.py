@@ -81,22 +81,11 @@ def login():
                     raise Exception("PostgreSQL database manager not available")
                 db_manager = get_db_manager()
                 
-                # Create a new event loop in thread to avoid conflicts
-                import concurrent.futures
-                import threading
+                if db_manager is None or db_manager.pool is None:
+                    raise Exception("Database manager not properly initialized")
                 
-                def run_auth_in_thread():
-                    # Create new event loop for this thread
-                    new_loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(new_loop)
-                    try:
-                        return new_loop.run_until_complete(db_manager.authenticate_user(username, password))
-                    finally:
-                        new_loop.close()
-                
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(run_auth_in_thread)
-                    user = future.result(timeout=10)
+                # Use asyncio.run for proper async handling
+                user = asyncio.run(db_manager.authenticate_user(username, password))
                         
             except Exception as e:
                 print(f"PostgreSQL authentication error: {e}")

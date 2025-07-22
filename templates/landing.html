@@ -230,27 +230,29 @@
                 </div>
                 <div class="monitoring-visual">
                     <div class="metrics-card">
-                        <h4>System Health</h4>
-                        <div class="metric">
+                        <h4>System Health <span class="system-status-indicator status-healthy">Healthy</span></h4>
+                        <p class="health-last-updated" style="font-size: 0.8em; color: #666; margin-bottom: 15px;">Last updated: Loading...</p>
+                        
+                        <div class="metric health-metric" data-metric="cpu">
                             <span class="metric-label">CPU Usage</span>
                             <div class="metric-bar">
-                                <div class="metric-fill" style="width: 65%"></div>
+                                <div class="metric-fill metric-bar-fill" style="width: 0%; background: linear-gradient(45deg, #6bcf7f, #4caf50);"></div>
                             </div>
-                            <span class="metric-value">65%</span>
+                            <span class="metric-value">Loading...</span>
                         </div>
-                        <div class="metric">
+                        <div class="metric health-metric" data-metric="memory">
                             <span class="metric-label">Memory</span>
                             <div class="metric-bar">
-                                <div class="metric-fill" style="width: 78%"></div>
+                                <div class="metric-fill metric-bar-fill" style="width: 0%; background: linear-gradient(45deg, #6bcf7f, #4caf50);"></div>
                             </div>
-                            <span class="metric-value">78%</span>
+                            <span class="metric-value">Loading...</span>
                         </div>
-                        <div class="metric">
+                        <div class="metric health-metric" data-metric="disk">
                             <span class="metric-label">Disk</span>
                             <div class="metric-bar">
-                                <div class="metric-fill" style="width: 45%"></div>
+                                <div class="metric-fill metric-bar-fill" style="width: 0%; background: linear-gradient(45deg, #6bcf7f, #4caf50);"></div>
                             </div>
-                            <span class="metric-value">45%</span>
+                            <span class="metric-value">Loading...</span>
                         </div>
                     </div>
                 </div>
@@ -295,7 +297,6 @@
                         <li><a href="/login">Dashboard</a></li>
                         <li><a href="/login">Metrics</a></li>
                         <li><a href="/login">Monitoring</a></li>
-                        <li><a href="/help">Help Center</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">

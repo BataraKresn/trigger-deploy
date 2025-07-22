@@ -10,3 +10,5 @@ data/
 data/postgres/
 logs/*.log
 *.tmp
+test_db_fixes.py
+test-integration.sh

@@ -75,6 +75,8 @@ class PostgreSQLManager:
         self.command_timeout = config.get('command_timeout', app_config.POSTGRES_COMMAND_TIMEOUT) if config else app_config.POSTGRES_COMMAND_TIMEOUT
         
         self.pool = None
+        self._initialization_lock = asyncio.Lock()
+        self._initialized = False
         
         # Security: Log connection info without password
         safe_url = self.database_url.split('@')[0].split(':')[:-1]
@@ -83,26 +85,42 @@ class PostgreSQLManager:
 
     async def initialize(self):
         """Initialize connection pool"""
-        try:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=self.min_connections,
-                max_size=self.max_connections,
-                command_timeout=self.command_timeout,
-                server_settings={
-                    'application_name': 'trigger_deploy_app',
-                    'timezone': 'UTC'
-                }
-            )
-            logger.info("PostgreSQL connection pool created successfully")
-            
-            # Create tables and default data
-            await self._create_tables()
-            await self._create_default_admin()
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize PostgreSQL pool: {e}")
-            raise
+        async with self._initialization_lock:
+            if self._initialized and self.pool:
+                logger.info("PostgreSQL connection pool already initialized")
+                return
+                
+            try:
+                self.pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=self.min_connections,
+                    max_size=self.max_connections,
+                    command_timeout=self.command_timeout,
+                    server_settings={
+                        'application_name': 'trigger_deploy_app',
+                        'timezone': 'UTC'
+                    }
+                )
+                logger.info("PostgreSQL connection pool created successfully")
+                
+                # Validate pool with a simple query
+                async with self.pool.acquire() as conn:
+                    await conn.fetchval('SELECT 1')
+                logger.info("PostgreSQL connection pool validated successfully")
+                
+                # Create tables and default data
+                await self._create_tables()
+                await self._create_default_admin()
+                
+                self._initialized = True
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize PostgreSQL pool: {e}")
+                if self.pool:
+                    await self.pool.close()
+                    self.pool = None
+                self._initialized = False
+                raise
 
     async def close(self):
         """Close connection pool"""
@@ -116,104 +134,119 @@ class PostgreSQLManager:
         try:
             conn = await self.pool.acquire()
             
-            # Create update_updated_at function for triggers
-            await conn.execute('''
-                CREATE OR REPLACE FUNCTION update_updated_at_column()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    NEW.updated_at = CURRENT_TIMESTAMP;
-                    RETURN NEW;
-                END;
-                $$ LANGUAGE plpgsql;
+            # Check if tables already exist to avoid concurrent creation
+            tables_exist = await conn.fetchval('''
+                SELECT COUNT(*) FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name IN ('users', 'deployment_history', 'audit_logs')
             ''')
             
-            # Users table
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    nama_lengkap VARCHAR(255) NOT NULL DEFAULT '',
-                    username VARCHAR(100) UNIQUE NOT NULL,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    salt VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) DEFAULT 'user' CHECK (role IN ('superadmin', 'user')),
-                    is_active BOOLEAN DEFAULT true,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    last_login TIMESTAMP WITH TIME ZONE NULL
-                )
-            ''')
+            if tables_exist >= 3:
+                logger.info("Database tables already exist, skipping creation")
+                return
             
-            # Create updated_at trigger for users table
-            await conn.execute('''
-                DROP TRIGGER IF EXISTS update_users_updated_at ON users;
-                CREATE TRIGGER update_users_updated_at 
-                    BEFORE UPDATE ON users 
-                    FOR EACH ROW 
-                    EXECUTE FUNCTION update_updated_at_column();
-            ''')
-            
-            # Deployment history table
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS deployment_history (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    server_name VARCHAR(255) NOT NULL,
-                    service_name VARCHAR(255) NOT NULL,
-                    status VARCHAR(50) NOT NULL,
-                    trigger_type VARCHAR(50) DEFAULT 'manual',
-                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-                    username VARCHAR(100) NOT NULL,
-                    start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    end_time TIMESTAMP WITH TIME ZONE NULL,
-                    duration_seconds INTEGER DEFAULT 0,
-                    logs TEXT DEFAULT '',
-                    error_message TEXT DEFAULT '',
-                    metadata JSONB DEFAULT '{}'::jsonb,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Audit logs table
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-                    action VARCHAR(100) NOT NULL,
-                    resource VARCHAR(255) NOT NULL,
-                    details JSONB DEFAULT '{}'::jsonb,
-                    ip_address INET,
-                    user_agent TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Indexes for performance - with individual error handling
-            indexes = [
-                ('idx_users_username', 'users(username)'),
-                ('idx_users_email', 'users(email)'),
-                ('idx_users_active', 'users(is_active)'),
-                ('idx_deployment_history_server', 'deployment_history(server_name)'),
-                ('idx_deployment_history_user', 'deployment_history(user_id)'),
-                ('idx_deployment_history_created', 'deployment_history(created_at)'),
-                ('idx_audit_logs_user', 'audit_logs(user_id)'),
-                ('idx_audit_logs_action', 'audit_logs(action)'),
-                ('idx_audit_logs_created', 'audit_logs(created_at)')
-            ]
-            
-            for idx_name, idx_columns in indexes:
-                try:
-                    await conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {idx_columns}')
-                except Exception as e:
-                    if "already exists" in str(e).lower():
-                        logger.debug(f"Index {idx_name} already exists, skipping")
-                    else:
-                        logger.warning(f"Failed to create index {idx_name}: {e}")
+            # Use transaction to ensure atomicity
+            async with conn.transaction():
+                # Create update_updated_at function for triggers
+                await conn.execute('''
+                    CREATE OR REPLACE FUNCTION update_updated_at_column()
+                    RETURNS TRIGGER AS $$
+                    BEGIN
+                        NEW.updated_at = CURRENT_TIMESTAMP;
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql;
+                ''')
+                
+                # Users table
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        nama_lengkap VARCHAR(255) NOT NULL DEFAULT '',
+                        username VARCHAR(100) UNIQUE NOT NULL,
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        password_hash VARCHAR(255) NOT NULL,
+                        salt VARCHAR(255) NOT NULL,
+                        role VARCHAR(50) DEFAULT 'user' CHECK (role IN ('superadmin', 'user')),
+                        is_active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        last_login TIMESTAMP WITH TIME ZONE NULL
+                    )
+                ''')
+                
+                # Create updated_at trigger for users table
+                await conn.execute('''
+                    DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+                    CREATE TRIGGER update_users_updated_at 
+                        BEFORE UPDATE ON users 
+                        FOR EACH ROW 
+                        EXECUTE FUNCTION update_updated_at_column();
+                ''')
+                
+                # Deployment history table
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS deployment_history (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        server_name VARCHAR(255) NOT NULL,
+                        service_name VARCHAR(255) NOT NULL,
+                        status VARCHAR(50) NOT NULL,
+                        trigger_type VARCHAR(50) DEFAULT 'manual',
+                        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                        username VARCHAR(100) NOT NULL,
+                        start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        end_time TIMESTAMP WITH TIME ZONE NULL,
+                        duration_seconds INTEGER DEFAULT 0,
+                        logs TEXT DEFAULT '',
+                        error_message TEXT DEFAULT '',
+                        metadata JSONB DEFAULT '{}'::jsonb,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Audit logs table
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS audit_logs (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                        action VARCHAR(100) NOT NULL,
+                        resource VARCHAR(255) NOT NULL,
+                        details JSONB DEFAULT '{}'::jsonb,
+                        ip_address INET,
+                        user_agent TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Indexes for performance - with individual error handling
+                indexes = [
+                    ('idx_users_username', 'users(username)'),
+                    ('idx_users_email', 'users(email)'),
+                    ('idx_users_active', 'users(is_active)'),
+                    ('idx_deployment_history_server', 'deployment_history(server_name)'),
+                    ('idx_deployment_history_user', 'deployment_history(user_id)'),
+                    ('idx_deployment_history_created', 'deployment_history(created_at)'),
+                    ('idx_audit_logs_user', 'audit_logs(user_id)'),
+                    ('idx_audit_logs_action', 'audit_logs(action)'),
+                    ('idx_audit_logs_created', 'audit_logs(created_at)')
+                ]
+                
+                for idx_name, idx_columns in indexes:
+                    try:
+                        await conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {idx_columns}')
+                    except Exception as e:
+                        if "already exists" in str(e).lower():
+                            logger.debug(f"Index {idx_name} already exists, skipping")
+                        else:
+                            logger.warning(f"Failed to create index {idx_name}: {e}")
             
             logger.info("Database tables created successfully")
             
         except Exception as e:
-            logger.error(f"Failed to create tables: {e}")
-            raise
+            if "already exists" in str(e).lower() or "tuple concurrently updated" in str(e).lower():
+                logger.info("Database tables already exist or being created by another process, skipping")
+            else:
+                logger.error(f"Failed to create tables: {e}")
+                # Don't raise the exception to prevent initialization failure
         finally:
             if conn:
                 await self.pool.release(conn)
@@ -238,7 +271,7 @@ class PostgreSQLManager:
             )
             
             if existing_user:
-                logger.info(f"Admin user '{app_config.DEFAULT_ADMIN_USERNAME}' already exists")
+                logger.info(f"Admin user '{app_config.DEFAULT_ADMIN_USERNAME}' already exists, skipping creation")
                 return
             
             # Create admin user
@@ -261,7 +294,10 @@ class PostgreSQLManager:
             logger.info(f"Default admin user '{app_config.DEFAULT_ADMIN_USERNAME}' created successfully")
             
         except Exception as e:
-            logger.error(f"Failed to create default admin: {e}")
+            if "already exists" in str(e).lower() or "duplicate key" in str(e).lower():
+                logger.info(f"Admin user already exists, skipping creation")
+            else:
+                logger.error(f"Failed to create default admin: {e}")
         finally:
             if conn:
                 await self.pool.release(conn)
@@ -277,6 +313,10 @@ class PostgreSQLManager:
 
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
         """Authenticate user with username and password"""
+        if not self.pool:
+            logger.error("Database pool not initialized")
+            return None
+            
         conn = None
         try:
             conn = await self.pool.acquire()
@@ -286,20 +326,26 @@ class PostgreSQLManager:
             )
             
             if row and self._verify_password(password, row['salt'], row['password_hash']):
-                # Update last login
-                await conn.execute(
-                    "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
-                    row['id']
-                )
+                # Update last login in a separate transaction to avoid blocking
+                try:
+                    await conn.execute(
+                        "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+                        row['id']
+                    )
+                except Exception as login_update_error:
+                    logger.warning(f"Failed to update last login for user {username}: {login_update_error}")
                 
                 return User(**dict(row))
             return None
         except Exception as e:
-            logger.error(f"Authentication error: {e}")
+            logger.error(f"Authentication error for user {username}: {e}")
             return None
         finally:
             if conn:
-                await self.pool.release(conn)
+                try:
+                    await self.pool.release(conn)
+                except Exception as release_error:
+                    logger.warning(f"Error releasing connection: {release_error}")
 
     async def create_user(self, user_data: Dict[str, Any]) -> User:
         """Create new user"""
@@ -447,3 +493,14 @@ def get_db_manager() -> PostgreSQLManager:
             # Return None instead of placeholder to avoid further errors
             return None
     return db_manager
+
+async def ensure_db_initialized():
+    """Ensure database is initialized, with retry logic"""
+    global db_manager
+    if db_manager is None or db_manager.pool is None:
+        try:
+            await init_database()
+        except Exception as e:
+            logger.error(f"Failed to ensure database initialization: {e}")
+            return False
+    return True

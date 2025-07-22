@@ -832,3 +832,64 @@ body {
 html {
     scroll-behavior: smooth;
 }
+
+/* System Status Indicator Styles */
+.system-status-indicator {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.system-status-indicator.status-healthy {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.system-status-indicator.status-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.system-status-indicator.status-critical {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    animation: pulse-critical 2s infinite;
+}
+
+.system-status-indicator.status-offline {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: white;
+    box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
+}
+
+@keyframes pulse-critical {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(239, 68, 68, 0.5);
+    }
+}
+
+.health-last-updated {
+    font-style: italic;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+/* Metric bar improvements for real-time updates */
+.metric-bar-fill {
+    transition: width 0.5s ease, background 0.3s ease;
+    border-radius: inherit;
+}

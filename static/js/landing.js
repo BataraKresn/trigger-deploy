@@ -304,6 +304,112 @@ Features:
 Version: 1.0.0
 `);
 
+// Real-time System Health Monitoring for Landing Page
+function updateSystemHealth() {
+    fetch('/api/health/realtime')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update CPU usage
+                const cpuElement = document.querySelector('.health-metric[data-metric="cpu"] .metric-value');
+                const cpuBar = document.querySelector('.health-metric[data-metric="cpu"] .metric-bar-fill');
+                if (cpuElement && cpuBar) {
+                    cpuElement.textContent = data.system.cpu_usage + '%';
+                    cpuBar.style.width = data.system.cpu_usage + '%';
+                    
+                    // Color coding based on usage
+                    if (data.system.cpu_usage > 80) {
+                        cpuBar.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a52)';
+                    } else if (data.system.cpu_usage > 60) {
+                        cpuBar.style.background = 'linear-gradient(45deg, #ffd93d, #ff9800)';
+                    } else {
+                        cpuBar.style.background = 'linear-gradient(45deg, #6bcf7f, #4caf50)';
+                    }
+                }
+                
+                // Update Memory usage
+                const memoryElement = document.querySelector('.health-metric[data-metric="memory"] .metric-value');
+                const memoryBar = document.querySelector('.health-metric[data-metric="memory"] .metric-bar-fill');
+                if (memoryElement && memoryBar) {
+                    memoryElement.textContent = data.system.memory_usage + '%';
+                    memoryBar.style.width = data.system.memory_usage + '%';
+                    
+                    // Color coding based on usage
+                    if (data.system.memory_usage > 80) {
+                        memoryBar.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a52)';
+                    } else if (data.system.memory_usage > 60) {
+                        memoryBar.style.background = 'linear-gradient(45deg, #ffd93d, #ff9800)';
+                    } else {
+                        memoryBar.style.background = 'linear-gradient(45deg, #6bcf7f, #4caf50)';
+                    }
+                }
+                
+                // Update Disk usage
+                const diskElement = document.querySelector('.health-metric[data-metric="disk"] .metric-value');
+                const diskBar = document.querySelector('.health-metric[data-metric="disk"] .metric-bar-fill');
+                if (diskElement && diskBar) {
+                    diskElement.textContent = data.system.disk_usage + '%';
+                    diskBar.style.width = data.system.disk_usage + '%';
+                    
+                    // Color coding based on usage
+                    if (data.system.disk_usage > 80) {
+                        diskBar.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a52)';
+                    } else if (data.system.disk_usage > 60) {
+                        diskBar.style.background = 'linear-gradient(45deg, #ffd93d, #ff9800)';
+                    } else {
+                        diskBar.style.background = 'linear-gradient(45deg, #6bcf7f, #4caf50)';
+                    }
+                }
+                
+                // Update status indicator
+                const statusIndicator = document.querySelector('.system-status-indicator');
+                if (statusIndicator) {
+                    const avgUsage = (data.system.cpu_usage + data.system.memory_usage + data.system.disk_usage) / 3;
+                    if (avgUsage > 80) {
+                        statusIndicator.className = 'system-status-indicator status-critical';
+                        statusIndicator.textContent = 'High Load';
+                    } else if (avgUsage > 60) {
+                        statusIndicator.className = 'system-status-indicator status-warning';
+                        statusIndicator.textContent = 'Moderate Load';
+                    } else {
+                        statusIndicator.className = 'system-status-indicator status-healthy';
+                        statusIndicator.textContent = 'Healthy';
+                    }
+                }
+                
+                // Update last updated timestamp
+                const timestampElement = document.querySelector('.health-last-updated');
+                if (timestampElement) {
+                    const now = new Date();
+                    timestampElement.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                }
+            }
+        })
+        .catch(error => {
+            console.warn('Could not fetch system health data:', error);
+            // Set fallback values if API is not available
+            const statusIndicator = document.querySelector('.system-status-indicator');
+            if (statusIndicator) {
+                statusIndicator.className = 'system-status-indicator status-offline';
+                statusIndicator.textContent = 'Monitoring Offline';
+            }
+        });
+}
+
+// Initialize system health monitoring
+function initSystemHealth() {
+    // Initial load
+    updateSystemHealth();
+    
+    // Update every 5 seconds
+    setInterval(updateSystemHealth, 5000);
+}
+
+// Start system health monitoring when page loads
+if (document.querySelector('.metrics-card')) {
+    initSystemHealth();
+}
+
 // Service Worker registration for PWA capabilities (if needed)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {

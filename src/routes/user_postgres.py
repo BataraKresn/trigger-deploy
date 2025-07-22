@@ -107,14 +107,30 @@ def require_superadmin(f):
         return f(*args, **kwargs)
     return decorated_function
 
-async def run_async(coro):
+def run_async(coro):
     """Helper to run async functions in sync context"""
     try:
-        loop = asyncio.get_event_loop()
+        # Check if we're already in an async context
+        asyncio.get_running_loop()
+        # If we get here, we're in an async context, which is a problem
+        # Create a new loop in a thread to avoid conflicts
+        import concurrent.futures
+        import threading
+        
+        def run_in_thread():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(coro)
+            finally:
+                new_loop.close()
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_in_thread)
+            return future.result(timeout=30)
     except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    return await coro
+        # No event loop running, safe to use asyncio.run
+        return asyncio.run(coro)
 
 @user_bp.route('/users', methods=['GET'])
 @require_auth
