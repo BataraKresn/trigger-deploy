@@ -1,16 +1,5 @@
-#!/usr/bin/env python3# Import PostgreSQL routes instead of file-based user routes
-try:
-    from src.routes.user_postgres import user_bp
-    USING_POSTGRES = True
-    logging.info("Using PostgreSQL user management (sync version)")
-except ImportError:
-    from src.routes.user import user_bp
-    USING_POSTGRES = False
-    logging.warning("PostgreSQL not available, falling back to file-based user management")
+#!/usr/bin/env python3
 
-# Database initialization
-if USING_POSTGRES:
-    from src.models.database import init_database, close_database
 # Trigger Deploy Server - Clean Architecture with PostgreSQL
 # =================================
 
@@ -35,7 +24,7 @@ from src.routes.deploy import deploy_bp
 try:
     from src.routes.user_postgres import user_bp
     USING_POSTGRES = True
-    logging.info("Using PostgreSQL user management")
+    logging.info("Using PostgreSQL user management (sync version)")
 except ImportError:
     from src.routes.user import user_bp
     USING_POSTGRES = False
@@ -43,7 +32,7 @@ except ImportError:
 
 # Database initialization
 if USING_POSTGRES:
-    from src.models.database import init_db_manager_sync, close_database
+    from src.models.database import init_database, close_database
 
 
 # Configure logging
@@ -142,22 +131,11 @@ if __name__ == '__main__':
         def cleanup_database():
             """Cleanup database connections on shutdown"""
             try:
-                import asyncio
                 from src.models.database import close_database
                 logger.info("Cleaning up database connections...")
                 
-                # Create new event loop for cleanup if needed
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_closed():
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                loop.run_until_complete(close_database())
-                loop.close()
+                # Close database connections (now sync)
+                close_database()
                 logger.info("Database cleanup completed")
             except Exception as e:
                 logger.error(f"Error during database cleanup: {e}")
