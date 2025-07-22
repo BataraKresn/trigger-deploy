@@ -60,7 +60,7 @@ def create_app():
     # Initialize PostgreSQL database if available
     if USING_POSTGRES:
         retry_count = 0
-        max_retries = 5
+        max_retries = 3  # Reduced from 5
         retry_delay = 2  # seconds
         
         while retry_count < max_retries:
@@ -84,14 +84,27 @@ def create_app():
                 
             except Exception as e:
                 retry_count += 1
-                if retry_count < max_retries:
+                error_msg = str(e).lower()
+                
+                # Check for fatal errors that shouldn't retry
+                is_fatal = any(fatal in error_msg for fatal in [
+                    'authentication failed', 'password authentication failed',
+                    'database does not exist', 'role does not exist',
+                    'invalid password', 'permission denied'
+                ])
+                
+                if is_fatal:
+                    logger.error(f"FATAL DATABASE ERROR: {e}")
+                    logger.error("This appears to be a configuration issue, not retrying")
+                    logger.error("Falling back to file-based user management")
+                    break
+                elif retry_count < max_retries:
                     logger.warning(f"Failed to initialize PostgreSQL database (attempt {retry_count}/{max_retries}): {e}")
                     logger.info(f"Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                 else:
                     logger.error(f"Failed to initialize PostgreSQL database after {max_retries} attempts: {e}")
                     logger.info("Falling back to file-based user management")
-                    # Note: USING_POSTGRES already defined at import time
     
     # Register blueprints
     app.register_blueprint(main_bp)

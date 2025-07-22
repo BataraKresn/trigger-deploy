@@ -166,15 +166,31 @@ class PostgreSQLManager:
                     # Add SSL parameters if configured
                     conn_params.update(ssl_config)
                     
+                    # Validate pool sizes
+                    if self.max_connections > 100:
+                        logger.warning(f"Max connections ({self.max_connections}) is very high, reducing to 50")
+                        self.max_connections = 50
+                    
+                    if self.min_connections > self.max_connections:
+                        logger.warning(f"Min connections ({self.min_connections}) > max ({self.max_connections}), adjusting")
+                        self.min_connections = 1
+                    
                     # Use psycopg2 connection pool
                     logger.info(f"Creating connection pool (min={self.min_connections}, max={self.max_connections})")
                     logger.info(f"SSL Mode: {ssl_config.get('sslmode', 'default')}")
+                    logger.info(f"Connection timeout: {conn_params.get('connect_timeout', 10)}s")
                     
-                    self.pool = psycopg2.pool.ThreadedConnectionPool(
-                        minconn=self.min_connections,
-                        maxconn=self.max_connections,
-                        **conn_params
-                    )
+                    try:
+                        self.pool = psycopg2.pool.ThreadedConnectionPool(
+                            minconn=self.min_connections,
+                            maxconn=self.max_connections,
+                            **conn_params
+                        )
+                    except Exception as pool_error:
+                        logger.error(f"Pool creation failed: {pool_error}")
+                        safe_params = {k: v for k, v in conn_params.items() if k != 'password'}
+                        logger.error(f"Connection params (excluding password): {safe_params}")
+                        raise
                     
                     # Test connection
                     logger.info("Testing database connection...")
@@ -218,13 +234,31 @@ class PostgreSQLManager:
                 logger.info("PostgreSQL database manager initialization completed successfully")
                 
             except psycopg2.OperationalError as e:
-                logger.error(f"PostgreSQL connection failed: {e}")
-                logger.error(f"Check if PostgreSQL is running on {self.host}:{self.port}")
+                error_msg = str(e).lower()
+                logger.error(f"PostgreSQL OperationalError: {e}")
+                
+                # Check for fatal errors that shouldn't retry
+                if any(fatal in error_msg for fatal in [
+                    'authentication failed', 'password authentication failed',
+                    'database does not exist', 'role does not exist',
+                    'connection refused', 'could not connect to server'
+                ]):
+                    logger.error("❌ FATAL ERROR: Connection failed due to authentication/configuration issue")
+                    logger.error("This is likely a configuration problem, not a temporary network issue")
+                    logger.error(f"Database: {self.database}, User: {self.user}, Host: {self.host}:{self.port}")
+                else:
+                    logger.error(f"Network/temporary error connecting to PostgreSQL at {self.host}:{self.port}")
+                
                 logger.error("Verify credentials, network connectivity, and firewall settings")
                 self.pool = None
                 raise
+            except psycopg2.Error as e:
+                logger.error(f"PostgreSQL Error: {e}")
+                self.pool = None
+                raise
             except Exception as e:
-                logger.error(f"Failed to initialize PostgreSQL connection pool: {e}")
+                logger.error(f"Unexpected error initializing PostgreSQL connection pool: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
                 self.pool = None
                 raise
 

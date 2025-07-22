@@ -137,9 +137,12 @@ class Config:
         """Get PostgreSQL SSL configuration"""
         ssl_config = {}
         
-        if self.POSTGRES_SSL_MODE and self.POSTGRES_SSL_MODE != 'disable':
-            ssl_config['sslmode'] = self.POSTGRES_SSL_MODE
-            
+        # Always set sslmode, even if disabled
+        ssl_mode = self.POSTGRES_SSL_MODE or 'disable'
+        ssl_config['sslmode'] = ssl_mode
+        
+        # Only add SSL cert/key if SSL is enabled and paths are provided
+        if ssl_mode not in ['disable', 'allow']:
             if self.POSTGRES_SSL_CERT_PATH:
                 ssl_config['sslcert'] = self.POSTGRES_SSL_CERT_PATH
             
@@ -148,6 +151,8 @@ class Config:
                 
             if self.POSTGRES_SSL_CA_PATH:
                 ssl_config['sslrootcert'] = self.POSTGRES_SSL_CA_PATH
+        
+        return ssl_config
         
         return ssl_config
 
