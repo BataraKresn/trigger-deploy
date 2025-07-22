@@ -123,10 +123,38 @@ class PostgreSQLManager:
                 raise
 
     async def close(self):
-        """Close connection pool"""
+        """Close connection pool gracefully"""
         if self.pool:
-            await self.pool.close()
-            logger.info("PostgreSQL connection pool closed")
+            try:
+                # Close all connections gracefully
+                await self.pool.close()
+                self.pool = None
+                self._initialized = False
+                logger.info("PostgreSQL connection pool closed gracefully")
+            except Exception as e:
+                logger.error(f"Error closing PostgreSQL pool: {e}")
+                self.pool = None
+                self._initialized = False
+
+    async def health_check(self):
+        """Check database connection health"""
+        if not self.pool or not self._initialized:
+            return False
+        
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.fetchval('SELECT 1')
+            return True
+        except Exception as e:
+            logger.warning(f"Database health check failed: {e}")
+            return False
+
+    async def reconnect(self):
+        """Reconnect to database if connection is lost"""
+        logger.info("Attempting to reconnect to database...")
+        await self.close()
+        await self.initialize()
+        logger.info("Database reconnection completed")
 
     async def _create_tables(self):
         """Create database tables"""
@@ -319,7 +347,15 @@ class PostgreSQLManager:
             
         conn = None
         try:
+            # Ensure pool is properly initialized
+            if not self._initialized:
+                await self.initialize()
+            
             conn = await self.pool.acquire()
+            
+            # Set connection timeout
+            await conn.execute("SET statement_timeout = '10s'")
+            
             row = await conn.fetchrow(
                 "SELECT * FROM users WHERE username = $1 AND is_active = true",
                 username
@@ -337,6 +373,13 @@ class PostgreSQLManager:
                 
                 return User(**dict(row))
             return None
+            
+        except asyncio.TimeoutError:
+            logger.error(f"Authentication timeout for user {username}")
+            return None
+        except asyncpg.ConnectionDoesNotExistError:
+            logger.error(f"Database connection lost during authentication for user {username}")
+            return None
         except Exception as e:
             logger.error(f"Authentication error for user {username}: {e}")
             return None
@@ -344,6 +387,8 @@ class PostgreSQLManager:
             if conn:
                 try:
                     await self.pool.release(conn)
+                except asyncpg.ConnectionDoesNotExistError:
+                    logger.warning("Connection was already closed when trying to release")
                 except Exception as release_error:
                     logger.warning(f"Error releasing connection: {release_error}")
 

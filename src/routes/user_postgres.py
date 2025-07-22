@@ -27,6 +27,13 @@ def login():
             return jsonify({'message': 'Username and password are required'}), 400
         
         db = get_db_manager()
+        
+        # Check database health before authentication
+        is_healthy = run_async(db.health_check())
+        if not is_healthy:
+            logger.warning("Database connection unhealthy, attempting reconnect")
+            run_async(db.reconnect())
+        
         user = run_async(db.authenticate_user(username, password))
         
         if not user:
@@ -35,8 +42,11 @@ def login():
         if not user.is_active:
             return jsonify({'message': 'Account is disabled'}), 401
         
-        # Update last login
-        run_async(db.update_last_login(user.id))
+        # Update last login (non-blocking)
+        try:
+            run_async(db.update_last_login(user.id))
+        except Exception as e:
+            logger.warning(f"Failed to update last login: {e}")
         
         # Generate JWT token
         from ..models.config import config
@@ -50,22 +60,33 @@ def login():
             'exp': datetime.utcnow() + timedelta(hours=24)
         }
         
-        token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+        try:
+            token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+        except Exception as token_error:
+            logger.warning(f"Failed to create JWT token: {token_error}")
+            token = None
         
-        # Log audit event
-        run_async(db.log_audit(
-            user_id=user.id,
-            action='LOGIN',
-            resource='auth',
-            ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent')
-        ))
+        # Log audit event (non-blocking)
+        try:
+            run_async(db.log_audit(
+                user_id=user.id,
+                action='LOGIN',
+                resource='auth',
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            ))
+        except Exception as audit_error:
+            logger.warning(f"Failed to log audit: {audit_error}")
         
-        return jsonify({
-            'token': token,
+        response_data = {
             'user': user.to_safe_dict(),
             'message': 'Login successful'
-        })
+        }
+        
+        if token:
+            response_data['token'] = token
+            
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error during login: {e}")
@@ -108,29 +129,43 @@ def require_superadmin(f):
     return decorated_function
 
 def run_async(coro):
-    """Helper to run async functions in sync context"""
-    try:
-        # Check if we're already in an async context
-        asyncio.get_running_loop()
-        # If we get here, we're in an async context, which is a problem
-        # Create a new loop in a thread to avoid conflicts
-        import concurrent.futures
-        import threading
-        
-        def run_in_thread():
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
+    """Helper to run async functions in sync context with proper error handling"""
+    import concurrent.futures
+    import threading
+    
+    def run_in_thread():
+        """Run coroutine in a new thread with its own event loop"""
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        try:
+            return new_loop.run_until_complete(coro)
+        except Exception as e:
+            logger.error(f"Error in async execution: {e}")
+            raise
+        finally:
             try:
-                return new_loop.run_until_complete(coro)
+                # Clean up any pending tasks
+                pending = asyncio.all_tasks(new_loop)
+                if pending:
+                    for task in pending:
+                        task.cancel()
+                    new_loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception as cleanup_error:
+                logger.warning(f"Error during loop cleanup: {cleanup_error}")
             finally:
                 new_loop.close()
-        
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+    
+    try:
+        # Always use thread-based execution to avoid loop conflicts
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(run_in_thread)
             return future.result(timeout=30)
-    except RuntimeError:
-        # No event loop running, safe to use asyncio.run
-        return asyncio.run(coro)
+    except concurrent.futures.TimeoutError:
+        logger.error("Async operation timed out after 30 seconds")
+        raise Exception("Database operation timed out")
+    except Exception as e:
+        logger.error(f"Error in run_async: {e}")
+        raise
 
 @user_bp.route('/users', methods=['GET'])
 @require_auth

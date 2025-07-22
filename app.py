@@ -124,13 +124,50 @@ if __name__ == '__main__':
     os.makedirs('logs', exist_ok=True)
     os.makedirs(config.LOG_DIR, exist_ok=True)
     
+    # Setup graceful shutdown for database connections
+    if USING_POSTGRES:
+        def cleanup_database():
+            """Cleanup database connections on shutdown"""
+            try:
+                import asyncio
+                from src.models.database import close_database
+                logger.info("Cleaning up database connections...")
+                
+                # Create new event loop for cleanup if needed
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                loop.run_until_complete(close_database())
+                loop.close()
+                logger.info("Database cleanup completed")
+            except Exception as e:
+                logger.error(f"Error during database cleanup: {e}")
+        
+        atexit.register(cleanup_database)
+    
     logger.info("Starting Trigger Deploy Server...")
     logger.info(f"Log directory: {config.LOG_DIR}")
     logger.info(f"Servers config: {config.SERVERS_FILE}")
+    logger.info(f"PostgreSQL enabled: {USING_POSTGRES}")
     
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=False,
-        threaded=True
-    )
+    try:
+        app.run(
+            host='0.0.0.0',
+            port=5000,
+            debug=False,
+            threaded=True
+        )
+    except KeyboardInterrupt:
+        logger.info("Server shutdown requested")
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+    finally:
+        if USING_POSTGRES:
+            logger.info("Performing final cleanup...")
+            cleanup_database()
