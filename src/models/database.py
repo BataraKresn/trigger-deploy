@@ -228,6 +228,17 @@ def init_database() -> bool:
             return False
         
         logger.info("Database initialization completed successfully")
+        
+        # Ensure admin user exists (after schema is created)
+        try:
+            db_manager = DatabaseManager()
+            if db_manager.ensure_admin_exists():
+                logger.info("Admin user verification completed")
+            else:
+                logger.warning("Admin user verification failed")
+        except Exception as e:
+            logger.warning(f"Admin user verification error: {e}")
+        
         return True
         
     except Exception as e:
@@ -461,13 +472,12 @@ class DatabaseManager:
         Authenticate user credentials.
         
         Args:
-            username: Username
+            username: Username or email
             password: Password
             
         Returns:
             User object if authentication successful, None otherwise
         """
-        # This is a placeholder - implement based on your User model
         session = self.get_session()
         if not session:
             return None
@@ -475,8 +485,13 @@ class DatabaseManager:
         try:
             # Import here to avoid circular imports
             from .user import User
-            user = session.query(User).filter(User.username == username).first()
-            if user and user.check_password(password):
+            
+            # Try to find user by username or email
+            user = session.query(User).filter(
+                (User.username == username) | (User.email == username)
+            ).first()
+            
+            if user and user.check_password(password) and user.is_active:
                 return user
             return None
         except Exception as e:
@@ -505,6 +520,30 @@ class DatabaseManager:
             return user
         except Exception as e:
             logger.error(f"Failed to get user by username: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def get_user_by_email(self, email: str) -> Optional[Any]:
+        """
+        Get user by email.
+        
+        Args:
+            email: Email to search for
+            
+        Returns:
+            User object if found, None otherwise
+        """
+        session = self.get_session()
+        if not session:
+            return None
+        
+        try:
+            from .user import User
+            user = session.query(User).filter(User.email == email).first()
+            return user
+        except Exception as e:
+            logger.error(f"Failed to get user by email: {e}")
             return None
         finally:
             session.close()
@@ -539,6 +578,8 @@ class DatabaseManager:
         
         Args:
             user_data: Dictionary containing user information
+                      Required: username, email, password
+                      Optional: full_name, role
             
         Returns:
             Created user object or None if failed
@@ -549,7 +590,28 @@ class DatabaseManager:
         
         try:
             from .user import User
-            user = User(**user_data)
+            
+            # Check if username or email already exists
+            existing_user = session.query(User).filter(
+                (User.username == user_data.get('username')) | 
+                (User.email == user_data.get('email'))
+            ).first()
+            
+            if existing_user:
+                logger.error("User with this username or email already exists")
+                return None
+            
+            # Create new user
+            user = User(
+                username=user_data['username'],
+                email=user_data['email'],
+                full_name=user_data.get('full_name', ''),
+                role=user_data.get('role', 'user')
+            )
+            
+            # Set password
+            user.set_password(user_data['password'])
+            
             session.add(user)
             session.commit()
             session.refresh(user)
@@ -577,6 +639,8 @@ class DatabaseManager:
         
         try:
             from .user import User
+            from datetime import datetime
+            
             user = session.query(User).filter(User.id == user_id).first()
             if user:
                 user.last_login = datetime.utcnow()
@@ -589,6 +653,68 @@ class DatabaseManager:
             return False
         finally:
             session.close()
+    
+    def create_default_admin(self) -> bool:
+        """
+        Create default admin user if none exists.
+        Uses environment variables for default credentials.
+        
+        Returns:
+            bool: True if created or already exists, False if failed
+        """
+        session = self.get_session()
+        if not session:
+            return False
+        
+        try:
+            from .user import User
+            
+            # Check if any admin users exist
+            admin_count = session.query(User).filter(
+                User.role.in_(['admin', 'superadmin'])
+            ).count()
+            
+            if admin_count > 0:
+                logger.debug("Admin users already exist, skipping default admin creation")
+                return True
+            
+            # Get admin credentials from environment
+            admin_username = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
+            admin_password = os.getenv('DEFAULT_ADMIN_PASSWORD', 'admin123')
+            admin_email = os.getenv('DEFAULT_ADMIN_EMAIL', 'admin@example.com')
+            
+            # Create default admin user
+            admin_user = User(
+                username=admin_username,
+                email=admin_email,
+                full_name='Default Administrator',
+                role='superadmin'
+            )
+            admin_user.set_password(admin_password)
+            
+            session.add(admin_user)
+            session.commit()
+            
+            logger.info(f"Default admin user created: {admin_username}")
+            return True
+            
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to create default admin user: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def ensure_admin_exists(self) -> bool:
+        """
+        Ensure at least one admin user exists in the system.
+        
+        Returns:
+            bool: True if admin exists or was created, False otherwise
+        """
+        if os.getenv('AUTO_CREATE_ADMIN', 'true').lower() == 'true':
+            return self.create_default_admin()
+        return True
     
     def list_users(self) -> List[Any]:
         """

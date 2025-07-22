@@ -56,7 +56,7 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 # Authentication endpoints
 @api_bp.route('/auth/login', methods=['POST'])
 def login():
-    """Authenticate user with username/password and return JWT token"""
+    """Authenticate user with username/password and return JWT token (Updated for SQLAlchemy)"""
     try:
         data = request.get_json()
         if not data:
@@ -64,6 +64,7 @@ def login():
             
         username = data.get('username', '').strip()
         password = data.get('password', '')
+        remember_me = data.get('remember_me', False)
         
         # Validation
         if not username:
@@ -76,7 +77,7 @@ def login():
         user = None
         if USING_POSTGRES:
             try:
-                # Use PostgreSQL database manager
+                # Use PostgreSQL database manager with new SQLAlchemy model
                 if get_db_manager is None:
                     raise Exception("PostgreSQL database manager not available")
                 db_manager = get_db_manager()
@@ -87,11 +88,21 @@ def login():
                 if db_manager.pool is None:
                     raise Exception("Database connection pool not available")
                 
-                # Authenticate user (now sync operation)
+                # Check database health
+                if not db_manager.health_check():
+                    raise Exception("Database connection unhealthy")
+                
+                # Authenticate user using new SQLAlchemy model
                 user = db_manager.authenticate_user(username, password)
+                
+                if user and not user.is_active:
+                    return jsonify({
+                        'success': False, 
+                        'error': 'Account is disabled'
+                    }), 401
                         
             except Exception as e:
-                print(f"PostgreSQL authentication error: {e}")
+                logger.error(f"PostgreSQL authentication error: {e}")
                 # Fallback to legacy authentication if PostgreSQL fails
                 if password == config.LOGIN_PASSWORD:
                     user = type('User', (), {
@@ -109,9 +120,16 @@ def login():
             user = user_manager.authenticate_user(username, password)
             
         if user:
+            # Update last login for SQLAlchemy users
+            if USING_POSTGRES and hasattr(user, 'id'):
+                try:
+                    db_manager.update_last_login(user.id)
+                except Exception as e:
+                    logger.warning(f"Failed to update last login: {e}")
+            
             # Generate JWT token using user data
             payload = {
-                'user_id': str(user.id) if USING_POSTGRES else user.id,
+                'user_id': str(user.id) if hasattr(user, 'id') else user.id,
                 'username': user.username,
                 'role': user.role,
                 'auth_type': 'user_password',
@@ -120,20 +138,33 @@ def login():
             
             try:
                 token = jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+                
+                # Get user data - handle both SQLAlchemy and legacy users
+                if hasattr(user, 'to_safe_dict'):
+                    user_data = user.to_safe_dict()
+                else:
+                    user_data = {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': getattr(user, 'email', f'{user.username}@localhost'),
+                        'full_name': getattr(user, 'full_name', user.username),
+                        'role': user.role
+                    }
+                
+                # Create Flask session
+                from ..utils.auth import login_user
+                login_user(user.username, remember_me, user.role)
+                
                 return jsonify({
                     'success': True,
                     'token': token,
-                    'user': {
-                        'id': user.id,
-                        'name': user.full_name,
-                        'username': user.username,
-                        'email': user.email,
-                        'role': user.role
-                    },
-                    'message': f'Welcome back, {user.full_name}!'
+                    'user': user_data,
+                    'message': f'Welcome back, {user_data.get("full_name", user.username)}!',
+                    'redirect': '/dashboard'
                 })
             except Exception as e:
-                return jsonify({'success': False, 'error': 'Token generation failed. Please try again.'}), 500
+                logger.error(f"Login processing error: {e}")
+                return jsonify({'success': False, 'error': 'Login processing failed. Please try again.'}), 500
         
         # Fallback to legacy LOGIN_PASSWORD authentication
         elif password == config.LOGIN_PASSWORD:

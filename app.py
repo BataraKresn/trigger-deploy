@@ -20,10 +20,12 @@ from src.routes.deploy import deploy_bp
 # Import PostgreSQL routes instead of file-based user routes
 try:
     from src.routes.user_postgres import user_bp
+    from src.routes.auth import auth_bp  # Import auth blueprint
     USING_POSTGRES = True
     logging.info("Using PostgreSQL user management (sync version)")
 except ImportError:
     from src.routes.user import user_bp
+    auth_bp = None  # No auth blueprint if not using PostgreSQL
     USING_POSTGRES = False
     logging.warning("PostgreSQL not available, falling back to file-based user management")
 
@@ -110,6 +112,11 @@ def create_app():
     app.register_blueprint(api_bp)
     app.register_blueprint(deploy_bp)
     app.register_blueprint(user_bp)
+    
+    # Register auth blueprint if available
+    if auth_bp:
+        app.register_blueprint(auth_bp)
+        logger.info("Auth blueprint registered")
     
     # Health check endpoint
     @app.route('/health')
