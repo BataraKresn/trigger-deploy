@@ -74,7 +74,7 @@ def help_page():
     return render_template('help.html')
 
 
-@main_bp.route('/auth/logout', methods=['POST'])
+@main_bp.route('/auth/logout', methods=['GET', 'POST'])
 def logout():
     """Handle logout"""
     try:
@@ -82,9 +82,27 @@ def logout():
         if is_authenticated():
             logout_user()
         
+        # Handle JSON requests (AJAX)
+        if request.is_json or request.headers.get('Content-Type') == 'application/json':
+            return jsonify({
+                'success': True,
+                'message': 'Successfully logged out',
+                'redirect': url_for('main.login')
+            })
+        
+        # Handle regular requests
         return redirect(url_for('main.login', message='Successfully logged out'))
     except Exception as e:
         logger.error(f"Logout error: {e}")
+        
+        # Handle JSON requests (AJAX)
+        if request.is_json or request.headers.get('Content-Type') == 'application/json':
+            return jsonify({
+                'success': False,
+                'message': 'Logout failed',
+                'error': str(e)
+            }), 500
+        
         return redirect(url_for('main.login', error='Logout failed'))
 
 
