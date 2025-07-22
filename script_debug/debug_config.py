@@ -70,7 +70,9 @@ def check_config_loading():
     
     try:
         # Add src to path
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src/models'))
+        src_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src/models')
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
         
         from config import config
         logger.info("✅ Configuration loaded successfully")
@@ -155,13 +157,14 @@ def validate_database_url(config=None):
 
 def test_database_manager_creation():
     """Test creating database manager"""
-    logger.info("
-🔍 Testing Database Manager Creation")
+    logger.info("\n🔍 Testing Database Manager Creation")
     logger.info("=" * 50)
     
     try:
         # Add src to path
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        src_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src')
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
         
         from models.database import PostgreSQLManager
         

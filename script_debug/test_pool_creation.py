@@ -22,7 +22,9 @@ def test_full_initialization():
     
     try:
         # Add src to path
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        src_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src')
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
         
         # Import the exact same way as the application
         from models.database import get_db_manager, init_database
@@ -76,7 +78,9 @@ def test_manual_connection():
         from psycopg2.extras import RealDictCursor
         
         # Get config the same way
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        src_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src')
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
         from models.config import config
         
         conn_params = {

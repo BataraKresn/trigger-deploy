@@ -31,6 +31,36 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _get_cursor_value(result, column_index_or_name, default=None):
+    """
+    Helper function to get value from cursor result, handling both RealDictCursor and regular cursor
+    """
+    if not result:
+        return default
+    
+    # RealDictCursor returns dict-like objects
+    if hasattr(result, 'get'):
+        if isinstance(column_index_or_name, str):
+            return result.get(column_index_or_name, default)
+        else:
+            # Try to get by index for RealDictCursor (convert to list)
+            try:
+                values = list(result.values())
+                return values[column_index_or_name] if column_index_or_name < len(values) else default
+            except (IndexError, TypeError):
+                return default
+    else:
+        # Regular cursor returns tuple
+        try:
+            if isinstance(column_index_or_name, int):
+                return result[column_index_or_name] if column_index_or_name < len(result) else default
+            else:
+                # Can't use string index with regular cursor
+                return default
+        except (IndexError, TypeError):
+            return default
+
+
 @dataclass
 class User:
     """User model for PostgreSQL"""
@@ -317,13 +347,18 @@ class PostgreSQLManager:
                             raise Exception("Failed to get connection from pool")
                             
                         cursor = conn.cursor()
-                        cursor.execute('SELECT version()')
+                        cursor.execute('SELECT version() as db_version')
                         result = cursor.fetchone()
                         
-                        if not result or len(result) == 0:
+                        if not result:
                             raise Exception("Empty result from version query")
                             
-                        version = result[0] if result and len(result) > 0 else "Unknown"
+                        # Handle both RealDictCursor and regular cursor results
+                        if hasattr(result, 'get'):  # RealDictCursor returns dict-like object
+                            version = result.get('db_version', 'Unknown')
+                        else:  # Regular cursor returns tuple
+                            version = result[0] if result and len(result) > 0 else "Unknown"
+                            
                         logger.info(f"Connected to: {version}")
                         cursor.close()
                         logger.info("PostgreSQL connection pool created and validated successfully")
@@ -555,32 +590,52 @@ class PostgreSQLManager:
                     cursor.execute('SELECT 1 as test')
                     result = cursor.fetchone()
                     
-                    if not result or len(result) == 0:
+                    if not result:
                         logger.error("Health check: Empty result from test query")
                         return False
                         
-                    test_value = result[0] if result and len(result) > 0 else None
+                    # Handle both RealDictCursor and regular cursor results
+                    if hasattr(result, 'get'):  # RealDictCursor returns dict-like object
+                        test_value = result.get('test')
+                    else:  # Regular cursor returns tuple
+                        test_value = result[0] if result and len(result) > 0 else None
+                        
                     if test_value != 1:
                         logger.error(f"Health check: Unexpected test value: {test_value}")
                         return False
                     
                     # Test database metadata for external connection verification
                     cursor.execute("""
-                        SELECT current_database(), current_user, version(), 
-                               inet_server_addr(), inet_server_port()
+                        SELECT current_database() as db_name, current_user as db_user, 
+                               version() as db_version, 
+                               inet_server_addr() as server_ip, inet_server_port() as server_port
                     """)
                     info = cursor.fetchone()
                     
-                    if not info or len(info) < 3:
+                    if not info:
                         logger.error("Health check: Incomplete metadata result")
                         return False
                     
+                    # Handle both RealDictCursor and regular cursor results
+                    if hasattr(info, 'get'):  # RealDictCursor returns dict-like object
+                        db_name = info.get('db_name', 'Unknown')
+                        db_user = info.get('db_user', 'Unknown')
+                        db_version = info.get('db_version', 'Unknown')
+                        server_ip = info.get('server_ip', 'N/A')
+                        server_port = info.get('server_port', 'N/A')
+                    else:  # Regular cursor returns tuple
+                        db_name = info[0] if len(info) > 0 else 'Unknown'
+                        db_user = info[1] if len(info) > 1 else 'Unknown'
+                        db_version = info[2] if len(info) > 2 else 'Unknown'
+                        server_ip = info[3] if len(info) > 3 else 'N/A'
+                        server_port = info[4] if len(info) > 4 else 'N/A'
+                    
                     logger.info(f"Database health check passed:")
-                    logger.info(f"  Database: {info[0] if len(info) > 0 else 'Unknown'}")
-                    logger.info(f"  User: {info[1] if len(info) > 1 else 'Unknown'}")
-                    logger.info(f"  Server: {info[2][:50] if len(info) > 2 and info[2] else 'Unknown'}...")
-                    logger.info(f"  Server IP: {info[3] if len(info) > 3 and info[3] else 'N/A'}")
-                    logger.info(f"  Server Port: {info[4] if len(info) > 4 and info[4] else 'N/A'}")
+                    logger.info(f"  Database: {db_name}")
+                    logger.info(f"  User: {db_user}")
+                    logger.info(f"  Server: {db_version[:50] if db_version else 'Unknown'}...")
+                    logger.info(f"  Server IP: {server_ip}")
+                    logger.info(f"  Server Port: {server_port}")
                     
                     return True
             else:
@@ -917,14 +972,17 @@ class PostgreSQLManager:
         try:
             if SYNC_MODE:
                 with self.get_cursor(commit=False) as cursor:
-                    cursor.execute("SELECT COUNT(*) FROM users")
-                    total_users = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) as total FROM users")
+                    result = cursor.fetchone()
+                    total_users = _get_cursor_value(result, 'total', 0) or _get_cursor_value(result, 0, 0)
                     
-                    cursor.execute("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
-                    active_users = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) as active FROM users WHERE is_active = TRUE")
+                    result = cursor.fetchone()
+                    active_users = _get_cursor_value(result, 'active', 0) or _get_cursor_value(result, 0, 0)
                     
-                    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
-                    admin_users = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) as admin FROM users WHERE role = 'admin'")
+                    result = cursor.fetchone()
+                    admin_users = _get_cursor_value(result, 'admin', 0) or _get_cursor_value(result, 0, 0)
                     
                     return {
                         'total_users': total_users or 0,
@@ -953,11 +1011,13 @@ class PostgreSQLManager:
                 with self.get_cursor() as cursor:
                     # Check if username or email already exists
                     cursor.execute(
-                        "SELECT COUNT(*) FROM users WHERE username = %s OR email = %s",
+                        "SELECT COUNT(*) as count FROM users WHERE username = %s OR email = %s",
                         (user_data['username'], user_data['email'])
                     )
                     
-                    if cursor.fetchone()[0] > 0:
+                    result = cursor.fetchone()
+                    count = _get_cursor_value(result, 'count', 0) or _get_cursor_value(result, 0, 0)
+                    if count > 0:
                         logger.warning(f"User with username {user_data['username']} or email {user_data['email']} already exists")
                         return None
                     
@@ -984,8 +1044,9 @@ class PostgreSQLManager:
                         user_data.get('is_active', True)
                     ))
                     
-                    user_id = cursor.fetchone()[0]
-                    return self.get_user_by_id(str(user_id))
+                    result = cursor.fetchone()
+                    user_id = _get_cursor_value(result, 'id', None) or _get_cursor_value(result, 0, None)
+                    return self.get_user_by_id(str(user_id)) if user_id else None
             else:
                 # Async fallback
                 import asyncio
