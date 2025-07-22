@@ -265,6 +265,30 @@ class DatabaseManager:
         self._engine = None
         self._session_factory = None
         self._initialized = False
+        self._pool = None
+    
+    @property
+    def pool(self):
+        """
+        Expose the connection pool for backward compatibility.
+        Returns the SQLAlchemy engine's pool or None if not initialized.
+        """
+        if not self._ensure_initialized():
+            return None
+        
+        if self._engine and hasattr(self._engine, 'pool'):
+            return self._engine.pool
+        
+        return self._pool
+    
+    @property
+    def engine(self):
+        """
+        Expose the SQLAlchemy engine.
+        """
+        if not self._ensure_initialized():
+            return None
+        return self._engine
     
     def _ensure_initialized(self) -> bool:
         """Ensure the database manager is initialized."""
@@ -272,12 +296,108 @@ class DatabaseManager:
             try:
                 self._engine = get_engine()
                 self._session_factory = SessionLocal
+                # Set pool reference for backward compatibility
+                if self._engine and hasattr(self._engine, 'pool'):
+                    self._pool = self._engine.pool
                 self._initialized = True
+                logger.debug("Database manager initialized successfully")
                 return True
             except Exception as e:
                 logger.warning(f"Database manager initialization failed: {e}")
                 return False
         return True
+    
+    def get_connection(self):
+        """
+        Get a raw database connection from the pool.
+        Provides compatibility with legacy connection pool usage.
+        """
+        if not self._ensure_initialized():
+            return None
+        
+        try:
+            # Get raw connection from SQLAlchemy engine
+            connection = self._engine.raw_connection()
+            return connection
+        except Exception as e:
+            logger.error(f"Failed to get raw connection: {e}")
+            return None
+    
+    def return_connection(self, connection):
+        """
+        Return a connection to the pool.
+        Provides compatibility with legacy connection pool usage.
+        """
+        if connection:
+            try:
+                connection.close()
+            except Exception as e:
+                logger.error(f"Failed to return connection: {e}")
+    
+    def close_all_connections(self):
+        """
+        Close all connections in the pool.
+        Provides compatibility with legacy connection pool usage.
+        """
+        if self._engine:
+            try:
+                self._engine.dispose()
+                logger.info("All database connections closed")
+            except Exception as e:
+                logger.error(f"Failed to close all connections: {e}")
+    
+    def get_pool_status(self) -> Dict:
+        """
+        Get connection pool status information.
+        """
+        if not self._ensure_initialized() or not self.pool:
+            return {
+                'status': 'unavailable',
+                'size': 0,
+                'checked_in': 0,
+                'checked_out': 0,
+                'overflow': 0
+            }
+        
+        try:
+            pool = self.pool
+            return {
+                'status': 'available',
+                'size': getattr(pool, 'size', lambda: 0)(),
+                'checked_in': getattr(pool, 'checkedin', lambda: 0)(),
+                'checked_out': getattr(pool, 'checkedout', lambda: 0)(),
+                'overflow': getattr(pool, 'overflow', lambda: 0)(),
+                'invalid': getattr(pool, 'invalidated', lambda: 0)()
+            }
+        except Exception as e:
+            logger.error(f"Failed to get pool status: {e}")
+    def create_all_tables(self) -> bool:
+        """
+        Create all database tables defined in models.
+        Safe operation that won't overwrite existing tables.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        return init_db()
+    
+    def drop_all_tables(self) -> bool:
+        """
+        Drop all database tables. Use with caution!
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self._ensure_initialized():
+            return False
+        
+        try:
+            Base.metadata.drop_all(bind=self._engine)
+            logger.warning("All database tables dropped")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to drop tables: {e}")
+            return False
     
     def health_check(self) -> bool:
         """
@@ -572,20 +692,40 @@ def get_db_manager() -> Optional[DatabaseManager]:
     """
     global _db_manager_instance
     
+    # Check if required environment variables exist
+    required_vars = ['POSTGRES_HOST', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        logger.error(f"Missing required environment variables for database: {', '.join(missing_vars)}")
+        return None
+    
     # Check if database is initialized
     if engine is None or SessionLocal is None:
         logger.warning("Database not initialized, attempting to initialize...")
-        if not init_database():
-            logger.error("Failed to initialize database for db_manager")
+        try:
+            if not init_database():
+                logger.error("Failed to initialize database for db_manager")
+                return None
+        except Exception as e:
+            logger.error(f"Database initialization error: {e}")
             return None
     
     # Create manager instance if not exists
     if _db_manager_instance is None:
         try:
             _db_manager_instance = DatabaseManager()
-            logger.debug("Database manager instance created")
+            
+            # Verify the manager is working
+            if _db_manager_instance.pool is None:
+                logger.error("Database manager created but pool is not available")
+                _db_manager_instance = None
+                return None
+            
+            logger.debug("Database manager instance created successfully")
         except Exception as e:
             logger.error(f"Failed to create database manager instance: {e}")
+            _db_manager_instance = None
             return None
     
     return _db_manager_instance
