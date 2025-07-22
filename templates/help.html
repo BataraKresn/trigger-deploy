@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🆘 Help Center - Trigger Deploy Server</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css?v=2">
-    <link rel="stylesheet" href="/static/css/help.css?v=2">
-    <link rel="stylesheet" href="/static/css/visibility-fix.css?v=2">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/help.css">
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,29 +19,25 @@
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     </noscript>
     <style>
-        /* Critical CSS for immediate rendering with fixed visibility */
+        /* Help Page Styling - Force Light Text on Dark Background */
         body {
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #ffffff !important;
-            background: #0f172a !important;
+            color: #ffffff;
+            background: #0f172a;
             min-height: 100vh;
-            visibility: visible !important;
-            opacity: 1 !important;
         }
         
         .help-container {
             min-height: 100vh;
-            opacity: 1 !important;
-            visibility: visible !important;
-            color: #ffffff !important;
+            color: #ffffff;
         }
         
         .help-header {
             background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white !important;
+            color: white;
             padding: 3rem 0;
             text-align: center;
             min-height: 200px;
@@ -55,72 +50,112 @@
             font-size: 3rem;
             margin: 0;
             font-weight: 800;
-            color: white !important;
+            color: white;
         }
         
         .help-header p {
             font-size: 1.25rem;
             margin: 1rem 0 0 0;
-            color: white !important;
+            color: white;
             opacity: 0.95;
         }
         
-        /* Fix text visibility throughout the page */
         .help-content {
-            background: #0f172a !important;
-            color: #ffffff !important;
+            background: #0f172a;
+            color: #ffffff;
         }
         
         .help-card {
-            background: #1e293b !important;
-            color: #ffffff !important;
-            border: 1px solid #334155 !important;
+            background: #1e293b;
+            color: #ffffff;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
         }
         
-        .help-card h3,
+        .help-card-header {
+            padding: 1.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-bottom: 1px solid #334155;
+        }
+        
         .help-card-header h3 {
-            color: #ffffff !important;
+            color: #ffffff;
+            margin: 0;
+            font-size: 1.25rem;
         }
         
-        .help-card p,
-        .help-card-content p,
         .help-card-content {
-            color: #e2e8f0 !important;
+            padding: 1.5rem;
+            color: #e2e8f0;
+        }
+        
+        .help-card-content p {
+            color: #e2e8f0;
+            margin-bottom: 1rem;
         }
         
         .search-input {
-            background: #334155 !important;
-            color: #ffffff !important;
-            border: 1px solid #475569 !important;
+            background: #334155;
+            color: #ffffff;
+            border: 1px solid #475569;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            width: 100%;
         }
         
         .search-input::placeholder {
-            color: #94a3b8 !important;
+            color: #94a3b8;
         }
         
-        /* Ensure all text elements are visible */
+        .search-section {
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        .search-box {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0.75rem;
+            background: #1e293b;
+            padding: 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid #334155;
+        }
+        
+        .search-btn {
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .help-grid {
+            display: grid;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
         h1, h2, h3, h4, h5, h6 {
-            color: #ffffff !important;
+            color: #ffffff;
         }
         
-        p, span, div, li, a {
-            color: #e2e8f0 !important;
-        }
-        
-        .help-content, .help-grid, .search-section {
-            opacity: 1 !important;
-            visibility: visible !important;
-            transform: none !important;
-        }
-        
-        /* Ensure all content is always visible */
-        * {
-            opacity: 1 !important;
-            visibility: visible !important;
+        p, span, div, li {
+            color: #e2e8f0;
         }
         
         .container {
             max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+    </style>
             margin: 0 auto;
             padding: 0 1.5rem;
         }

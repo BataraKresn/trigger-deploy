@@ -5,30 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📞 Contact Us - Trigger Deploy</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css?v=2">
-    <link rel="stylesheet" href="/static/css/help.css?v=2">
-    <link rel="stylesheet" href="/static/css/visibility-fix.css?v=2">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/help.css">
     <!-- Preload critical fonts -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
     <style>
-        /* Critical CSS for immediate rendering with proper text visibility */
+        /* Contact Page Styling - Force Dark Text on Light Background */
         body {
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333 !important;
-            background: #f8fafc !important;
+            color: #333333;
+            background: #f8fafc;
             min-height: 100vh;
-            visibility: visible !important;
-            opacity: 1 !important;
         }
         
         .contact-hero {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
+            color: white;
             padding: 4rem 0;
             text-align: center;
             min-height: 200px;
@@ -41,69 +38,14 @@
             font-size: 3rem;
             margin: 0;
             font-weight: 800;
-            color: white !important;
+            color: white;
         }
         
         .contact-hero p {
             font-size: 1.25rem;
             margin: 1rem 0 0 0;
             opacity: 0.9;
-            color: white !important;
-        }
-        
-        /* Ensure all form and content text is visible */
-        .contact-form {
-            background: white !important;
-            color: #333 !important;
-        }
-        
-        .contact-form h2,
-        .contact-form h3 {
-            color: #333 !important;
-        }
-        
-        .contact-form p,
-        .contact-form label {
-            color: #555 !important;
-        }
-        
-        .contact-card {
-            background: white !important;
-            color: #333 !important;
-        }
-        
-        .contact-card h3 {
-            color: #333 !important;
-        }
-        
-        .contact-card p {
-            color: #666 !important;
-        }
-        
-        /* Form inputs */
-        input, textarea, select {
-            color: #333 !important;
-            background: white !important;
-        }
-        
-        .contact-form-container, .contact-grid {
-            opacity: 1 !important;
-            visibility: visible !important;
-            transform: none !important;
-        }
-        
-        /* Ensure content is always visible */
-        * {
-            opacity: 1 !important;
-            visibility: visible !important;
-        }
-    </style>
-    <style>
-        .contact-hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4rem 0;
-            text-align: center;
         }
         
         .contact-form-container {
@@ -118,6 +60,36 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             padding: 3rem;
             margin-bottom: 3rem;
+        }
+        
+        .contact-form h2 {
+            color: #333333;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+        
+        .contact-form p {
+            color: #666666;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #333333;
+            background: white;
         }
         
         .contact-grid {
@@ -140,6 +112,17 @@
         
         .contact-card:hover {
             transform: translateY(-5px);
+        }
+        
+        .contact-card h3 {
+            color: #333333;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .contact-card p {
+            color: #666666;
+            margin-bottom: 1.5rem;
         }
         
         .contact-icon {
